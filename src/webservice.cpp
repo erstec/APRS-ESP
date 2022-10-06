@@ -198,10 +198,10 @@ void setHTML(byte page)
 		webString += "<table style=\"width:800px;\"><tr><td>";
 		webString += "<div style=\"width:300px\"><b>Last Readings at " + String(strTime) + "</b></div>\n";
 
-		webString += "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) + "C</div> \n";
-		webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " Byte</div> \n";
-		String uptime = String(day(tn) - 1, DEC) + "D " + String(hour(tn), DEC) + ":" + String(minute(tn), DEC) + ":" + String(second(tn), DEC);
-		webString += "<div>System Uptime: " + uptime + "</div> \n";
+		webString += "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) + "&deg;C</div> \n";
+		webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
+		sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn), minute(tn), second(tn));
+		webString += "<div>System Uptime: " + String(strTime) + "</div> \n";
 
 		webString += "</td></tr><tr><td>\n";
 
@@ -530,17 +530,17 @@ void handle_setting()
 	webString += "<div class = \"col-pad\">\n<h3>Fix Location</h3>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Latitude(Deg.)</label>\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Latitude (deg)</label>\n";
 	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" id=\"gpsLat\" name=\"gpsLat\" type=\"text\" value=\"" + String(config.gps_lat, 5) + "\" /></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Longitude(Deg.)</label>\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Longitude (deg)</label>\n";
 	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" id=\"gpsLon\" name=\"gpsLon\" type=\"text\" value=\"" + String(config.gps_lon, 5) + "\" /></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Altitude(M.)</label>\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Altitude (m)</label>\n";
 	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" id=\"gpsAlt\" name=\"gpsAlt\" type=\"text\" value=\"" + String(config.gps_alt) + "\" /></div>\n";
 	webString += "</div>\n";
 
@@ -560,7 +560,7 @@ void handle_setting()
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval(Sec)</label>\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval (sec)</label>\n";
 	webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" + String(config.aprs_beacon) + "\" /></div>\n";
 	webString += "</div>\n";
 
@@ -814,7 +814,8 @@ void handle_service()
 
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Pass Code</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" id=\"myPasscode\" name=\"myPasscode\" type=\"password\" value=\"" + String(config.aprs_passcode) + "\" /></div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" id=\"myPasscode\" name=\"myPasscode\" type=\"text\" value=\"" + String(config.aprs_passcode) + "\" /></div>\n";
+	webString += "</div>\n";
 
 	// webString += "<div class=\"form-group\">\n";
 	// webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS OBJECT</label>\n";
