@@ -42,24 +42,6 @@ void setHTML(byte page)
 				 "box-shadow:0 10px 10px 0 rgba(0,0,0,0.16);"
 				 "font-family:\"Segoe UI\",Tahoma,sans-serif;"
 				 "}\n"
-				 ".title_hdr{"
-				 "text-align: center;"
-				 //"width: auto;"
-				 "margin: 0 auto;"
-				 "background: darkblue;"
-				 "color: white;"
-				 "font-size: 10px;"
-				 "border-radius: 5px;"
-				 "}\n"
-				 ".title_value{"
-				 "width: auto;"
-				 "margin: 0 auto;"
-				 "text-align: center;"
-				 "font-size: 14px;"
-				 "color: darkgreen;"
-				 "background: white;"
-				 "border-radius: 5px;"
-				 "}\n"
 				 ".L1{"
 				 "text-align: center;"
 				 "width: 33%;"
@@ -68,26 +50,6 @@ void setHTML(byte page)
 				 "color: white;"
 				 "font-size: 10px;"
 				 "font-family:\"Segoe UI\",Tahoma,sans-serif;"
-				 "border-radius: 5px;"
-				 "font-weight: bold;"
-				 "}\n"
-				 ".L2{"
-				 "text-align: center;"
-				 "width: 33%;"
-				 "margin: 1px;"
-				 "background: yellow;"
-				 "color: black;"
-				 "font-size: 10px;"
-				 "border-radius: 5px;"
-				 "font-weight: bold;"
-				 "}\n"
-				 ".L3{"
-				 "text-align: center;"
-				 "width: 33%;"
-				 "margin: 1px;"
-				 "background: blue;"
-				 "color: lightgray;"
-				 "font-size: 10px;"
 				 "border-radius: 5px;"
 				 "font-weight: bold;"
 				 "}\n";
@@ -237,7 +199,7 @@ void setHTML(byte page)
 		webString += "<div style=\"width:300px\"><b>Last Readings at " + String(strTime) + "</b></div>\n";
 
 		webString += "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) + "C</div> \n";
-		webString += "<div>Free Heap:" + String(ESP.getFreeHeap()) + " Byte</div> \n";
+		webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " Byte</div> \n";
 		String uptime = String(day(tn) - 1, DEC) + "D " + String(hour(tn), DEC) + ":" + String(minute(tn), DEC) + ":" + String(second(tn), DEC);
 		webString += "<div>System Uptime: " + uptime + "</div> \n";
 

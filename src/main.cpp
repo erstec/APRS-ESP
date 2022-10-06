@@ -23,6 +23,10 @@
 #include "igate.h"
 #include <WiFiUdp.h>
 
+#include "Wire.h"
+#include "Adafruit_GFX.h"
+#include "Adafruit_SSD1306.h"
+
 #include <WiFiClientSecure.h>
 
 #include "AFSK.h"
@@ -89,6 +93,8 @@ HardwareSerial SerialGPS(2);
 #endif
 
 BluetoothSerial SerialBT;
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -515,7 +521,7 @@ void SA818_CHECK()
     }
     else
     {
-        Serial.println("Radio SA818/SR_FRS Error");
+        Serial.println("SA818/SR_FRS Error");
         digitalWrite(POWER_PIN, LOW);
         digitalWrite(PULLDOWN_PIN, LOW);
         delay(500);
@@ -645,6 +651,17 @@ void setup()
     Serial.println();
     Serial.println("Start ESP32IGate V" + String(VERSION));
     Serial.println("Push BOOT after 3 sec for Factory Default config");
+
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("SSD1306 allocation failed");
+    }
+
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("Start ESP32IGate V" + String(VERSION));
+    display.display();
 
     if (!EEPROM.begin(EEPROM_SIZE))
     {
@@ -851,7 +868,7 @@ void taskAPRS(void *pvParameters)
     //	long start, stop;
     // char *raw;
     // char *str;
-    Serial.println("Task [APRS] started");
+    Serial.println("Task <APRS> started");
     PacketBuffer.clean();
 
     APRS_init();
@@ -1090,7 +1107,7 @@ long wifiTTL = 0;
 void taskNetwork(void *pvParameters)
 {
     int c = 0;
-    Serial.println("Task [Network] started");
+    Serial.println("Task <Network> started");
 
     if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX)
     { // AP=false
@@ -1145,7 +1162,7 @@ void taskNetwork(void *pvParameters)
                     AFSK_TimerEnable(false);
 #endif
                     wifiTTL = tw + 60000;
-                    Serial.println("WiFi connecting..");
+                    Serial.println("WiFi connecting...");
                     // udp.endPacket();
                     WiFi.disconnect();
                     WiFi.setTxPower((wifi_power_t)config.wifi_power);
@@ -1191,7 +1208,7 @@ void taskNetwork(void *pvParameters)
                     NTP_Timeout = millis() + 86400000;
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
-                    Serial.println("Contacting NTP");
+                    Serial.println("Setting up NTP");
                     configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
@@ -1282,11 +1299,11 @@ void taskNetwork(void *pvParameters)
                     Serial.println("Ping GW to " + WiFi.gatewayIP().toString());
                     if (ping_start(WiFi.gatewayIP(), 3, 0, 0, 5) == true)
                     {
-                        Serial.println("GW Success");
+                        Serial.println("Ping GW OK");
                     }
                     else
                     {
-                        Serial.println("GW Fail");
+                        Serial.println("Ping GW Fail");
                         WiFi.disconnect();
                         wifiTTL = 0;
                     }
