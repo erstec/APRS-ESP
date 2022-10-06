@@ -381,15 +381,19 @@ void aprs_msg_callback(struct AX25Msg *msg)
 
 void printTime()
 {
+    char buf[3];
     struct tm tmstruct;
     getLocalTime(&tmstruct, 5000);
     Serial.print("[");
-    Serial.print(tmstruct.tm_hour);
+    sprintf(buf, "%02d", tmstruct.tm_hour);
+    Serial.print(buf);
     Serial.print(":");
-    Serial.print(tmstruct.tm_min);
+    sprintf(buf, "%02d", tmstruct.tm_min);
+    Serial.print(buf);
     Serial.print(":");
-    Serial.print(tmstruct.tm_sec);
-    Serial.print("]");
+    sprintf(buf, "%02d", tmstruct.tm_sec);
+    Serial.print(buf);
+    Serial.print("] ");
 }
 
 uint8_t gwRaw[PKGLISTSIZE][66];
@@ -428,9 +432,9 @@ unsigned long SA818_Timeout = 0;
 void SA818_INIT(bool boot)
 {
 #ifdef SR_FRS
-    Serial.println("Radio Module SR_FRS Init");
+    Serial.println("SR_FRS Init");
 #else
-    Serial.println("Radio Module SA818/SA868 Init");
+    Serial.println("SA818/SA868 Init");
 #endif
     if (boot)
     {
@@ -499,13 +503,13 @@ void SA818_CHECK()
             SA818_Timeout = millis();
 #ifdef DEBUG
             // Serial.println(SerialRF.readString());
-            Serial.println("Radio SA818/SR_FRS Activated");
+            Serial.println("SA818/SR_FRS OK");
 #endif
         }
     }
     else
     {
-        Serial.println("Radio SA818/SR_FRS deActive");
+        Serial.println("Radio SA818/SR_FRS Error");
         digitalWrite(POWER_PIN, LOW);
         digitalWrite(PULLDOWN_PIN, LOW);
         delay(500);
@@ -628,7 +632,7 @@ void setup()
 
     Serial.println();
     Serial.println("Start ESP32IGate V" + String(VERSION));
-    Serial.println("Push BOOT after 3 sec for Factory Default config.");
+    Serial.println("Push BOOT after 3 sec for Factory Default config");
 
     if (!EEPROM.begin(EEPROM_SIZE))
     {
@@ -639,7 +643,7 @@ void setup()
     if (digitalRead(0) == LOW)
     {
         defaultConfig();
-        Serial.println("Manual Default configure!");
+        Serial.println("Manual Default configure");
         while (digitalRead(0) == LOW)
             ;
     }
@@ -835,7 +839,7 @@ void taskAPRS(void *pvParameters)
     //	long start, stop;
     char *raw;
     char *str;
-    Serial.println("Task APRS has been start");
+    Serial.println("Task [APRS] started");
     PacketBuffer.clean();
 
     APRS_init();
@@ -1074,7 +1078,7 @@ long wifiTTL = 0;
 void taskNetwork(void *pvParameters)
 {
     int c = 0;
-    Serial.println("Task Network has been start");
+    Serial.println("Task [Network] started");
 
     if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX)
     { // AP=false
@@ -1099,14 +1103,14 @@ void taskNetwork(void *pvParameters)
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(100);
-        Serial.println(F("WiFi Station Only mode."));
+        Serial.println(F("WiFi Station Only mode"));
     }
     else
     {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
-        Serial.println(F("WiFi OFF All mode."));
+        Serial.println(F("WiFi OFF All mode"));
         SerialBT.begin("ESP32TNC");
     }
 
@@ -1175,7 +1179,7 @@ void taskNetwork(void *pvParameters)
                     NTP_Timeout = millis() + 86400000;
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
-                    Serial.println("Contacting Time Server");
+                    Serial.println("Contacting NTP");
                     configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
@@ -1266,11 +1270,11 @@ void taskNetwork(void *pvParameters)
                     Serial.println("Ping GW to " + WiFi.gatewayIP().toString());
                     if (ping_start(WiFi.gatewayIP(), 3, 0, 0, 5) == true)
                     {
-                        Serial.println("GW Success!!");
+                        Serial.println("GW Success");
                     }
                     else
                     {
-                        Serial.println("GW Fail!");
+                        Serial.println("GW Fail");
                         WiFi.disconnect();
                         wifiTTL = 0;
                     }
