@@ -151,8 +151,8 @@ void defaultConfig()
 {
     Serial.println("Default configure mode!");
     sprintf(config.aprs_mycall, "MYCALL");
-    config.aprs_ssid = 0;
-    sprintf(config.aprs_host, "aprs.dprns.com");
+    config.aprs_ssid = 15;
+    sprintf(config.aprs_host, "rotate.aprs2.net");
     config.aprs_port = 14580;
     sprintf(config.aprs_passcode, "00000");
     sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall, config.aprs_ssid);
@@ -161,21 +161,18 @@ void defaultConfig()
     sprintf(config.wifi_pass, "aprsthnetwork");
     sprintf(config.wifi_ap_ssid, "ESP32IGate");
     sprintf(config.wifi_ap_pass, "aprsthnetwork");
-    sprintf(config.mqtt_host, "aprs.dprns.com");
     config.wifi_client = true;
     config.synctime = true;
-    config.mqtt_port = 1883;
     config.aprs_beacon = 600;
-    config.gps_lat = 13.7555;
-    config.gps_lon = 100.4930;
-    config.gps_alt = 3;
+    config.gps_lat = 54.6842;
+    config.gps_lon = 25.2398;
+    config.gps_alt = 10;
     config.tnc = true;
     config.inet2rf = true;
     config.rf2inet = true;
-    config.aprs = true;
+    config.aprs = false;
     config.wifi = true;
     config.wifi_mode = WIFI_AP_STA_FIX;
-    config.wifi_ch = 1;
     config.tnc_digi = true;
     config.tnc_telemetry = true;
     config.tnc_btext[0] = 0;
@@ -192,8 +189,8 @@ void defaultConfig()
     config.wifi_power = 44;
     config.input_hpf = true;
 #ifdef SA818
-    config.freq_rx = 144.3900;
-    config.freq_tx = 144.3900;
+    config.freq_rx = 144.8000;
+    config.freq_tx = 144.8000;
     config.offset_rx = 0;
     config.offset_tx = 0;
     config.tone_rx = 0;
@@ -205,7 +202,7 @@ void defaultConfig()
     config.input_hpf = false;
 #endif
     input_HPF = config.input_hpf;
-    config.timeZone = 7;
+    config.timeZone = 0;
     saveEEPROM();
 }
 
@@ -1072,7 +1069,6 @@ void taskAPRS(void *pvParameters)
     }
 }
 
-int mqttRetry = 0;
 long wifiTTL = 0;
 
 void taskNetwork(void *pvParameters)

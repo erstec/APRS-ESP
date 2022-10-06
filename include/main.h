@@ -73,7 +73,6 @@ typedef struct Config_Struct
 	bool wifi_client;
 	bool wifi;
 	char wifi_mode; // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
-	char wifi_ch;
 	float gps_lat;
 	float gps_lon;
 	float gps_alt;
@@ -81,7 +80,6 @@ typedef struct Config_Struct
 	uint16_t aprs_port;
 	uint8_t aprs_moniSSID;
 	uint32_t api_id;
-	uint16_t mqtt_port;
 	bool tnc;
 	bool rf2inet;
 	bool inet2rf;
@@ -106,9 +104,6 @@ typedef struct Config_Struct
 	char tnc_btext[50];
 	char tnc_comment[50];
 	char aprs_object[10];
-	char mqtt_host[20];
-	char mqtt_user[10];
-	char mqtt_pass[10];
 	char wifi_power;
 	uint16_t tx_timeslot;
 	uint16_t digi_delay;

@@ -793,27 +793,6 @@ void handle_service()
 						config.tx_timeslot = 10000;
 				}
 			}
-
-			// if (server.argName(i) == "mqttEnable") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		if (String(server.arg(i)) == "OK")
-			// 			mqttEn = true;
-			// 	}
-			// }
-			// if (server.argName(i) == "mqttHost") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		strcpy(config.mqtt_host, server.arg(i).c_str());
-			// 	}
-			// }
-			// if (server.argName(i) == "mqttPort") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		if (isValidNumber(server.arg(i)))
-			// 			config.mqtt_port = server.arg(i).toInt();
-			// 	}
-			// }
 		}
 		config.aprs = aprsEn;
 		config.tnc = tncEn;
