@@ -80,7 +80,13 @@ pkgListType pkgList[PKGLISTSIZE];
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
+#if defined(SERIAL_TNC)
 HardwareSerial SerialTNC(2);
+#endif
+
+#if defined(SERIAL_GPS)
+HardwareSerial SerialGPS(2);
+#endif
 
 BluetoothSerial SerialBT;
 
@@ -627,8 +633,14 @@ void setup()
     // Set up serial port
     Serial.begin(9600); // debug
     Serial.setRxBufferSize(256);
+#if defined(SERIAL_TNC)
     SerialTNC.begin(9600, SERIAL_8N1, 16, 17);
     SerialTNC.setRxBufferSize(500);
+#endif
+#if defined(SERIAL_GPS)
+    SerialGPS.begin(4800, SERIAL_8N1, 16, 17);
+    SerialGPS.setRxBufferSize(500);
+#endif
 
     Serial.println();
     Serial.println("Start ESP32IGate V" + String(VERSION));
@@ -837,8 +849,8 @@ long timeSlot;
 void taskAPRS(void *pvParameters)
 {
     //	long start, stop;
-    char *raw;
-    char *str;
+    // char *raw;
+    // char *str;
     Serial.println("Task [APRS] started");
     PacketBuffer.clean();
 

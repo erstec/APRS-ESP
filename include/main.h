@@ -18,6 +18,12 @@
 //#define SDCARD
 #define SA818
 //#define SR_FRS
+//#define SERIAL_TNC
+#define SERIAL_GPS
+
+#if defined(SERIAL_TNC) && defined(SERIAL_GPS)
+#error "Cannot use both SERIAL_TNC and SERIAL_GPS"
+#endif
 
 #ifdef SR_FRS
 #ifndef SA818
