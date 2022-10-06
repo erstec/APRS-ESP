@@ -181,11 +181,8 @@ void setHTML(byte page)
 	String strActiveP6 = "";
 	String strActiveP7 = "";
 	String strActiveP8 = "";
-	String strActiveP9 = "";
 
-	if (page == 8)
-		strActiveP9 = "class=active";
-	else if (page == 7)
+	if (page == 7)
 		strActiveP8 = "class=active";
 	else if (page == 6)
 		strActiveP7 = "class=active";
@@ -218,7 +215,6 @@ void setHTML(byte page)
 #ifdef SA818
 	webString += "<li role=\"presentation\"" + strActiveP8 + ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
 #endif
-	webString += "<li role=\"presentation\"" + strActiveP9 + ">\n<a href=\"/vpn\" id=\"channel_link_radio\">VPN</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP4 + ">\n<a href=\"/service\" id=\"channel_link_service\">Service</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP5 + ">\n<a href=\"/system\" id=\"channel_link_system\">System</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP7 + ">\n<a href=\"/test\" id=\"channel_link_system\">Test</a>\n</li>\n";
@@ -1260,173 +1256,6 @@ void handle_radio()
 }
 #endif
 
-void handle_vpn()
-{
-	// byte *ptr;
-	bool vpnEn = false;
-	//	bool taretime = false;
-	// bool davisEn = false;
-	// bool moniEn = false;
-
-	if (server.args() > 0)
-	{
-		//			taretime = false;
-		for (uint8_t i = 0; i < server.args(); i++)
-		{
-			// Serial.print("SERVER ARGS ");
-			// Serial.print(server.argName(i));
-			// Serial.print("=");
-			// Serial.println(server.arg(i));
-
-			if (server.argName(i) == "vpnEnable")
-			{
-				if (server.arg(i) != "")
-				{
-					// if (isValidNumber(server.arg(i)))
-					if (String(server.arg(i)) == "OK")
-						vpnEn = true;
-				}
-			}
-
-			// if (server.argName(i) == "taretime") {
-			//	if (server.arg(i) != "")
-			//	{
-			//		//if (isValidNumber(server.arg(i)))
-			//		if (String(server.arg(i)) == "OK")
-			//			taretime = true;
-			//	}
-			// }
-			if (server.argName(i) == "wg_port")
-			{
-				if (server.arg(i) != "")
-				{
-					config.wg_port = server.arg(i).toInt();
-				}
-			}
-
-			if (server.argName(i) == "wg_public_key")
-			{
-				if (server.arg(i) != "")
-				{
-					strncpy(config.wg_public_key, server.arg(i).c_str(), 44);
-					config.wg_public_key[44] = 0;
-				}
-			}
-
-			if (server.argName(i) == "wg_private_key")
-			{
-				if (server.arg(i) != "")
-				{
-					strncpy(config.wg_private_key, server.arg(i).c_str(), 44);
-					config.wg_private_key[44] = 0;
-				}
-			}
-
-			if (server.argName(i) == "wg_peer_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_peer_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_local_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_local_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_netmask_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_netmask_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_gw_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_gw_address, server.arg(i).c_str());
-				}
-			}
-		}
-
-		config.vpn = vpnEn;
-		saveEEPROM();
-		// topBar(WiFi.RSSI());
-	}
-
-	// getMoisture();       // read sensor
-	// webMessage = "";
-	setHTML(8);
-	webString += "<div class=\"col-xs-10\">\n";
-	webString += "<form accept-charset=\"UTF-8\" action=\"/vpn\" class=\"form-horizontal\" id=\"setting_form\" method=\"post\">\n";
-
-	webString += "<div class = \"\">\n<h3>Wireguard Configuration</h3>\n";
-
-	String syncFlage = "";
-	if (config.vpn)
-		syncFlage = "checked";
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Enable</label>\n";
-	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" id=\"vpnEnable\" name=\"vpnEnable\" type=\"checkbox\" value=\"OK\" " + syncFlage + "/></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Server Address</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_peer_address\" name=\"wg_peer_address\" type=\"text\" value=\"" + String(config.wg_peer_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Server Port</label>\n";
-	webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"wg_port\" name=\"wg_port\" type=\"text\" value=\"" + String(config.wg_port) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Local Address</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_local_address\" name=\"wg_local_address\" type=\"text\" value=\"" + String(config.wg_local_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Netmask</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_netmask_address\" name=\"wg_netmask_address\" type=\"text\" value=\"" + String(config.wg_netmask_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Gateway</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_gw_address\" name=\"wg_gw_address\" type=\"text\" value=\"" + String(config.wg_gw_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Public Key</label>\n";
-	webString += "<div class=\"col-sm-7 col-xs-10\"><input class=\"form-control\" id=\"wg_public_key\" name=\"wg_public_key\" type=\"text\" value=\"" + String(config.wg_public_key) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Private Key</label>\n";
-	webString += "<div class=\"col-sm-7 col-xs-10\"><input class=\"form-control\" id=\"wg_private_key\" name=\"wg_private_key\" type=\"text\" value=\"" + String(config.wg_private_key) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "</div>\n"; // div general
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save Config\" maxlength=\"80\"/></div>\n";
-	webString += "</form>\n";
-	webString += "</div>\n";
-
-	webString += "</div>\n";
-
-	webString += "</body></html>\n";
-	server.send(200, "text/html", webString); // send to someones browser when asked
-	delay(100);
-	webString.clear();
-}
-
 void handle_system()
 {
 	if (server.hasArg("updateTimeZone"))
@@ -2283,7 +2112,6 @@ void webService()
 #ifdef SA818
 	server.on("/radio", handle_radio);
 #endif
-	server.on("/vpn", handle_vpn);
 	server.on("/default", handle_default);
 	server.on("/service", handle_service);
 	server.on("/system", handle_system);

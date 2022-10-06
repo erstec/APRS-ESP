@@ -16,8 +16,8 @@
 //#define DEBUG_IS
 
 //#define SDCARD
-//#define SA818
-#define SR_FRS
+#define SA818
+//#define SR_FRS
 
 #ifdef SR_FRS
 #ifndef SA818
@@ -125,15 +125,6 @@ typedef struct Config_Struct
 	bool rf_power;
 	uint8_t volume;
 #endif
-	bool vpn;
-	bool modem;
-	uint16_t wg_port;
-	char wg_peer_address[16];
-	char wg_local_address[16];
-	char wg_netmask_address[16];
-	char wg_gw_address[16];
-	char wg_public_key[45];
-	char wg_private_key[45];
 	int8_t timeZone;
 
 } Configuration;
