@@ -5,10 +5,9 @@ extern Configuration config;
 
 int igateProcess(AX25Msg &Packet)
 {
-    int idx, j;
+    int idx;
     String header;
 
-    j = 0;
     if (Packet.len < 2)
     {
         // digiLog.ErPkts++;
