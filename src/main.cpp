@@ -46,12 +46,7 @@
 #endif
 
 #ifdef SA818
-#define VBAT_PIN 35
-#define WIRE 4
-#define POWER_PIN 12
-#define PULLDOWN_PIN 27
-#define SQL_PIN 33
-HardwareSerial SerialRF(1);
+HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
 
 time_t systemUptime = 0;
@@ -85,16 +80,16 @@ TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
 #if defined(SERIAL_TNC)
-HardwareSerial SerialTNC(2);
+HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #endif
 
 #if defined(SERIAL_GPS)
-HardwareSerial SerialGPS(2);
+HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
 BluetoothSerial SerialBT;
 
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -450,7 +445,7 @@ void SA818_INIT(bool boot)
 #endif
     if (boot)
     {
-        SerialRF.begin(9600, SERIAL_8N1, 14, 13);
+        SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         pinMode(POWER_PIN, OUTPUT);
         pinMode(PULLDOWN_PIN, OUTPUT);
         pinMode(SQL_PIN, INPUT_PULLUP);
@@ -503,8 +498,9 @@ void SA818_SLEEP()
 
 void SA818_CHECK()
 {
-    while (SerialRF.available() > 0)
+    while (SerialRF.available() > 0) {
         SerialRF.read();
+    }
     SerialRF.println("AT+DMOCONNECT");
     delay(100);
     if (SerialRF.available() > 0)
@@ -640,11 +636,11 @@ void setup()
     Serial.begin(9600); // debug
     Serial.setRxBufferSize(256);
 #if defined(SERIAL_TNC)
-    SerialTNC.begin(9600, SERIAL_8N1, 16, 17);
+    SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN, SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
 #if defined(SERIAL_GPS)
-    SerialGPS.begin(4800, SERIAL_8N1, 16, 17);
+    SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
     SerialGPS.setRxBufferSize(500);
 #endif
 
@@ -660,7 +656,7 @@ void setup()
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("Start ESP32IGate V" + String(VERSION));
+    display.print("ESP32IGate V" + String(VERSION));
     display.display();
 
     if (!EEPROM.begin(EEPROM_SIZE))
@@ -828,7 +824,7 @@ void loop()
     if (AFSKInitAct == true)
     {
 #ifdef SA818
-        AFSK_Poll(true, config.rf_power);
+        AFSK_Poll(true, config.rf_power, POWER_PIN);
 #else
         AFSK_Poll(false, LOW);
 #endif
@@ -890,7 +886,7 @@ void taskAPRS(void *pvParameters)
         // serviceHandle();
         if (now > (timeSlot + 10))
         {
-            if (!digitalRead(LED_PIN))
+            if (!digitalRead(RX_LED_PIN))
             { // RX State Fail
                 if (pkgTxSend())
                     timeSlot = millis() + config.tx_timeslot; // Tx Time Slot = 5sec.
@@ -908,8 +904,8 @@ void taskAPRS(void *pvParameters)
             btn_count++;
             if (btn_count > 1000) // Push BOOT 10sec
             {
-                digitalWrite(LED_PIN, HIGH);
-                digitalWrite(LED_TX_PIN, HIGH);
+                digitalWrite(RX_LED_PIN, HIGH);
+                digitalWrite(TX_LED_PIN, HIGH);
             }
         }
         else

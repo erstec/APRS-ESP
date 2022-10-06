@@ -31,6 +31,8 @@
 #endif
 #endif
 
+#include "pinout.h"
+
 #define WIFI_OFF_FIX 0
 #define WIFI_AP_FIX 1
 #define WIFI_STA_FIX 2
