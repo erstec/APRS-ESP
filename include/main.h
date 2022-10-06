@@ -16,8 +16,8 @@
 //#define DEBUG_IS
 
 //#define SDCARD
-//#define SA818
-#define SR_FRS
+#define SA818
+//#define SR_FRS
 
 #ifdef SR_FRS
 #ifndef SA818
@@ -73,7 +73,6 @@ typedef struct Config_Struct
 	bool wifi_client;
 	bool wifi;
 	char wifi_mode; // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
-	char wifi_ch;
 	float gps_lat;
 	float gps_lon;
 	float gps_alt;
@@ -81,7 +80,6 @@ typedef struct Config_Struct
 	uint16_t aprs_port;
 	uint8_t aprs_moniSSID;
 	uint32_t api_id;
-	uint16_t mqtt_port;
 	bool tnc;
 	bool rf2inet;
 	bool inet2rf;
@@ -106,9 +104,6 @@ typedef struct Config_Struct
 	char tnc_btext[50];
 	char tnc_comment[50];
 	char aprs_object[10];
-	char mqtt_host[20];
-	char mqtt_user[10];
-	char mqtt_pass[10];
 	char wifi_power;
 	uint16_t tx_timeslot;
 	uint16_t digi_delay;
@@ -125,15 +120,6 @@ typedef struct Config_Struct
 	bool rf_power;
 	uint8_t volume;
 #endif
-	bool vpn;
-	bool modem;
-	uint16_t wg_port;
-	char wg_peer_address[16];
-	char wg_local_address[16];
-	char wg_netmask_address[16];
-	char wg_gw_address[16];
-	char wg_public_key[45];
-	char wg_private_key[45];
 	int8_t timeZone;
 
 } Configuration;

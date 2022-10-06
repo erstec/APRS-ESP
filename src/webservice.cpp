@@ -22,7 +22,9 @@ void setHTML(byte page)
 {
 	webString = "<html><head>\n";
 	webString += "<meta charset=\"utf-8\">";
-	webString += "<style>\nhdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n</style>\n";
+	webString += "<style>\n";
+	webString += "body{background-color: #5f5f5f;font-family:\"Segoe UI\",Tahoma,sans-serif;color:#f1f1f1;font-weight: normal;}\n";
+	webString += "hdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n</style>\n";
 	if (page == 0)
 		webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
 	webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
@@ -63,8 +65,9 @@ void setHTML(byte page)
 				 "width: 33%;"
 				 "margin: 1px;"
 				 "background: red;"
-				 "color: sandybrown;"
+				 "color: white;"
 				 "font-size: 10px;"
+				 "font-family:\"Segoe UI\",Tahoma,sans-serif;"
 				 "border-radius: 5px;"
 				 "font-weight: bold;"
 				 "}\n"
@@ -181,11 +184,8 @@ void setHTML(byte page)
 	String strActiveP6 = "";
 	String strActiveP7 = "";
 	String strActiveP8 = "";
-	String strActiveP9 = "";
 
-	if (page == 8)
-		strActiveP9 = "class=active";
-	else if (page == 7)
+	if (page == 7)
 		strActiveP8 = "class=active";
 	else if (page == 6)
 		strActiveP7 = "class=active";
@@ -218,7 +218,6 @@ void setHTML(byte page)
 #ifdef SA818
 	webString += "<li role=\"presentation\"" + strActiveP8 + ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
 #endif
-	webString += "<li role=\"presentation\"" + strActiveP9 + ">\n<a href=\"/vpn\" id=\"channel_link_radio\">VPN</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP4 + ">\n<a href=\"/service\" id=\"channel_link_service\">Service</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP5 + ">\n<a href=\"/system\" id=\"channel_link_system\">System</a>\n</li>\n";
 	webString += "<li role=\"presentation\"" + strActiveP7 + ">\n<a href=\"/test\" id=\"channel_link_system\">Test</a>\n</li>\n";
@@ -250,7 +249,7 @@ void setHTML(byte page)
 
 		webString += "</td></tr><br /><tr align=\"left\"><td>\n";
 
-		webString += "<div  class=\"L1\"><u>STATISTICS</u></div>";
+		webString += "<div  class=\"L1\">STATISTICS</div>";
 		webString += "<table border=\"0\" width=\"180\">";
 		webString += "<tr><td>ALL DATA</td><td align=\"right\">" + String(status.allCount) + "</td></tr>";
 		webString += "<tr><td>RF->INET</td><td align=\"right\">" + String(status.rf2inet) + "</td></tr>";
@@ -259,7 +258,7 @@ void setHTML(byte page)
 		webString += "<tr><td>ERROR</td><td align=\"right\">" + String(status.errorCount) + "</td></tr>";
 		webString += "</table>";
 
-		webString += "<div  class=\"L1\"><u>LAST STATION</u></div>";
+		webString += "<div  class=\"L1\">LAST STATION</div>";
 		webString += "<table border=\"0\" width=\"200\">";
 		sort(pkgList, PKGLISTSIZE);
 
@@ -276,7 +275,7 @@ void setHTML(byte page)
 			}
 		}
 		webString += "</table>";
-		webString += "<div  class=\"L1\"><u>TOP SEND</u></div>";
+		webString += "<div  class=\"L1\">TOP SEND</div>";
 		webString += "<table border=\"0\" width=\"200\">";
 		sortPkgDesc(pkgList, PKGLISTSIZE);
 		for (int i = 0; i < PKGLISTSIZE; i++)
@@ -797,27 +796,6 @@ void handle_service()
 						config.tx_timeslot = 10000;
 				}
 			}
-
-			// if (server.argName(i) == "mqttEnable") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		if (String(server.arg(i)) == "OK")
-			// 			mqttEn = true;
-			// 	}
-			// }
-			// if (server.argName(i) == "mqttHost") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		strcpy(config.mqtt_host, server.arg(i).c_str());
-			// 	}
-			// }
-			// if (server.argName(i) == "mqttPort") {
-			// 	if (server.arg(i) != "")
-			// 	{
-			// 		if (isValidNumber(server.arg(i)))
-			// 			config.mqtt_port = server.arg(i).toInt();
-			// 	}
-			// }
 		}
 		config.aprs = aprsEn;
 		config.tnc = tncEn;
@@ -874,8 +852,7 @@ void handle_service()
 
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Pass Code</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" id=\"myPasscode\" name=\"myPasscode\" type=\"password\" value=\"" + String(config.aprs_passcode) + "\" />From <a href=\"https://www.dprns.com/index.php?pid=5\">Here</a></div>\n";
-	webString += "</div>\n";
+	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" id=\"myPasscode\" name=\"myPasscode\" type=\"password\" value=\"" + String(config.aprs_passcode) + "\" /></div>\n";
 
 	// webString += "<div class=\"form-group\">\n";
 	// webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS OBJECT</label>\n";
@@ -884,7 +861,7 @@ void handle_service()
 
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS Server</label>\n";
-	webString += "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsHost\" name=\"aprsHost\" type=\"text\" value=\"" + String(config.aprs_host) + "\" /><br />Web Service: <a href=\"http://aprs.dprns.com:14501\" target=\"_blank\">T2THAI</a></div>\n";
+	webString += "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsHost\" name=\"aprsHost\" type=\"text\" value=\"" + String(config.aprs_host) + "\" /></div>\n";
 	webString += "</div>\n";
 
 	webString += "<div class=\"form-group\">\n";
@@ -1259,173 +1236,6 @@ void handle_radio()
 	webString.clear();
 }
 #endif
-
-void handle_vpn()
-{
-	// byte *ptr;
-	bool vpnEn = false;
-	//	bool taretime = false;
-	// bool davisEn = false;
-	// bool moniEn = false;
-
-	if (server.args() > 0)
-	{
-		//			taretime = false;
-		for (uint8_t i = 0; i < server.args(); i++)
-		{
-			// Serial.print("SERVER ARGS ");
-			// Serial.print(server.argName(i));
-			// Serial.print("=");
-			// Serial.println(server.arg(i));
-
-			if (server.argName(i) == "vpnEnable")
-			{
-				if (server.arg(i) != "")
-				{
-					// if (isValidNumber(server.arg(i)))
-					if (String(server.arg(i)) == "OK")
-						vpnEn = true;
-				}
-			}
-
-			// if (server.argName(i) == "taretime") {
-			//	if (server.arg(i) != "")
-			//	{
-			//		//if (isValidNumber(server.arg(i)))
-			//		if (String(server.arg(i)) == "OK")
-			//			taretime = true;
-			//	}
-			// }
-			if (server.argName(i) == "wg_port")
-			{
-				if (server.arg(i) != "")
-				{
-					config.wg_port = server.arg(i).toInt();
-				}
-			}
-
-			if (server.argName(i) == "wg_public_key")
-			{
-				if (server.arg(i) != "")
-				{
-					strncpy(config.wg_public_key, server.arg(i).c_str(), 44);
-					config.wg_public_key[44] = 0;
-				}
-			}
-
-			if (server.argName(i) == "wg_private_key")
-			{
-				if (server.arg(i) != "")
-				{
-					strncpy(config.wg_private_key, server.arg(i).c_str(), 44);
-					config.wg_private_key[44] = 0;
-				}
-			}
-
-			if (server.argName(i) == "wg_peer_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_peer_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_local_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_local_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_netmask_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_netmask_address, server.arg(i).c_str());
-				}
-			}
-
-			if (server.argName(i) == "wg_gw_address")
-			{
-				if (server.arg(i) != "")
-				{
-					strcpy(config.wg_gw_address, server.arg(i).c_str());
-				}
-			}
-		}
-
-		config.vpn = vpnEn;
-		saveEEPROM();
-		// topBar(WiFi.RSSI());
-	}
-
-	// getMoisture();       // read sensor
-	// webMessage = "";
-	setHTML(8);
-	webString += "<div class=\"col-xs-10\">\n";
-	webString += "<form accept-charset=\"UTF-8\" action=\"/vpn\" class=\"form-horizontal\" id=\"setting_form\" method=\"post\">\n";
-
-	webString += "<div class = \"\">\n<h3>Wireguard Configuration</h3>\n";
-
-	String syncFlage = "";
-	if (config.vpn)
-		syncFlage = "checked";
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Enable</label>\n";
-	webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" id=\"vpnEnable\" name=\"vpnEnable\" type=\"checkbox\" value=\"OK\" " + syncFlage + "/></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Server Address</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_peer_address\" name=\"wg_peer_address\" type=\"text\" value=\"" + String(config.wg_peer_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Server Port</label>\n";
-	webString += "<div class=\"col-sm-1 col-xs-2\"><input class=\"form-control\" id=\"wg_port\" name=\"wg_port\" type=\"text\" value=\"" + String(config.wg_port) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Local Address</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_local_address\" name=\"wg_local_address\" type=\"text\" value=\"" + String(config.wg_local_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Netmask</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_netmask_address\" name=\"wg_netmask_address\" type=\"text\" value=\"" + String(config.wg_netmask_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Gateway</label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"wg_gw_address\" name=\"wg_gw_address\" type=\"text\" value=\"" + String(config.wg_gw_address) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Public Key</label>\n";
-	webString += "<div class=\"col-sm-7 col-xs-10\"><input class=\"form-control\" id=\"wg_public_key\" name=\"wg_public_key\" type=\"text\" value=\"" + String(config.wg_public_key) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\">Private Key</label>\n";
-	webString += "<div class=\"col-sm-7 col-xs-10\"><input class=\"form-control\" id=\"wg_private_key\" name=\"wg_private_key\" type=\"text\" value=\"" + String(config.wg_private_key) + "\" /></div>\n";
-	webString += "</div>\n";
-
-	webString += "</div>\n"; // div general
-
-	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-	webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save Config\" maxlength=\"80\"/></div>\n";
-	webString += "</form>\n";
-	webString += "</div>\n";
-
-	webString += "</div>\n";
-
-	webString += "</body></html>\n";
-	server.send(200, "text/html", webString); // send to someones browser when asked
-	delay(100);
-	webString.clear();
-}
 
 void handle_system()
 {
@@ -1956,7 +1766,7 @@ void handle_firmware()
 	setHTML(5);
 
 	webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
-	webString += "<b>Current Hardware Version:</b> ESP32DR";
+	webString += "Current Hardware Version: <b>ESP32DR</b>";
 #ifdef SA818
 #ifdef SR_FRS
 	webString += " <b>(MODEL:SR_FRS_1W)</b>";
@@ -1966,9 +1776,9 @@ void handle_firmware()
 #else
 	webString += " <b>(MODEL: Simple)</b>";
 #endif
-	webString += "<br /><b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
-	webString += "<b>Develop by:</b> HS5TQA\n<br />";
-	webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
+	webString += "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
+	webString += "Develop by: <b>HS5TQA LY3PH</b>\n<br />";
+	webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
 	webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
 	webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
 
@@ -2283,7 +2093,6 @@ void webService()
 #ifdef SA818
 	server.on("/radio", handle_radio);
 #endif
-	server.on("/vpn", handle_vpn);
 	server.on("/default", handle_default);
 	server.on("/service", handle_service);
 	server.on("/system", handle_system);
