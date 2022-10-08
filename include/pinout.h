@@ -20,7 +20,7 @@
 
 // GPS UART
 #define SERIAL_GPS_UART     2
-#define SERIAL_GPS_BAUD     4800
+#define SERIAL_GPS_BAUD     9600
 #define SERIAL_GPS_RXPIN    16
 #define SERIAL_GPS_TXPIN    17
 

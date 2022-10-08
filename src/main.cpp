@@ -27,6 +27,8 @@
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1306.h"
 
+#include "TinyGPSPlus.h"
+
 #include <WiFiClientSecure.h>
 
 #include "AFSK.h"
@@ -79,11 +81,12 @@ pkgListType pkgList[PKGLISTSIZE];
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
-#if defined(SERIAL_TNC)
+#if defined(USE_TNC)
 HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #endif
 
-#if defined(SERIAL_GPS)
+#if defined(USE_GPS)
+TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
@@ -635,11 +638,11 @@ void setup()
     // Set up serial port
     Serial.begin(9600); // debug
     Serial.setRxBufferSize(256);
-#if defined(SERIAL_TNC)
+#if defined(USE_TNC)
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN, SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
-#if defined(SERIAL_GPS)
+#if defined(USE_GPS)
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
     SerialGPS.setRxBufferSize(500);
 #endif
@@ -675,7 +678,7 @@ void setup()
             ;
     }
 
-    //ตรวจสอบคอนฟิกซ์ผิดพลาด
+    // Check the configuration error
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
@@ -732,7 +735,6 @@ float conv_coords(float in_coords)
 
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS)
 {
-
     *DD = (int)DD_DDDDD;                       //сделали из 37.45545 это 37 т.е. Градусы
     *MM = (int)((DD_DDDDD - *DD) * 60);        //получили минуты
     *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100; //получили секунды
@@ -803,10 +805,81 @@ int packet2Raw(String &tnc2, AX25Msg &Packet)
     return tnc2.length();
 }
 
+#define USE_PRECISE_DISTANCE
+#define GPS_POLL_DURATION_MS 1000 // for how long to poll gps
+
+long lat = 0;
+long lon = 0;
+long lat_prev = 0;
+long lon_prev = 0;
+long distance = 0;
+unsigned long age = 0;
+
+long distanceBetween(long lat1, long long1, long lat2, long long2)
+{
+  return gps.distanceBetween(((float)lat1)/1000000.0, ((float)long1)/1000000.0, 
+    ((float)lat2)/1000000.0, ((float)long2)/1000000.0);
+}
+
+void updateDistance()
+{
+    if (lon_prev != 0 && lat_prev != 0 && lon != 0 && lat != 0) {
+#ifdef USE_GPS
+        distance += distanceBetween(lon_prev, lat_prev, lon, lat);
+#endif
+        // heuristicDistanceChanged();
+    }
+#ifndef USE_PRECISE_DISTANCE
+    else {
+#endif
+        lon_prev = lon;
+        lat_prev = lat;
+#ifndef USE_PRECISE_DISTANCE
+    }
+#endif
+}
+
+void updateGpsData() {
+#ifdef USE_GPS
+    for (unsigned long start = millis(); millis() - start < GPS_POLL_DURATION_MS;)
+    {
+        while (SerialGPS.available())
+        {
+            char c = SerialGPS.read();
+            // Serial.print(c); // Debug
+            if (gps.encode(c))
+            {
+                lat = gps.location.lat() * 1000000;
+                lon = gps.location.lng() * 1000000;
+                age = gps.location.age();
+                updateDistance();
+            }
+        }
+    }
+#endif
+}
+
+void updateScreen() {
+    Serial.print("lat: ");
+    Serial.print(lat);
+    Serial.print(" lon: ");
+    Serial.print(lon);
+    Serial.print(" age: ");
+    Serial.print(age);
+    Serial.print(" distance: ");
+    Serial.println(distance);
+}
+
+void updateScreenAndGps() {
+    updateGpsData();
+    updateScreen();
+}
+
 long sendTimer = 0;
 bool AFSKInitAct = false;
 int btn_count = 0;
 long timeCheck = 0;
+
 void loop()
 {
     vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -831,6 +904,14 @@ void loop()
         AFSK_Poll(false, LOW);
 #endif
     }
+#if defined(USE_GPS)
+    // if (SerialGPS.available()) {
+    //     String gpsData = SerialGPS.readStringUntil('\n');
+    //     Serial.println(gpsData);
+    // }
+
+    updateScreenAndGps();
+#endif        
 }
 
 void sendIsPkgMsg(char *raw)
