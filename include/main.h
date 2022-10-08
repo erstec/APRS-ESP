@@ -20,6 +20,7 @@
 //#define SR_FRS
 //#define USE_TNC
 #define USE_GPS
+#define USE_SCREEN
 
 #if defined(USE_TNC) && defined(USE_GPS)
 #error "Cannot use both USE_TNC and USE_GPS"
