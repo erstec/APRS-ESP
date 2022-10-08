@@ -5,3 +5,8 @@
 .vscode/ipch
 
 *.map
+*.b#*
+*.s#*
+*.l#*
+*.job
+/hardware/GERBER/CAMOutputs/*
