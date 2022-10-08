@@ -1,3 +1,35 @@
+# NOTICE
+This fork of project combines parent project with anothers, plus my own HW and FW implementation
+
+Firmware part uses ideas and code snippets from:
+- https://github.com/nakhonthai/ESP32IGate (parent project)
+- https://github.com/sh123/aprs_tracker
+
+Hardware part uses ideas, libraries and designs from:
+- https://github.com/nakhonthai/ESP32IGate (parent project) / schematics base
+- https://github.com/handiko/Dorji-TX-Shield / board base
+- some another Eagle libraries
+
+**ATTENTION:** Both FW and HW parts are in development and this notice will be removes as soon as thing will be tested and stable to reproduce! Code will be merged to `master` branch also.
+
+## Summary:
+FW:
+- IGate
+- Digipeater
+- Position beaconing
+- SmartBeaconing
+- OLED display operation states and etc.
+- All parameters changeable via WEB interface
+- Some parameters changeable via OLED / Rotary encoder
+HW:
+- ESP32-DevKitC-v4
+- SA818 RF Modem
+- Any NMEA output serial GNSS receiver
+- SSD106 0.96" OLED screen
+- Rotary encoder
+- Regulated buck converted (LM2596S based)
+- PCB ready (Gerber and Eagle) / BOM in /hardware folder
+
 # ESP32IGate Simple Project
 
 ESP32IGate is a Internet Gateway + TNC Built in that is implemented for Espressif ESP32 processor.
