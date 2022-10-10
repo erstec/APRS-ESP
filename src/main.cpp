@@ -1,10 +1,7 @@
 /*
- Name:		ESP32 APRS Internet Gateway
- Created:	1-Nov-2021 14:27:23
- Author:	HS5TQA/Atten
- Support IS: host:aprs.dprns.com port:14580
- Support IS monitor: http://aprs.dprns.com:14501
- Support in LINE Group APRS Only
+ Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
+ Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
+ Author:	LY3PH/Ernest / initially HS5TQA/Atten
 */
 
 #include <Arduino.h>
@@ -32,6 +29,8 @@
 #include "AFSK.h"
 
 #define DEBUG_TNC
+#define DEBUG_GPS
+#define DEBUG_RF
 
 #define EEPROM_SIZE 1024
 
@@ -45,7 +44,7 @@
 #define SDCARD_MISO 2
 #endif
 
-#ifdef SA818
+#ifdef USE_RF
 HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
 
@@ -195,7 +194,7 @@ void defaultConfig()
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
     config.input_hpf = true;
-#ifdef SA818
+#ifdef USE_RF
     config.freq_rx = 144.8000;
     config.freq_tx = 144.8000;
     config.offset_rx = 0;
@@ -359,7 +358,7 @@ bool pkgTxSend()
             int decTime = millis() - txQueue[i].timeStamp;
             if (decTime > txQueue[i].Delay)
             {
-#ifdef SA818
+#ifdef USE_RF
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
 #endif
                 APRS_setPreamble(350L);
@@ -434,17 +433,17 @@ uint8_t popGwRaw(uint8_t *raw)
     return size;
 }
 
-#ifdef SA818
+#ifdef USE_RF
 unsigned long SA818_Timeout = 0;
-void SA818_INIT(bool boot)
-{
-#ifdef SR_FRS
+void RF_Init(bool boot) {
+#if defined(SR_FRS)
     Serial.println("SR_FRS Init");
-#else
+#elif defined(SA818)
     Serial.println("SA818/SA868 Init");
+#elif defined(SA828)
+    Serial.println("SA828 Init");
 #endif
-    if (boot)
-    {
+    if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         pinMode(POWER_PIN, OUTPUT);
         pinMode(PULLDOWN_PIN, OUTPUT);
@@ -455,15 +454,19 @@ void SA818_INIT(bool boot)
         delay(500);
         digitalWrite(PULLDOWN_PIN, HIGH);
         delay(1500);
+#if !defined(SA828)
         SerialRF.println();
         delay(500);
+#endif
     }
+#if !defined(SA828)
     SerialRF.println();
     delay(500);
+#endif
     char str[100];
     if (config.sql_level > 8)
         config.sql_level = 8;
-#ifdef SR_FRS
+#if defined(SR_FRS)
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%d,%01d,%d,0", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_rx, config.sql_level, config.tone_tx);
     SerialRF.println(str);
     delay(500);
@@ -473,34 +476,48 @@ void SA818_INIT(bool boot)
     SerialRF.println("AT+DMOSETVOX=0");
     delay(500);
     SerialRF.println("AT+DMOSETMIC=1,0,0");
-#else
+#elif defined(SA818)
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_tx, config.sql_level, config.tone_rx);
     SerialRF.println(str);
     delay(500);
     SerialRF.println("AT+SETTAIL=0");
     delay(500);
     SerialRF.println("AT+SETFILTER=1,1,1");
+#elif defined(SA828)
+#if 0
+    int idx = sprintf(str, "AAFA3");
+    for (uint8_t i = 0; i < 16; i++) {
+        idx += sprintf(&str[idx], "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
+        idx += sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+    }
+    idx += sprintf(&str[idx], "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
+    SerialRF.println(str);
+#ifdef DEBUG_RF
+    Serial.println(str);
+#endif
+#endif // if 0
 #endif
     // SerialRF.println(str);
     delay(500);
     if (config.volume > 8)
         config.volume = 8;
+#if !defined(SA828)
     SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
+#endif
 }
 
-void SA818_SLEEP()
-{
+void RF_Sleep() {
     digitalWrite(POWER_PIN, LOW);
     digitalWrite(PULLDOWN_PIN, LOW);
     // SerialGPS.print("$PMTK161,0*28\r\n");
     // AFSK_TimerEnable(false);
 }
 
-void SA818_CHECK()
-{
+void RF_Check() {
     while (SerialRF.available() > 0) {
         SerialRF.read();
     }
+#if !defined(SA828)
     SerialRF.println("AT+DMOCONNECT");
     delay(100);
     if (SerialRF.available() > 0)
@@ -525,9 +542,11 @@ void SA818_CHECK()
     }
     // SerialGPS.print("$PMTK161,0*28\r\n");
     // AFSK_TimerEnable(false);
-}
 #endif
-// #ifdef SA818
+}
+#endif // USE_RF
+
+// #ifdef USE_RF
 // unsigned long SA818_Timeout = 0;
 // void SA818_INIT(uint8_t HL)
 // {
@@ -687,8 +706,8 @@ void setup()
     }
     input_HPF = config.input_hpf;
 
-#ifdef SA818
-    SA818_INIT(true);
+#ifdef USE_RF
+    RF_Init(true);
 #endif
 
     // enableLoopWDT();
@@ -817,15 +836,16 @@ void loop()
             esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
     }
-#ifdef SA818
-    // if (SerialRF.available())
-    // {
-    //     Serial.print(Serial.readString());
-    // }
+#ifdef USE_RF
+#ifdef DEBUG_RF
+    if (SerialRF.available()) {
+        Serial.print(SerialRF.readString());
+    }
+#endif
 #endif
     if (AFSKInitAct == true)
     {
-#ifdef SA818
+#ifdef USE_RF
         AFSK_Poll(true, config.rf_power, POWER_PIN);
 #else
         AFSK_Poll(false, LOW);
@@ -946,7 +966,7 @@ void taskAPRS(void *pvParameters)
                 btn_count = 0;
             }
         }
-#ifdef SA818
+#ifdef USE_RF
 // if(digitalRead(SQL_PIN)==HIGH){
 // 	delay(10);
 // 	if(digitalRead(SQL_PIN)==LOW){
@@ -968,8 +988,8 @@ void taskAPRS(void *pvParameters)
             sendTimer = now;
             if (digiCount > 0)
                 digiCount--;
-#ifdef SA818
-            SA818_CHECK();
+#ifdef USE_RF
+            RF_Check();
 #endif
             if (AFSKInitAct == true)
             {

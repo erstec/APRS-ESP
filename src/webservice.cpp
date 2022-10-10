@@ -177,7 +177,7 @@ void setHTML(byte page)
 	webString += "<li role=\"presentation\"" + strActiveP2 + ">\n<a href=\"/data\" id=\"channel_link_api_keys\">Storage</a>\n</li>\n";
 #endif
 	webString += "<li role=\"presentation\"" + strActiveP3 + ">\n<a href=\"/config\" id=\"channel_link_settings\">Setting</a>\n</li>\n";
-#ifdef SA818
+#ifdef USE_RF
 	webString += "<li role=\"presentation\"" + strActiveP8 + ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
 #endif
 	webString += "<li role=\"presentation\"" + strActiveP4 + ">\n<a href=\"/service\" id=\"channel_link_service\">Service</a>\n</li>\n";
@@ -936,7 +936,7 @@ void handle_service()
 	webString.clear();
 }
 
-#ifdef SA818
+#ifdef USE_RF
 void handle_radio()
 {
 	// bool noiseEn=false;
@@ -1063,7 +1063,7 @@ void handle_radio()
 		// config.agc=agcEn;
 		saveEEPROM();
 		// delay(100);
-		SA818_INIT(false);
+		RF_Init(false);
 	}
 
 	setHTML(7);
@@ -1073,7 +1073,7 @@ void handle_radio()
 #ifdef SR_FRS
 	webString += "<div>\n<h3>RF Module SR_FRS_1W</h3>\n";
 #else
-	webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
+	webString += "<div>\n<h3>RF Module SA818/SA828/SA868</h3>\n";
 #endif
 	webString += "<div class=\"form-group\">\n";
 	webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
@@ -1730,10 +1730,12 @@ void handle_firmware()
 
 	webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
 	webString += "Current Hardware Version: <b>ESP32DR</b>";
-#ifdef SA818
-#ifdef SR_FRS
+#ifdef USE_RF
+#if defined(SR_FRS)
 	webString += " <b>(MODEL:SR_FRS_1W)</b>";
-#else
+#elif defined(SA828)
+	webString += " <b>(MODEL:SA828_1.5W)</b>";
+#elif defined(SA818)
 	webString += " <b>(MODEL:SA818/SA868)</b>";
 #endif
 #else
@@ -2053,7 +2055,7 @@ void webService()
 	server.on("/download", handle_download);
 	server.on("/delete", handle_delete);
 #endif
-#ifdef SA818
+#ifdef USE_RF
 	server.on("/radio", handle_radio);
 #endif
 	server.on("/default", handle_default);
