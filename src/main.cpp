@@ -93,7 +93,9 @@ HardwareSerial SerialGPS(SERIAL_GPS_UART);
 
 BluetoothSerial SerialBT;
 
+#ifdef USE_SCREEN
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
+#endif
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -673,6 +675,7 @@ void setup()
     Serial.println("Start ESP32IGate V" + String(VERSION));
     Serial.println("Push BOOT after 3 sec for Factory Default config");
 
+#ifdef USE_SCREEN
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 init failed");
     } else {
@@ -685,6 +688,7 @@ void setup()
     display.setCursor(0, 0);
     display.print("ESP32IGate V" + String(VERSION));
     display.display();
+#endif
 
     if (!EEPROM.begin(EEPROM_SIZE))
     {
@@ -985,6 +989,7 @@ void taskAPRS(void *pvParameters)
     APRS_setPreamble(APRS_PREAMBLE);
     APRS_setTail(APRS_TAIL);
 
+#ifdef USE_SCREEN
     display.setTextSize(1);
     display.setCursor(0, 32);
     display.print(config.aprs_mycall);
@@ -993,6 +998,7 @@ void taskAPRS(void *pvParameters)
     display.print(">");
     display.print(config.aprs_path);
     display.display();
+#endif
 
     sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000; // 1Min
@@ -1245,11 +1251,13 @@ void taskNetwork(void *pvParameters)
         Serial.print(WiFi.softAPIP());
         Serial.println("");
 
+#ifdef USE_SCREEN
         display.setTextSize(1);
         display.setCursor(0, 16);
         display.print("IP: ");
         display.print(WiFi.softAPIP());
         display.display();
+#endif
     }
     else if (config.wifi_mode == WIFI_STA_FIX)
     {
@@ -1314,11 +1322,13 @@ void taskNetwork(void *pvParameters)
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
 
+#ifdef USE_SCREEN
                     display.setTextSize(1);
                     display.setCursor(0, 16);
                     display.print("IP: ");
                     display.print(WiFi.localIP());
                     display.display();
+#endif
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
