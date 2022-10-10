@@ -471,7 +471,11 @@ void RF_Init(bool boot) {
     SerialRF.println();
     delay(500);
 #endif
+// #if defined(SA828)
+    // char str[512];
+// #else
     char str[100];
+// #endif
     if (config.sql_level > 8)
         config.sql_level = 8;
 #if defined(SR_FRS)
@@ -492,18 +496,30 @@ void RF_Init(bool boot) {
     delay(500);
     SerialRF.println("AT+SETFILTER=1,1,1");
 #elif defined(SA828)
-#if 0
-    int idx = sprintf(str, "AAFA3");
+    // int idx = sprintf(str, "AAFA3");
+    // for (uint8_t i = 0; i < 16; i++) {
+    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
+    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+    // }
+    // idx += sprintf(&str[idx], "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
+    // SerialRF.println(str);
+    SerialRF.print("AAFA3");
+#ifdef DEBUG_RF
+    Serial.print("AAFA3");
+#endif
     for (uint8_t i = 0; i < 16; i++) {
-        idx += sprintf(&str[idx], "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
-        idx += sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+        int idx = sprintf(str, "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
+        sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+        SerialRF.print(str);
+#ifdef DEBUG_RF
+        Serial.print(str);
+#endif
     }
-    idx += sprintf(&str[idx], "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
+    sprintf(str, "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
     SerialRF.println(str);
 #ifdef DEBUG_RF
     Serial.println(str);
 #endif
-#endif // if 0
 #endif
     // SerialRF.println(str);
     delay(500);
@@ -655,8 +671,7 @@ boolean APRSConnect()
     return true;
 }
 
-void setup()
-{
+void setup() {
     byte *ptr;
     pinMode(0, INPUT_PULLUP); // BOOT Button
     // Set up serial port
@@ -870,8 +885,8 @@ void updateDistance()
 
 void updateGpsData() {
 #ifdef USE_GPS
-    for (unsigned long start = millis(); millis() - start < GPS_POLL_DURATION_MS;)
-    {
+//     for (unsigned long start = millis(); millis() - start < GPS_POLL_DURATION_MS;)
+//     {
         while (SerialGPS.available())
         {
             char c = SerialGPS.read();
@@ -885,8 +900,12 @@ void updateGpsData() {
                 age = gps.location.age();
                 updateDistance();
             }
+
+            // if (millis() - start >= GPS_POLL_DURATION_MS)
+            //     break;
         }
-    }
+        //yield();
+//     }
 #endif
 }
 
@@ -901,9 +920,15 @@ void updateScreen() {
     Serial.println(distance);
 }
 
+static int scrUpdTMO = 0;
 void updateScreenAndGps() {
     updateGpsData();
-    updateScreen();
+
+    // 1/sec
+    if (millis() - scrUpdTMO > 1000) {
+        updateScreen();
+        scrUpdTMO = millis();
+    }
 }
 
 // ----------------- GPS END -----------------
@@ -1113,7 +1138,7 @@ void taskAPRS(void *pvParameters)
         {
             if (igateTLM.TeleTimeout < millis())
             {
-                igateTLM.TeleTimeout = millis() + 600000; // 10Min
+                igateTLM.TeleTimeout = millis() + TNC_TELEMETRY_PERIOD; // 10Min
                 if ((igateTLM.Sequence % 6) == 0)
                 {
                     sendIsPkgMsg((char *)&PARM[0]);

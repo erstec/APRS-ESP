@@ -32,6 +32,8 @@
 #define APRS_TAIL       (0UL)
 #endif
 
+#define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
+
 #if defined(SA818) || defined(SA828) || defined(SR_FRS)
 #define USE_RF
 #endif

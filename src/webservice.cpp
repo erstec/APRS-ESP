@@ -877,7 +877,7 @@ void handle_service()
 	if (config.tnc_digi)
 		digiFlage = "checked";
 	webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Repeager</label>\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Repeater</label>\n";
 	webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"digiEnable\" name=\"digiEnable\" type=\"checkbox\" value=\"OK\" " + digiFlage + "/></div>\n";
 	webString += "</div>\n";
 
