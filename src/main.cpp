@@ -768,9 +768,9 @@ String send_fix_location()
     DD_DDDDDtoDDMMSS(config.gps_lon, &lon_dd, &lon_mm, &lon_ss);
     sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APE32I", config.aprs_mycall);
+        sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
     else
-        sprintf(strtmp, "%s-%d>APE32I", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>APE32E", config.aprs_mycall, config.aprs_ssid);
     tnc2Raw = String(strtmp);
     if (config.aprs_path[0] != 0)
     {
@@ -869,9 +869,9 @@ void sendIsPkgMsg(char *raw)
         call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APE32I::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>APE32E::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APE32I::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APE32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
     if (aprsClient.connected())
@@ -1011,7 +1011,7 @@ void taskAPRS(void *pvParameters)
             //  	APRS_setPath1("WIDE1", 1);
             //  	APRS_setPreamble(APRS_PREAMBLE);
             //  	APRS_setTail(APRS_TAIL);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APE32I,TRACE2-2:=1343.76N/10026.06E&ESP32 APRS Internet Gateway");
+            // APRS_sendTNC2Pkt("HS5TQA-6>APE32E,TRACE2-2:=1343.76N/10026.06E&ESP32 APRS Internet Gateway");
         }
 
         if (config.tnc_telemetry)
@@ -1027,9 +1027,9 @@ void taskAPRS(void *pvParameters)
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0)
-                    sprintf(rawTlm, "%s>APE32I:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
+                    sprintf(rawTlm, "%s>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
                 else
-                    sprintf(rawTlm, "%s-%d>APE32I:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
+                    sprintf(rawTlm, "%s-%d>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
 
                 if (aprsClient.connected())
                     aprsClient.println(String(rawTlm)); // Send packet to Inet
