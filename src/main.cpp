@@ -89,6 +89,8 @@ HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #if defined(USE_GPS)
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
+
+// static bool gotGpsFix = false;
 #endif
 
 BluetoothSerial SerialBT;
@@ -782,6 +784,14 @@ void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS)
     *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100; //получили секунды
 }
 
+String send_gps_location() {
+    String tnc_raw = "";
+    if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
+        // TODO
+    }
+    return tnc_raw;
+}
+
 String send_fix_location()
 {
     String tnc2Raw = "";
@@ -899,6 +909,7 @@ void updateGpsData() {
                 lon = gps.location.lng() * 1000000;
                 age = gps.location.age();
                 updateDistance();
+                // if (!gotGpsFix && gps.location.isValid()) gotGpsFix = true;
             }
 
             // if (millis() - start >= GPS_POLL_DURATION_MS)
@@ -916,7 +927,9 @@ void updateScreen() {
     Serial.print(lon);
     Serial.print(" age: ");
     Serial.print(age);
-    Serial.print(" distance: ");
+    Serial.print(gps.location.isValid() ? ", valid" : ", invalid");
+    Serial.print(gps.location.isUpdated() ? ", updated" : ", not updated");
+    Serial.print(", dist: ");
     Serial.println(distance);
 }
 
@@ -1076,7 +1089,13 @@ void taskAPRS(void *pvParameters)
                 {
                     if (config.tnc)
                     {
-                        String tnc2Raw = send_fix_location();
+                        String tnc2Raw = send_gps_location();
+                        if (tnc2Raw != "") {
+                            Serial.println("GPS fix");
+                        } else {
+                            tnc2Raw = send_fix_location();
+                            Serial.println("GPS not fix");
+                        }
                         pkgTxUpdate(tnc2Raw.c_str(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
