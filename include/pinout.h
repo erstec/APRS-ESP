@@ -1,13 +1,16 @@
 // SA8x8 radio module
-#define VBAT_PIN            35
-#define POWER_PIN           12
+//#define VBAT_PIN            35
+//#define POWER_PIN           12
+//#define POWER_PIN           23
+#define POWER_PIN           25
 #define PULLDOWN_PIN        27
 #define SQL_PIN             33
 
 // Interface to the radio / radio module
 #define SPK_PIN             ADC1_CHANNEL_0  // Read ADC1_0 From PIN 36(VP)
 #define MIC_PIN             26              // Out wave to PIN 26
-#define PTT_PIN             25
+//#define PTT_PIN             25
+#define PTT_PIN             32
 #define RX_LED_PIN          2
 #define TX_LED_PIN          4
 #define RSSI_PIN            33
