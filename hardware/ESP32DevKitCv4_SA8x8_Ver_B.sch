@@ -24814,18 +24814,24 @@ Source: www.johnsoncomponents.com .. J502-ND.pdf</description>
 <part name="C18" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
 <part name="R20" library="resistor" deviceset="R-US_" device="R0805" value="10k"/>
 <part name="R21" library="resistor" deviceset="R-US_" device="R0805" value="10k"/>
-<part name="GND33" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="GND34" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND35" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND36" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND37" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
+<part name="P+10" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
+<part name="P+11" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
+<part name="R22" library="resistor" deviceset="R-US_" device="R0805" value="10k"/>
+<part name="P+12" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
+<part name="R23" library="resistor" deviceset="R-US_" device="R0805" value="1k"/>
+<part name="R24" library="resistor" deviceset="R-US_" device="R0805" value="1k"/>
+<part name="C19" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
+<part name="C20" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
 </parts>
 <sheets>
 <sheet>
 <plain>
 <text x="77.47" y="123.19" size="1.778" layer="97">R17/R18 - GND VCC SCL SDA
 R15/R16 - VCC GND DCL SDA</text>
-<text x="140.97" y="20.32" size="2.54" layer="94">Redesigned by LY3PH</text>
+<text x="140.97" y="20.32" size="2.54" layer="94">LY3PH</text>
 <text x="86.36" y="11.43" size="2.54" layer="94" font="vector">AFSK iGate/Digi/TNC
 ESP32-DevKitC-v4
 for SA818 RF Modem</text>
@@ -24992,8 +24998,8 @@ for SA818 RF Modem</text>
 <instance part="GND24" gate="1" x="92.71" y="91.44" smashed="yes">
 <attribute name="VALUE" x="86.36" y="91.44" size="1.778" layer="96"/>
 </instance>
-<instance part="P+7" gate="G$1" x="24.13" y="127" smashed="yes">
-<attribute name="VALUE" x="21.59" y="121.92" size="1.778" layer="96" rot="R90"/>
+<instance part="P+7" gate="G$1" x="12.7" y="127" smashed="yes">
+<attribute name="VALUE" x="10.16" y="121.92" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="P+8" gate="1" x="52.07" y="68.58" smashed="yes">
 <attribute name="VALUE" x="49.53" y="63.5" size="1.778" layer="96" rot="R90"/>
@@ -25095,31 +25101,58 @@ for SA818 RF Modem</text>
 <attribute name="NAME" x="48.26" y="46.36338125" size="1.780609375" layer="95"/>
 <attribute name="VALUE" x="48.26" y="35.547709375" size="1.78086875" layer="96"/>
 </instance>
-<instance part="C16" gate="G$1" x="104.14" y="-43.18" smashed="yes">
-<attribute name="NAME" x="110.236" y="-41.021" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="110.236" y="-46.101" size="1.778" layer="96" rot="R180"/>
+<instance part="C16" gate="G$1" x="118.11" y="-43.18" smashed="yes">
+<attribute name="NAME" x="124.206" y="-41.021" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="124.206" y="-46.101" size="1.778" layer="96" rot="R180"/>
 </instance>
-<instance part="C17" gate="G$1" x="104.14" y="-20.32" smashed="yes">
-<attribute name="NAME" x="110.236" y="-18.161" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="110.236" y="-23.241" size="1.778" layer="96" rot="R180"/>
+<instance part="C17" gate="G$1" x="118.11" y="-20.32" smashed="yes">
+<attribute name="NAME" x="124.206" y="-18.161" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="124.206" y="-23.241" size="1.778" layer="96" rot="R180"/>
 </instance>
 <instance part="C18" gate="G$1" x="78.74" y="-20.32" smashed="yes">
-<attribute name="NAME" x="77.216" y="-18.161" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="77.216" y="-23.241" size="1.778" layer="96" rot="R180"/>
+<attribute name="NAME" x="83.566" y="-18.161" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="78.486" y="-23.241" size="1.778" layer="96" rot="R180"/>
 </instance>
-<instance part="R20" gate="G$1" x="115.57" y="-21.59" smashed="yes" rot="R270">
-<attribute name="NAME" x="114.0714" y="-22.86" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="118.872" y="-22.86" size="1.778" layer="96" rot="R90"/>
+<instance part="R20" gate="G$1" x="102.87" y="-21.59" smashed="yes" rot="R270">
+<attribute name="NAME" x="101.3714" y="-22.86" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="106.172" y="-22.86" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="R21" gate="G$1" x="115.57" y="-44.45" smashed="yes" rot="R270">
-<attribute name="NAME" x="114.0714" y="-45.72" size="1.778" layer="95" rot="R90"/>
-<attribute name="VALUE" x="118.872" y="-45.72" size="1.778" layer="96" rot="R90"/>
+<instance part="R21" gate="G$1" x="102.87" y="-44.45" smashed="yes" rot="R270">
+<attribute name="NAME" x="101.3714" y="-45.72" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="106.172" y="-45.72" size="1.778" layer="96" rot="R90"/>
 </instance>
-<instance part="GND33" gate="1" x="115.57" y="-12.7" smashed="yes" rot="R180"/>
-<instance part="GND34" gate="1" x="115.57" y="-53.34" smashed="yes"/>
-<instance part="GND35" gate="1" x="104.14" y="-53.34" smashed="yes"/>
-<instance part="GND36" gate="1" x="104.14" y="-12.7" smashed="yes" rot="R180"/>
+<instance part="GND35" gate="1" x="118.11" y="-53.34" smashed="yes"/>
+<instance part="GND36" gate="1" x="118.11" y="-12.7" smashed="yes" rot="R180"/>
 <instance part="GND37" gate="1" x="78.74" y="-12.7" smashed="yes" rot="R180"/>
+<instance part="P+10" gate="G$1" x="102.87" y="-12.7" smashed="yes">
+<attribute name="VALUE" x="110.49" y="-12.7" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="P+11" gate="G$1" x="102.87" y="-53.34" smashed="yes" rot="R180">
+<attribute name="VALUE" x="104.14" y="-53.34" size="1.778" layer="96"/>
+</instance>
+<instance part="R22" gate="G$1" x="69.85" y="-21.59" smashed="yes" rot="R270">
+<attribute name="NAME" x="68.3514" y="-22.86" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="73.152" y="-22.86" size="1.778" layer="96" rot="R90"/>
+</instance>
+<instance part="P+12" gate="G$1" x="69.85" y="-12.7" smashed="yes">
+<attribute name="VALUE" x="68.58" y="-12.7" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="R23" gate="G$1" x="110.49" y="-27.94" smashed="yes">
+<attribute name="NAME" x="111.76" y="-29.4386" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="111.76" y="-24.638" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="R24" gate="G$1" x="110.49" y="-38.1" smashed="yes">
+<attribute name="NAME" x="111.76" y="-39.5986" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="111.76" y="-34.798" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="C19" gate="G$1" x="15.24" y="81.28" smashed="yes">
+<attribute name="NAME" x="18.034" y="79.121" size="1.778" layer="95"/>
+<attribute name="VALUE" x="18.034" y="76.581" size="1.778" layer="96"/>
+</instance>
+<instance part="C20" gate="G$1" x="22.86" y="124.46" smashed="yes">
+<attribute name="NAME" x="16.764" y="127.381" size="1.778" layer="95"/>
+<attribute name="VALUE" x="16.764" y="124.841" size="1.778" layer="96"/>
+</instance>
 </instances>
 <busses>
 </busses>
@@ -25167,7 +25200,11 @@ for SA818 RF Modem</text>
 <pinref part="P+3" gate="1" pin="+5V"/>
 <pinref part="U$1" gate="G$1" pin="5V"/>
 <wire x1="10.16" y1="77.47" x2="10.16" y2="73.66" width="0.1524" layer="91"/>
-<wire x1="10.16" y1="73.66" x2="27.94" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="10.16" y1="73.66" x2="15.24" y2="73.66" width="0.1524" layer="91"/>
+<pinref part="C19" gate="G$1" pin="2"/>
+<wire x1="15.24" y1="73.66" x2="27.94" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="15.24" y1="76.2" x2="15.24" y2="73.66" width="0.1524" layer="91"/>
+<junction x="15.24" y="73.66"/>
 </segment>
 </net>
 <net name="GND" class="0">
@@ -25277,7 +25314,11 @@ for SA818 RF Modem</text>
 <segment>
 <pinref part="U$1" gate="G$1" pin="GND@14"/>
 <pinref part="GND26" gate="1" pin="GND"/>
-<wire x1="27.94" y1="86.36" x2="10.16" y2="86.36" width="0.1524" layer="91"/>
+<wire x1="27.94" y1="86.36" x2="15.24" y2="86.36" width="0.1524" layer="91"/>
+<pinref part="C19" gate="G$1" pin="1"/>
+<wire x1="15.24" y1="86.36" x2="10.16" y2="86.36" width="0.1524" layer="91"/>
+<wire x1="15.24" y1="83.82" x2="15.24" y2="86.36" width="0.1524" layer="91"/>
+<junction x="15.24" y="86.36"/>
 </segment>
 <segment>
 <pinref part="U$1" gate="G$1" pin="GND@38"/>
@@ -25302,6 +25343,9 @@ for SA818 RF Modem</text>
 <pinref part="GND27" gate="1" pin="GND"/>
 <pinref part="C12" gate="G$1" pin="-"/>
 <wire x1="35.56" y1="127" x2="27.94" y2="127" width="0.1524" layer="91"/>
+<pinref part="C20" gate="G$1" pin="1"/>
+<wire x1="22.86" y1="127" x2="27.94" y2="127" width="0.1524" layer="91"/>
+<junction x="27.94" y="127"/>
 </segment>
 <segment>
 <pinref part="GND4" gate="1" pin="GND"/>
@@ -25337,22 +25381,12 @@ for SA818 RF Modem</text>
 <segment>
 <pinref part="C16" gate="G$1" pin="2"/>
 <pinref part="GND35" gate="1" pin="GND"/>
-<wire x1="104.14" y1="-50.8" x2="104.14" y2="-48.26" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="GND34" gate="1" pin="GND"/>
-<pinref part="R21" gate="G$1" pin="2"/>
-<wire x1="115.57" y1="-50.8" x2="115.57" y2="-49.53" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="GND33" gate="1" pin="GND"/>
-<pinref part="R20" gate="G$1" pin="1"/>
-<wire x1="115.57" y1="-15.24" x2="115.57" y2="-16.51" width="0.1524" layer="91"/>
+<wire x1="118.11" y1="-50.8" x2="118.11" y2="-48.26" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="C17" gate="G$1" pin="1"/>
 <pinref part="GND36" gate="1" pin="GND"/>
-<wire x1="104.14" y1="-15.24" x2="104.14" y2="-17.78" width="0.1524" layer="91"/>
+<wire x1="118.11" y1="-15.24" x2="118.11" y2="-17.78" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$8" class="0">
@@ -25589,10 +25623,13 @@ for SA818 RF Modem</text>
 <segment>
 <pinref part="P+7" gate="G$1" pin="+3V3"/>
 <pinref part="U$1" gate="G$1" pin="3V3"/>
-<wire x1="24.13" y1="124.46" x2="24.13" y2="119.38" width="0.1524" layer="91"/>
-<wire x1="24.13" y1="119.38" x2="27.94" y2="119.38" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="124.46" x2="12.7" y2="119.38" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="119.38" x2="22.86" y2="119.38" width="0.1524" layer="91"/>
 <pinref part="C12" gate="G$1" pin="+"/>
 <junction x="27.94" y="119.38"/>
+<pinref part="C20" gate="G$1" pin="2"/>
+<wire x1="22.86" y1="119.38" x2="27.94" y2="119.38" width="0.1524" layer="91"/>
+<junction x="22.86" y="119.38"/>
 </segment>
 <segment>
 <pinref part="P+6" gate="G$1" pin="+3V3"/>
@@ -25615,8 +25652,23 @@ for SA818 RF Modem</text>
 <wire x1="110.49" y1="73.66" x2="110.49" y2="78.74" width="0.1524" layer="91"/>
 <pinref part="P+9" gate="G$1" pin="+3V3"/>
 </segment>
+<segment>
+<pinref part="P+10" gate="G$1" pin="+3V3"/>
+<pinref part="R20" gate="G$1" pin="1"/>
+<wire x1="102.87" y1="-16.51" x2="102.87" y2="-15.24" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="R21" gate="G$1" pin="2"/>
+<pinref part="P+11" gate="G$1" pin="+3V3"/>
+<wire x1="102.87" y1="-49.53" x2="102.87" y2="-50.8" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="P+12" gate="G$1" pin="+3V3"/>
+<pinref part="R22" gate="G$1" pin="1"/>
+<wire x1="69.85" y1="-15.24" x2="69.85" y2="-16.51" width="0.1524" layer="91"/>
+</segment>
 </net>
-<net name="SCL" class="0">
+<net name="OLED_SCL" class="0">
 <segment>
 <wire x1="95.25" y1="106.68" x2="106.68" y2="106.68" width="0.1524" layer="91"/>
 <label x="101.6" y="106.68" size="1.778" layer="95"/>
@@ -25629,7 +25681,7 @@ for SA818 RF Modem</text>
 <label x="67.31" y="114.3" size="1.778" layer="95"/>
 </segment>
 </net>
-<net name="SDA" class="0">
+<net name="OLED_SDA" class="0">
 <segment>
 <wire x1="97.79" y1="109.22" x2="106.68" y2="109.22" width="0.1524" layer="91"/>
 <label x="101.6" y="109.22" size="1.778" layer="95"/>
@@ -25779,17 +25831,13 @@ for SA818 RF Modem</text>
 <label x="64.77" y="101.6" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="S1" gate="G$1" pin="B"/>
-<wire x1="101.6" y1="-27.94" x2="104.14" y2="-27.94" width="0.1524" layer="91"/>
-<label x="111.76" y="-30.48" size="1.778" layer="95"/>
+<label x="125.73" y="-30.48" size="1.778" layer="95"/>
 <pinref part="C17" gate="G$1" pin="2"/>
-<wire x1="104.14" y1="-27.94" x2="115.57" y2="-27.94" width="0.1524" layer="91"/>
-<wire x1="115.57" y1="-27.94" x2="121.92" y2="-27.94" width="0.1524" layer="91"/>
-<wire x1="104.14" y1="-25.4" x2="104.14" y2="-27.94" width="0.1524" layer="91"/>
-<junction x="104.14" y="-27.94"/>
-<pinref part="R20" gate="G$1" pin="2"/>
-<wire x1="115.57" y1="-26.67" x2="115.57" y2="-27.94" width="0.1524" layer="91"/>
-<junction x="115.57" y="-27.94"/>
+<wire x1="118.11" y1="-27.94" x2="135.89" y2="-27.94" width="0.1524" layer="91"/>
+<wire x1="118.11" y1="-25.4" x2="118.11" y2="-27.94" width="0.1524" layer="91"/>
+<pinref part="R23" gate="G$1" pin="2"/>
+<wire x1="118.11" y1="-27.94" x2="115.57" y2="-27.94" width="0.1524" layer="91"/>
+<junction x="118.11" y="-27.94"/>
 </segment>
 </net>
 <net name="ROT_CLK" class="0">
@@ -25799,17 +25847,13 @@ for SA818 RF Modem</text>
 <label x="64.77" y="99.06" size="1.778" layer="95"/>
 </segment>
 <segment>
-<pinref part="S1" gate="G$1" pin="A"/>
-<wire x1="101.6" y1="-38.1" x2="104.14" y2="-38.1" width="0.1524" layer="91"/>
-<label x="111.76" y="-36.83" size="1.778" layer="95"/>
+<label x="125.73" y="-36.83" size="1.778" layer="95"/>
 <pinref part="C16" gate="G$1" pin="1"/>
-<wire x1="104.14" y1="-38.1" x2="115.57" y2="-38.1" width="0.1524" layer="91"/>
-<wire x1="115.57" y1="-38.1" x2="121.92" y2="-38.1" width="0.1524" layer="91"/>
-<wire x1="104.14" y1="-40.64" x2="104.14" y2="-38.1" width="0.1524" layer="91"/>
-<junction x="104.14" y="-38.1"/>
-<pinref part="R21" gate="G$1" pin="1"/>
-<wire x1="115.57" y1="-39.37" x2="115.57" y2="-38.1" width="0.1524" layer="91"/>
-<junction x="115.57" y="-38.1"/>
+<wire x1="118.11" y1="-38.1" x2="135.89" y2="-38.1" width="0.1524" layer="91"/>
+<wire x1="118.11" y1="-40.64" x2="118.11" y2="-38.1" width="0.1524" layer="91"/>
+<pinref part="R24" gate="G$1" pin="2"/>
+<wire x1="115.57" y1="-38.1" x2="118.11" y2="-38.1" width="0.1524" layer="91"/>
+<junction x="118.11" y="-38.1"/>
 </segment>
 </net>
 <net name="ROT_BTN" class="0">
@@ -25823,9 +25867,13 @@ for SA818 RF Modem</text>
 <wire x1="81.28" y1="-27.94" x2="78.74" y2="-27.94" width="0.1524" layer="91"/>
 <label x="63.5" y="-30.48" size="1.778" layer="95"/>
 <pinref part="C18" gate="G$1" pin="2"/>
-<wire x1="78.74" y1="-27.94" x2="63.5" y2="-27.94" width="0.1524" layer="91"/>
+<wire x1="78.74" y1="-27.94" x2="69.85" y2="-27.94" width="0.1524" layer="91"/>
+<wire x1="69.85" y1="-27.94" x2="63.5" y2="-27.94" width="0.1524" layer="91"/>
 <wire x1="78.74" y1="-25.4" x2="78.74" y2="-27.94" width="0.1524" layer="91"/>
 <junction x="78.74" y="-27.94"/>
+<pinref part="R22" gate="G$1" pin="2"/>
+<wire x1="69.85" y1="-26.67" x2="69.85" y2="-27.94" width="0.1524" layer="91"/>
+<junction x="69.85" y="-27.94"/>
 </segment>
 </net>
 <net name="IN+" class="0">
@@ -25852,6 +25900,28 @@ for SA818 RF Modem</text>
 <pinref part="U$2" gate="G$1" pin="IN-"/>
 <wire x1="19.05" y1="55.88" x2="20.574" y2="55.88" width="0.1524" layer="91"/>
 <label x="17.78" y="53.34" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="ROT_DAT_ROUTE" class="0">
+<segment>
+<pinref part="R23" gate="G$1" pin="1"/>
+<pinref part="S1" gate="G$1" pin="B"/>
+<wire x1="105.41" y1="-27.94" x2="102.87" y2="-27.94" width="0.1524" layer="91"/>
+<pinref part="R20" gate="G$1" pin="2"/>
+<wire x1="102.87" y1="-27.94" x2="101.6" y2="-27.94" width="0.1524" layer="91"/>
+<wire x1="102.87" y1="-26.67" x2="102.87" y2="-27.94" width="0.1524" layer="91"/>
+<junction x="102.87" y="-27.94"/>
+</segment>
+</net>
+<net name="ROT_CLK_ROUTE" class="0">
+<segment>
+<pinref part="S1" gate="G$1" pin="A"/>
+<pinref part="R24" gate="G$1" pin="1"/>
+<wire x1="101.6" y1="-38.1" x2="102.87" y2="-38.1" width="0.1524" layer="91"/>
+<pinref part="R21" gate="G$1" pin="1"/>
+<wire x1="102.87" y1="-38.1" x2="105.41" y2="-38.1" width="0.1524" layer="91"/>
+<wire x1="102.87" y1="-39.37" x2="102.87" y2="-38.1" width="0.1524" layer="91"/>
+<junction x="102.87" y="-38.1"/>
 </segment>
 </net>
 </nets>
