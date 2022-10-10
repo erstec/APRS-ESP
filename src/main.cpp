@@ -361,7 +361,8 @@ bool pkgTxSend()
 #ifdef USE_RF
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
 #endif
-                APRS_setPreamble(350L);
+                APRS_setPreamble(APRS_PREAMBLE);
+                APRS_setTail(APRS_TAIL);
                 APRS_sendTNC2Pkt(String(txQueue[i].Info)); // Send packet to RF
                 txQueue[i].Active = false;
 #ifdef DEBUG_TNC
@@ -892,8 +893,8 @@ void taskAPRS(void *pvParameters)
     APRS_init();
     APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
     APRS_setPath1(config.aprs_path, 1);
-    APRS_setPreamble(300);
-    APRS_setTail(0);
+    APRS_setPreamble(APRS_PREAMBLE);
+    APRS_setTail(APRS_TAIL);
 
     display.setTextSize(1);
     display.setCursor(0, 32);
@@ -1008,8 +1009,8 @@ void taskAPRS(void *pvParameters)
             // send_fix_location();
             //  APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
             //  	APRS_setPath1("WIDE1", 1);
-            //  	APRS_setPreamble(350);
-            //  	APRS_setTail(50);
+            //  	APRS_setPreamble(APRS_PREAMBLE);
+            //  	APRS_setTail(APRS_TAIL);
             // APRS_sendTNC2Pkt("HS5TQA-6>APE32I,TRACE2-2:=1343.76N/10026.06E&ESP32 APRS Internet Gateway");
         }
 

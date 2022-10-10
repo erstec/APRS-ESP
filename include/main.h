@@ -24,7 +24,13 @@
 #define USE_SCREEN
 //#define USE_BLE
 
-#define APRS_PREAMBLE	350UL
+#ifdef SA828
+#define APRS_PREAMBLE	(350UL * 3)
+#define APRS_TAIL       (250UL)
+#else
+#define APRS_PREAMBLE	(350UL)
+#define APRS_TAIL       (0UL)
+#endif
 
 #if defined(SA818) || defined(SA828) || defined(SR_FRS)
 #define USE_RF
