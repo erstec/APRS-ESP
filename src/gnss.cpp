@@ -145,3 +145,20 @@ void updateGpsData() {
 //     }
 #endif
 }
+
+float conv_coords(float in_coords) {
+    // Initialize the location.
+    float f = in_coords;
+    // Get the first two digits by turning f into an integer, then doing an
+    // integer divide by 100; firsttowdigits should be 77 at this point.
+    int firsttwodigits = ((int)f) / 100;  // This assumes that f < 10000.
+    float nexttwodigits = f - (float)(firsttwodigits * 100);
+    float theFinalAnswer = (float)(firsttwodigits + nexttwodigits / 60.0);
+    return theFinalAnswer;
+}
+
+void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS) {
+    *DD = (int)DD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
+    *MM = (int)((DD_DDDDD - *DD) * 60);         //получили минуты
+    *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
+}

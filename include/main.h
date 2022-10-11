@@ -157,15 +157,6 @@ typedef struct igateTLM_struct {
     uint8_t DROP;
 } igateTLMType;
 
-typedef struct pkgListStruct {
-    time_t time;
-    char calsign[11];
-    char ssid[5];
-    unsigned int pkg;
-    bool type;
-    uint8_t symbol;
-} pkgListType;
-
 typedef struct statisticStruct {
     uint32_t allCount;
     uint32_t tncCount;
@@ -215,8 +206,6 @@ String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
-void sort(pkgListType a[], int size);
-void sortPkgDesc(pkgListType a[], int size);
 int processPacket(String &tnc2);
 String send_fix_location();
 int digiProcess(AX25Msg &Packet);

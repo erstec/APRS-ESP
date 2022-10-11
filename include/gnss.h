@@ -32,4 +32,7 @@ extern char selected_heuristic;
 
 void updateGpsData();
 
-#endif
+float conv_coords(float in_coords);
+void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS);
+
+#endif // GNSS_H

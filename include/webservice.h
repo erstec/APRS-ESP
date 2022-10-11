@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+#include "pkgList.h"
+
 //ใช้ตัวแปรโกลบอลในไฟล์ main.cpp
 extern statusType status;
 extern digiTLMType digiTLM;
