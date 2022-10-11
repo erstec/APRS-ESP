@@ -13,9 +13,6 @@
 //#define DEBUG_IS
 
 //#define SDCARD
-// #define SA818
-#define SA828
-//#define SR_FRS
 //#define USE_TNC
 #define USE_GPS
 #define USE_SCREEN
