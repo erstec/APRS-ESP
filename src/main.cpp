@@ -1,10 +1,7 @@
 /*
- Name:		ESP32 APRS Internet Gateway
- Created:	1-Nov-2021 14:27:23
- Author:	HS5TQA/Atten
- Support IS: host:aprs.dprns.com port:14580
- Support IS monitor: http://aprs.dprns.com:14501
- Support in LINE Group APRS Only
+ Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
+ Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
+ Author:	LY3PH/Ernest / initially HS5TQA/Atten
 */
 
 #include <Arduino.h>
@@ -23,6 +20,10 @@
 #include "igate.h"
 #include <WiFiUdp.h>
 
+#ifdef USE_GPS
+#include "TinyGPSPlus.h"
+#endif
+
 #include "Wire.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1306.h"
@@ -32,6 +33,8 @@
 #include "AFSK.h"
 
 #define DEBUG_TNC
+// #define DEBUG_GPS
+#define DEBUG_RF
 
 #define EEPROM_SIZE 1024
 
@@ -45,7 +48,7 @@
 #define SDCARD_MISO 2
 #endif
 
-#ifdef SA818
+#ifdef USE_RF
 HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
 
@@ -79,17 +82,22 @@ pkgListType pkgList[PKGLISTSIZE];
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
-#if defined(SERIAL_TNC)
+#if defined(USE_TNC)
 HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #endif
 
-#if defined(SERIAL_GPS)
+#if defined(USE_GPS)
+TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
+
+// static bool gotGpsFix = false;
 #endif
 
 BluetoothSerial SerialBT;
 
+#ifdef USE_SCREEN
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
+#endif
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -195,7 +203,7 @@ void defaultConfig()
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
     config.input_hpf = true;
-#ifdef SA818
+#ifdef USE_RF
     config.freq_rx = 144.8000;
     config.freq_tx = 144.8000;
     config.offset_rx = 0;
@@ -359,10 +367,11 @@ bool pkgTxSend()
             int decTime = millis() - txQueue[i].timeStamp;
             if (decTime > txQueue[i].Delay)
             {
-#ifdef SA818
+#ifdef USE_RF
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
 #endif
-                APRS_setPreamble(350L);
+                APRS_setPreamble(APRS_PREAMBLE);
+                APRS_setTail(APRS_TAIL);
                 APRS_sendTNC2Pkt(String(txQueue[i].Info)); // Send packet to RF
                 txQueue[i].Active = false;
 #ifdef DEBUG_TNC
@@ -434,17 +443,17 @@ uint8_t popGwRaw(uint8_t *raw)
     return size;
 }
 
-#ifdef SA818
+#ifdef USE_RF
 unsigned long SA818_Timeout = 0;
-void SA818_INIT(bool boot)
-{
-#ifdef SR_FRS
+void RF_Init(bool boot) {
+#if defined(SR_FRS)
     Serial.println("SR_FRS Init");
-#else
+#elif defined(SA818)
     Serial.println("SA818/SA868 Init");
+#elif defined(SA828)
+    Serial.println("SA828 Init");
 #endif
-    if (boot)
-    {
+    if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         pinMode(POWER_PIN, OUTPUT);
         pinMode(PULLDOWN_PIN, OUTPUT);
@@ -455,15 +464,23 @@ void SA818_INIT(bool boot)
         delay(500);
         digitalWrite(PULLDOWN_PIN, HIGH);
         delay(1500);
+#if !defined(SA828)
         SerialRF.println();
         delay(500);
+#endif
     }
+#if !defined(SA828)
     SerialRF.println();
     delay(500);
+#endif
+// #if defined(SA828)
+    // char str[512];
+// #else
     char str[100];
+// #endif
     if (config.sql_level > 8)
         config.sql_level = 8;
-#ifdef SR_FRS
+#if defined(SR_FRS)
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%d,%01d,%d,0", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_rx, config.sql_level, config.tone_tx);
     SerialRF.println(str);
     delay(500);
@@ -473,34 +490,60 @@ void SA818_INIT(bool boot)
     SerialRF.println("AT+DMOSETVOX=0");
     delay(500);
     SerialRF.println("AT+DMOSETMIC=1,0,0");
-#else
+#elif defined(SA818)
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_tx, config.sql_level, config.tone_rx);
     SerialRF.println(str);
     delay(500);
     SerialRF.println("AT+SETTAIL=0");
     delay(500);
     SerialRF.println("AT+SETFILTER=1,1,1");
+#elif defined(SA828)
+    // int idx = sprintf(str, "AAFA3");
+    // for (uint8_t i = 0; i < 16; i++) {
+    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
+    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+    // }
+    // idx += sprintf(&str[idx], "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
+    // SerialRF.println(str);
+    SerialRF.print("AAFA3");
+#ifdef DEBUG_RF
+    Serial.print("AAFA3");
+#endif
+    for (uint8_t i = 0; i < 16; i++) {
+        int idx = sprintf(str, "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
+        sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
+        SerialRF.print(str);
+#ifdef DEBUG_RF
+        Serial.print(str);
+#endif
+    }
+    sprintf(str, "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
+    SerialRF.println(str);
+#ifdef DEBUG_RF
+    Serial.println(str);
+#endif
 #endif
     // SerialRF.println(str);
     delay(500);
     if (config.volume > 8)
         config.volume = 8;
+#if !defined(SA828)
     SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
+#endif
 }
 
-void SA818_SLEEP()
-{
+void RF_Sleep() {
     digitalWrite(POWER_PIN, LOW);
     digitalWrite(PULLDOWN_PIN, LOW);
     // SerialGPS.print("$PMTK161,0*28\r\n");
     // AFSK_TimerEnable(false);
 }
 
-void SA818_CHECK()
-{
+void RF_Check() {
     while (SerialRF.available() > 0) {
         SerialRF.read();
     }
+#if !defined(SA828)
     SerialRF.println("AT+DMOCONNECT");
     delay(100);
     if (SerialRF.available() > 0)
@@ -525,9 +568,11 @@ void SA818_CHECK()
     }
     // SerialGPS.print("$PMTK161,0*28\r\n");
     // AFSK_TimerEnable(false);
-}
 #endif
-// #ifdef SA818
+}
+#endif // USE_RF
+
+// #ifdef USE_RF
 // unsigned long SA818_Timeout = 0;
 // void SA818_INIT(uint8_t HL)
 // {
@@ -628,18 +673,17 @@ boolean APRSConnect()
     return true;
 }
 
-void setup()
-{
+void setup() {
     byte *ptr;
     pinMode(0, INPUT_PULLUP); // BOOT Button
     // Set up serial port
     Serial.begin(9600); // debug
     Serial.setRxBufferSize(256);
-#if defined(SERIAL_TNC)
+#if defined(USE_TNC)
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN, SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
-#if defined(SERIAL_GPS)
+#if defined(USE_GPS)
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
     SerialGPS.setRxBufferSize(500);
 #endif
@@ -648,6 +692,7 @@ void setup()
     Serial.println("Start ESP32IGate V" + String(VERSION));
     Serial.println("Push BOOT after 3 sec for Factory Default config");
 
+#ifdef USE_SCREEN
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 init failed");
     } else {
@@ -660,6 +705,7 @@ void setup()
     display.setCursor(0, 0);
     display.print("ESP32IGate V" + String(VERSION));
     display.display();
+#endif
 
     if (!EEPROM.begin(EEPROM_SIZE))
     {
@@ -675,7 +721,7 @@ void setup()
             ;
     }
 
-    //ตรวจสอบคอนฟิกซ์ผิดพลาด
+    // Check for configuration errors
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
@@ -687,8 +733,8 @@ void setup()
     }
     input_HPF = config.input_hpf;
 
-#ifdef SA818
-    SA818_INIT(true);
+#ifdef USE_RF
+    RF_Init(true);
 #endif
 
     // enableLoopWDT();
@@ -738,6 +784,14 @@ void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS)
     *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100; //получили секунды
 }
 
+String send_gps_location() {
+    String tnc_raw = "";
+    if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
+        // TODO
+    }
+    return tnc_raw;
+}
+
 String send_fix_location()
 {
     String tnc2Raw = "";
@@ -748,9 +802,9 @@ String send_fix_location()
     DD_DDDDDtoDDMMSS(config.gps_lon, &lon_dd, &lon_mm, &lon_ss);
     sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APE32I", config.aprs_mycall);
+        sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
     else
-        sprintf(strtmp, "%s-%d>APE32I", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>APE32E", config.aprs_mycall, config.aprs_ssid);
     tnc2Raw = String(strtmp);
     if (config.aprs_path[0] != 0)
     {
@@ -803,12 +857,101 @@ int packet2Raw(String &tnc2, AX25Msg &Packet)
     return tnc2.length();
 }
 
+// ----------------- GPS -----------------
+
+#define USE_PRECISE_DISTANCE
+#define GPS_POLL_DURATION_MS 1000 // for how long to poll gps
+
+long lat = 0;
+long lon = 0;
+long lat_prev = 0;
+long lon_prev = 0;
+long distance = 0;
+unsigned long age = 0;
+
+long distanceBetween(long lat1, long long1, long lat2, long long2)
+{
+  return gps.distanceBetween(((float)lat1)/1000000.0, ((float)long1)/1000000.0, 
+    ((float)lat2)/1000000.0, ((float)long2)/1000000.0);
+}
+
+void updateDistance()
+{
+    if (lon_prev != 0 && lat_prev != 0 && lon != 0 && lat != 0) {
+#ifdef USE_GPS
+        distance += distanceBetween(lon_prev, lat_prev, lon, lat);
+#endif
+        // heuristicDistanceChanged();
+    }
+#ifndef USE_PRECISE_DISTANCE
+    else {
+#endif
+        lon_prev = lon;
+        lat_prev = lat;
+#ifndef USE_PRECISE_DISTANCE
+    }
+#endif
+}
+
+void updateGpsData() {
+#ifdef USE_GPS
+//     for (unsigned long start = millis(); millis() - start < GPS_POLL_DURATION_MS;)
+//     {
+        while (SerialGPS.available())
+        {
+            char c = SerialGPS.read();
+#ifdef DEBUG_GPS
+            Serial.print(c); // Debug
+#endif
+            if (gps.encode(c))
+            {
+                lat = gps.location.lat() * 1000000;
+                lon = gps.location.lng() * 1000000;
+                age = gps.location.age();
+                updateDistance();
+                // if (!gotGpsFix && gps.location.isValid()) gotGpsFix = true;
+            }
+
+            // if (millis() - start >= GPS_POLL_DURATION_MS)
+            //     break;
+        }
+        //yield();
+//     }
+#endif
+}
+
+void updateScreen() {
+    Serial.print("lat: ");
+    Serial.print(lat);
+    Serial.print(" lon: ");
+    Serial.print(lon);
+    Serial.print(" age: ");
+    Serial.print(age);
+    Serial.print(gps.location.isValid() ? ", valid" : ", invalid");
+    Serial.print(gps.location.isUpdated() ? ", updated" : ", not updated");
+    Serial.print(", dist: ");
+    Serial.println(distance);
+}
+
+static int scrUpdTMO = 0;
+void updateScreenAndGps() {
+    updateGpsData();
+
+    // 1/sec
+    if (millis() - scrUpdTMO > 1000) {
+        updateScreen();
+        scrUpdTMO = millis();
+    }
+}
+
+// ----------------- GPS END -----------------
+
 long sendTimer = 0;
 bool AFSKInitAct = false;
 int btn_count = 0;
 long timeCheck = 0;
-void loop()
-{
+
+void loop() {
     vTaskDelay(5 / portTICK_PERIOD_MS);
     if (millis() > timeCheck)
     {
@@ -817,19 +960,28 @@ void loop()
             esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
     }
-#ifdef SA818
-    // if (SerialRF.available())
-    // {
-    //     Serial.print(Serial.readString());
-    // }
+#ifdef USE_RF
+#ifdef DEBUG_RF
+    if (SerialRF.available()) {
+        Serial.print(SerialRF.readString());
+    }
+#endif
 #endif
     if (AFSKInitAct == true)
     {
-#ifdef SA818
+#ifdef USE_RF
         AFSK_Poll(true, config.rf_power, POWER_PIN);
 #else
         AFSK_Poll(false, LOW);
 #endif
+#ifdef USE_GPS
+    // if (SerialGPS.available()) {
+    //     String gpsData = SerialGPS.readStringUntil('\n');
+    //     Serial.println(gpsData);
+    // }
+
+    updateScreenAndGps();
+#endif        
     }
 }
 
@@ -848,9 +1000,9 @@ void sendIsPkgMsg(char *raw)
         call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APE32I::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>APE32E::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APE32I::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APE32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
     if (aprsClient.connected())
@@ -872,9 +1024,10 @@ void taskAPRS(void *pvParameters)
     APRS_init();
     APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
     APRS_setPath1(config.aprs_path, 1);
-    APRS_setPreamble(300);
-    APRS_setTail(0);
+    APRS_setPreamble(APRS_PREAMBLE);
+    APRS_setTail(APRS_TAIL);
 
+#ifdef USE_SCREEN
     display.setTextSize(1);
     display.setCursor(0, 32);
     display.print(config.aprs_mycall);
@@ -883,6 +1036,7 @@ void taskAPRS(void *pvParameters)
     display.print(">");
     display.print(config.aprs_path);
     display.display();
+#endif
 
     sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000; // 1Min
@@ -935,7 +1089,13 @@ void taskAPRS(void *pvParameters)
                 {
                     if (config.tnc)
                     {
-                        String tnc2Raw = send_fix_location();
+                        String tnc2Raw = send_gps_location();
+                        if (tnc2Raw != "") {
+                            Serial.println("GPS fix");
+                        } else {
+                            tnc2Raw = send_fix_location();
+                            Serial.println("GPS not fix");
+                        }
                         pkgTxUpdate(tnc2Raw.c_str(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
@@ -946,7 +1106,7 @@ void taskAPRS(void *pvParameters)
                 btn_count = 0;
             }
         }
-#ifdef SA818
+#ifdef USE_RF
 // if(digitalRead(SQL_PIN)==HIGH){
 // 	delay(10);
 // 	if(digitalRead(SQL_PIN)==LOW){
@@ -968,8 +1128,8 @@ void taskAPRS(void *pvParameters)
             sendTimer = now;
             if (digiCount > 0)
                 digiCount--;
-#ifdef SA818
-            SA818_CHECK();
+#ifdef USE_RF
+            RF_Check();
 #endif
             if (AFSKInitAct == true)
             {
@@ -988,16 +1148,16 @@ void taskAPRS(void *pvParameters)
             // send_fix_location();
             //  APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
             //  	APRS_setPath1("WIDE1", 1);
-            //  	APRS_setPreamble(350);
-            //  	APRS_setTail(50);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APE32I,TRACE2-2:=1343.76N/10026.06E&ESP32 APRS Internet Gateway");
+            //  	APRS_setPreamble(APRS_PREAMBLE);
+            //  	APRS_setTail(APRS_TAIL);
+            // APRS_sendTNC2Pkt("HS5TQA-6>APE32E,TRACE2-2:=1343.76N/10026.06E&ESP32 APRS Internet Gateway");
         }
 
         if (config.tnc_telemetry)
         {
             if (igateTLM.TeleTimeout < millis())
             {
-                igateTLM.TeleTimeout = millis() + 600000; // 10Min
+                igateTLM.TeleTimeout = millis() + TNC_TELEMETRY_PERIOD; // 10Min
                 if ((igateTLM.Sequence % 6) == 0)
                 {
                     sendIsPkgMsg((char *)&PARM[0]);
@@ -1006,9 +1166,9 @@ void taskAPRS(void *pvParameters)
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0)
-                    sprintf(rawTlm, "%s>APE32I:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
+                    sprintf(rawTlm, "%s>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
                 else
-                    sprintf(rawTlm, "%s-%d>APE32I:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
+                    sprintf(rawTlm, "%s-%d>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000", config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence, igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX, igateTLM.TX, igateTLM.DROP);
 
                 if (aprsClient.connected())
                     aprsClient.println(String(rawTlm)); // Send packet to Inet
@@ -1135,11 +1295,13 @@ void taskNetwork(void *pvParameters)
         Serial.print(WiFi.softAPIP());
         Serial.println("");
 
+#ifdef USE_SCREEN
         display.setTextSize(1);
         display.setCursor(0, 16);
         display.print("IP: ");
         display.print(WiFi.softAPIP());
         display.display();
+#endif
     }
     else if (config.wifi_mode == WIFI_STA_FIX)
     {
@@ -1204,11 +1366,13 @@ void taskNetwork(void *pvParameters)
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
 
+#ifdef USE_SCREEN
                     display.setTextSize(1);
                     display.setCursor(0, 16);
                     display.print("IP: ");
                     display.print(WiFi.localIP());
                     display.display();
+#endif
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
