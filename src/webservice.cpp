@@ -1731,11 +1731,11 @@ void handle_firmware()
 	webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
 	webString += "Current Hardware Version: <b>ESP32DR</b>";
 #ifdef USE_RF
-#if defined(SR_FRS)
+#if defined(USE_SR_FRS)
 	webString += " <b>(MODEL:SR_FRS_1W)</b>";
-#elif defined(SA828)
+#elif defined(USE_SA828)
 	webString += " <b>(MODEL:SA828_1.5W)</b>";
-#elif defined(SA818)
+#elif defined(USE_SA818)
 	webString += " <b>(MODEL:SA818/SA868)</b>";
 #endif
 #else
