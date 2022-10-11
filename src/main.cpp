@@ -16,6 +16,9 @@
 #include <WiFiClient.h>
 #include "cppQueue.h"
 #include "BluetoothSerial.h"
+#ifdef USE_GPS
+#include "gnss.h"
+#endif
 #include "digirepeater.h"
 #include "igate.h"
 #include <WiFiUdp.h>
@@ -33,7 +36,6 @@
 #include "AFSK.h"
 
 #define DEBUG_TNC
-// #define DEBUG_GPS
 #define DEBUG_RF
 
 #define EEPROM_SIZE 1024
@@ -89,8 +91,6 @@ HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #if defined(USE_GPS)
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
-
-// static bool gotGpsFix = false;
 #endif
 
 BluetoothSerial SerialBT;
@@ -689,8 +689,8 @@ void setup() {
 #endif
 
     Serial.println();
-    Serial.println("Start ESP32IGate V" + String(VERSION));
-    Serial.println("Push BOOT after 3 sec for Factory Default config");
+    Serial.println("Start APRS_ESP V" + String(VERSION));
+    Serial.println("Push BOOT for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -703,7 +703,7 @@ void setup() {
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("ESP32IGate V" + String(VERSION));
+    display.print("APRS-ESP V" + String(VERSION));
     display.display();
 #endif
 
@@ -716,7 +716,7 @@ void setup() {
     if (digitalRead(0) == LOW)
     {
         defaultConfig();
-        Serial.println("Manual Default configure");
+        Serial.println("Restoring Factory Default config");
         while (digitalRead(0) == LOW)
             ;
     }
@@ -858,67 +858,6 @@ int packet2Raw(String &tnc2, AX25Msg &Packet)
 }
 
 // ----------------- GPS -----------------
-
-#define USE_PRECISE_DISTANCE
-#define GPS_POLL_DURATION_MS 1000 // for how long to poll gps
-
-long lat = 0;
-long lon = 0;
-long lat_prev = 0;
-long lon_prev = 0;
-long distance = 0;
-unsigned long age = 0;
-
-long distanceBetween(long lat1, long long1, long lat2, long long2)
-{
-  return gps.distanceBetween(((float)lat1)/1000000.0, ((float)long1)/1000000.0, 
-    ((float)lat2)/1000000.0, ((float)long2)/1000000.0);
-}
-
-void updateDistance()
-{
-    if (lon_prev != 0 && lat_prev != 0 && lon != 0 && lat != 0) {
-#ifdef USE_GPS
-        distance += distanceBetween(lon_prev, lat_prev, lon, lat);
-#endif
-        // heuristicDistanceChanged();
-    }
-#ifndef USE_PRECISE_DISTANCE
-    else {
-#endif
-        lon_prev = lon;
-        lat_prev = lat;
-#ifndef USE_PRECISE_DISTANCE
-    }
-#endif
-}
-
-void updateGpsData() {
-#ifdef USE_GPS
-//     for (unsigned long start = millis(); millis() - start < GPS_POLL_DURATION_MS;)
-//     {
-        while (SerialGPS.available())
-        {
-            char c = SerialGPS.read();
-#ifdef DEBUG_GPS
-            Serial.print(c); // Debug
-#endif
-            if (gps.encode(c))
-            {
-                lat = gps.location.lat() * 1000000;
-                lon = gps.location.lng() * 1000000;
-                age = gps.location.age();
-                updateDistance();
-                // if (!gotGpsFix && gps.location.isValid()) gotGpsFix = true;
-            }
-
-            // if (millis() - start >= GPS_POLL_DURATION_MS)
-            //     break;
-        }
-        //yield();
-//     }
-#endif
-}
 
 void updateScreen() {
     Serial.print("lat: ");

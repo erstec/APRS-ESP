@@ -1,10 +1,7 @@
 /*
- Name:		ESP32 APRS Internet Gateway
- Created:	1-Nov-2021 14:27:23
- Author:	HS5TQA/Atten
- Support IS: host:aprs.dprns.com port:14580 or aprs.hs5tqa.ampr.org:14580
- Support IS monitor: http://aprs.dprns.com:14501 or
- http://aprs.hs5tqa.ampr.org:14501 Support in LINE Group APRS Only
+ Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
+ Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
+ Author:	LY3PH/Ernest / initially HS5TQA/Atten
 */
 
 #ifndef MAIN_H
