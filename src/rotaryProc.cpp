@@ -1,5 +1,5 @@
 #include "rotaryProc.h"
-#include "gnss.h"
+#include "gps.h"
 
 #ifdef USE_ROTARY
 extern Rotary rotary;

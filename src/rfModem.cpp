@@ -1,4 +1,4 @@
-#include "rf_modem.h"
+#include "rfModem.h"
 #include "main.h"
 
 extern HardwareSerial SerialRF;

@@ -19,14 +19,14 @@
 #include "cppQueue.h"
 #include "BluetoothSerial.h"
 #ifdef USE_GPS
-#include "gnss.h"
+#include "gps.h"
 #endif
 #include "digirepeater.h"
 #include "igate.h"
 #include <WiFiUdp.h>
 
 #ifdef USE_RF
-#include "rf_modem.h"
+#include "rfModem.h"
 #endif
 
 #ifdef USE_GPS
@@ -407,11 +407,30 @@ void setup()
 int pkgCount = 0;
 
 String send_gps_location() {
-    String tnc_raw = "";
-    if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
-        // TODO
+    String tnc2Raw = "";
+    //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
+    if (gps.location.isValid()) {
+        int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
+        char strtmp[300], loc[30];
+        memset(strtmp, 0, 300);
+        DD_DDDDDtoDDMMSS(lat / 10000000.0, &lat_dd, &lat_mm, &lat_ss);
+        DD_DDDDDtoDDMMSS(lon / 10000000.0, &lon_dd, &lon_mm, &lon_ss);
+        sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
+                lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+        if (config.aprs_ssid == 0)
+            sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
+        else
+            sprintf(strtmp, "%s-%d>APE32E", config.aprs_mycall, config.aprs_ssid);
+        tnc2Raw = String(strtmp);
+        if (config.aprs_path[0] != 0) {
+            tnc2Raw += ",";
+            tnc2Raw += String(config.aprs_path);
+        }
+        tnc2Raw += ":";
+        tnc2Raw += String(loc);
+        tnc2Raw += String(config.aprs_comment);
     }
-    return tnc_raw;
+    return tnc2Raw;
 }
 
 String send_fix_location() {
@@ -421,8 +440,8 @@ String send_fix_location() {
     memset(strtmp, 0, 300);
     DD_DDDDDtoDDMMSS(config.gps_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(config.gps_lon, &lon_dd, &lon_mm, &lon_ss);
-    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", lat_dd, lat_mm, lat_ss,
-            config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c",
+            lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     if (config.aprs_ssid == 0)
         sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
     else
@@ -646,7 +665,7 @@ void taskAPRS(void *pvParameters) {
                             Serial.println("GPS fix");
                         } else {
                             tnc2Raw = send_fix_location();
-                            Serial.println("GPS not fix");
+                            Serial.println("No GPS fix");
                         }
                         pkgTxUpdate(tnc2Raw.c_str(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
@@ -683,7 +702,13 @@ void taskAPRS(void *pvParameters) {
 #endif
             if (AFSKInitAct == true) {
                 if (config.tnc) {
-                    String tnc2Raw = send_fix_location();
+                    String tnc2Raw = send_gps_location();
+                    if (tnc2Raw != "") {
+                        Serial.println("GPS fix");
+                    } else {
+                        tnc2Raw = send_fix_location();
+                        Serial.println("No GPS fix");
+                    }
                     if (aprsClient.connected())
                         aprsClient.println(tnc2Raw);  // Send packet to Inet
                     pkgTxUpdate(tnc2Raw.c_str(), 0);
