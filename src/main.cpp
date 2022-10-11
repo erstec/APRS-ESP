@@ -27,6 +27,12 @@
 #include "TinyGPSPlus.h"
 #endif
 
+#ifdef USE_ROTARY
+#include <Rotary.h>
+#endif
+
+#include "rotaryProc.h"
+
 #include "Wire.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_SSD1306.h"
@@ -97,6 +103,10 @@ BluetoothSerial SerialBT;
 
 #ifdef USE_SCREEN
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
+#endif
+
+#ifdef USE_ROTARY
+Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
 #endif
 
 // Set your Static IP address for wifi AP
@@ -386,17 +396,17 @@ bool pkgTxSend()
 }
 
 uint8_t *packetData;
-//ฟังชั่นถูกเรียกมาจาก ax25_decode
-void aprs_msg_callback(struct AX25Msg *msg)
-{
-    AX25Msg pkg;
 
+void aprs_msg_callback(struct AX25Msg *msg) {
+    AX25Msg pkg;
     memcpy(&pkg, msg, sizeof(AX25Msg));
-    PacketBuffer.push(&pkg); //ใส่แพ็จเก็จจาก TNC ลงคิวบัพเฟอร์
+#ifdef USE_KISS
+    kiss_messageCallback(ctx);
+#endif
+    PacketBuffer.push(&pkg);
 }
 
-void printTime()
-{
+void printTime() {
     char buf[3];
     struct tm tmstruct;
     getLocalTime(&tmstruct, 5000);
@@ -891,12 +901,10 @@ int btn_count = 0;
 long timeCheck = 0;
 
 void loop() {
-    vTaskDelay(5 / portTICK_PERIOD_MS);
-    if (millis() > timeCheck)
-    {
+    vTaskDelay(5 / portTICK_PERIOD_MS);  // remove?
+    if (millis() > timeCheck) {
         timeCheck = millis() + 10000;
-        if (ESP.getFreeHeap() < 70000)
-            esp_restart();
+        if (ESP.getFreeHeap() < 70000) esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
     }
 #ifdef USE_RF
@@ -906,22 +914,30 @@ void loop() {
     }
 #endif
 #endif
-    if (AFSKInitAct == true)
-    {
+    if (AFSKInitAct == true) {
 #ifdef USE_RF
         AFSK_Poll(true, config.rf_power, POWER_PIN);
 #else
         AFSK_Poll(false, LOW);
 #endif
 #ifdef USE_GPS
-    // if (SerialGPS.available()) {
-    //     String gpsData = SerialGPS.readStringUntil('\n');
-    //     Serial.println(gpsData);
-    // }
+        // if (SerialGPS.available()) {
+        //     String gpsData = SerialGPS.readStringUntil('\n');
+        //     Serial.println(gpsData);
+        // }
+#endif
+    }
+
+    bool update_screen = processRotary();
+
+    if (send_aprs_update) {
+        btn_count++;  // emulate button press // TEMPORARY
+        update_screen |= true;
+        send_aprs_update = false;
+    }
+    if (update_screen) updateScreen();
 
     updateScreenAndGps();
-#endif        
-    }
 }
 
 void sendIsPkgMsg(char *raw)
@@ -965,6 +981,10 @@ void taskAPRS(void *pvParameters)
     APRS_setPath1(config.aprs_path, 1);
     APRS_setPreamble(APRS_PREAMBLE);
     APRS_setTail(APRS_TAIL);
+
+#ifdef USE_KISS
+    kiss_init(&AX25, &modem, &Serial, 0);
+#endif
 
 #ifdef USE_SCREEN
     display.setTextSize(1);

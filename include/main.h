@@ -20,6 +20,8 @@
 #define USE_GPS
 #define USE_SCREEN
 //#define USE_BLE
+//#define USE_KISS  // disables tracker, enables kiss serial modem mode
+//#define USE_ROTARY
 
 #ifdef SA828
 #define APRS_PREAMBLE	(350UL * 3)
