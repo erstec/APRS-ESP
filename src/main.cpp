@@ -23,6 +23,10 @@
 #include "igate.h"
 #include <WiFiUdp.h>
 
+#ifdef USE_RF
+#include "rf_modem.h"
+#endif
+
 #ifdef USE_GPS
 #include "TinyGPSPlus.h"
 #endif
@@ -453,204 +457,6 @@ uint8_t popGwRaw(uint8_t *raw)
     return size;
 }
 
-#ifdef USE_RF
-unsigned long SA818_Timeout = 0;
-void RF_Init(bool boot) {
-#if defined(SR_FRS)
-    Serial.println("SR_FRS Init");
-#elif defined(SA818)
-    Serial.println("SA818/SA868 Init");
-#elif defined(SA828)
-    Serial.println("SA828 Init");
-#endif
-    if (boot) {
-        SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
-        pinMode(POWER_PIN, OUTPUT);
-        pinMode(PULLDOWN_PIN, OUTPUT);
-        pinMode(SQL_PIN, INPUT_PULLUP);
-
-        digitalWrite(POWER_PIN, LOW);
-        digitalWrite(PULLDOWN_PIN, LOW);
-        delay(500);
-        digitalWrite(PULLDOWN_PIN, HIGH);
-        delay(1500);
-#if !defined(SA828)
-        SerialRF.println();
-        delay(500);
-#endif
-    }
-#if !defined(SA828)
-    SerialRF.println();
-    delay(500);
-#endif
-// #if defined(SA828)
-    // char str[512];
-// #else
-    char str[100];
-// #endif
-    if (config.sql_level > 8)
-        config.sql_level = 8;
-#if defined(SR_FRS)
-    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%d,%01d,%d,0", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_rx, config.sql_level, config.tone_tx);
-    SerialRF.println(str);
-    delay(500);
-    // Module auto power save setting
-    SerialRF.println("AT+DMOAUTOPOWCONTR=1");
-    delay(500);
-    SerialRF.println("AT+DMOSETVOX=0");
-    delay(500);
-    SerialRF.println("AT+DMOSETMIC=1,0,0");
-#elif defined(SA818)
-    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", config.band, config.freq_tx + ((float)config.offset_tx / 1000000), config.freq_rx + ((float)config.offset_rx / 1000000), config.tone_tx, config.sql_level, config.tone_rx);
-    SerialRF.println(str);
-    delay(500);
-    SerialRF.println("AT+SETTAIL=0");
-    delay(500);
-    SerialRF.println("AT+SETFILTER=1,1,1");
-#elif defined(SA828)
-    // int idx = sprintf(str, "AAFA3");
-    // for (uint8_t i = 0; i < 16; i++) {
-    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
-    //     idx += sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
-    // }
-    // idx += sprintf(&str[idx], "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
-    // SerialRF.println(str);
-    SerialRF.print("AAFA3");
-#ifdef DEBUG_RF
-    Serial.print("AAFA3");
-#endif
-    for (uint8_t i = 0; i < 16; i++) {
-        int idx = sprintf(str, "%0.4f,", config.freq_tx + ((float)config.offset_tx / 1000000));
-        sprintf(&str[idx], "%0.4f,", config.freq_rx + ((float)config.offset_rx / 1000000));
-        SerialRF.print(str);
-#ifdef DEBUG_RF
-        Serial.print(str);
-#endif
-    }
-    sprintf(str, "%03d,%03d,%d", config.tone_tx, config.tone_rx, config.sql_level);
-    SerialRF.println(str);
-#ifdef DEBUG_RF
-    Serial.println(str);
-#endif
-#endif
-    // SerialRF.println(str);
-    delay(500);
-    if (config.volume > 8)
-        config.volume = 8;
-#if !defined(SA828)
-    SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
-#endif
-}
-
-void RF_Sleep() {
-    digitalWrite(POWER_PIN, LOW);
-    digitalWrite(PULLDOWN_PIN, LOW);
-    // SerialGPS.print("$PMTK161,0*28\r\n");
-    // AFSK_TimerEnable(false);
-}
-
-void RF_Check() {
-    while (SerialRF.available() > 0) {
-        SerialRF.read();
-    }
-#if !defined(SA828)
-    SerialRF.println("AT+DMOCONNECT");
-    delay(100);
-    if (SerialRF.available() > 0)
-    {
-        String ret = SerialRF.readString();
-        if (ret.indexOf("DMOCONNECT") > 0)
-        {
-            SA818_Timeout = millis();
-#ifdef DEBUG
-            // Serial.println(SerialRF.readString());
-            Serial.println("SA818/SR_FRS OK");
-#endif
-        }
-    }
-    else
-    {
-        Serial.println("SA818/SR_FRS Error");
-        digitalWrite(POWER_PIN, LOW);
-        digitalWrite(PULLDOWN_PIN, LOW);
-        delay(500);
-        SA818_INIT(true);
-    }
-    // SerialGPS.print("$PMTK161,0*28\r\n");
-    // AFSK_TimerEnable(false);
-#endif
-}
-#endif // USE_RF
-
-// #ifdef USE_RF
-// unsigned long SA818_Timeout = 0;
-// void SA818_INIT(uint8_t HL)
-// {
-
-//     pinMode(0, INPUT);
-//     pinMode(POWER_PIN, OUTPUT);
-//     pinMode(PULLDOWN_PIN, OUTPUT);
-//     pinMode(SQL_PIN, INPUT_PULLUP);
-
-//     SerialRF.begin(9600, SERIAL_8N1, 14, 13);
-
-//     digitalWrite(PULLDOWN_PIN, HIGH);
-//     digitalWrite(POWER_PIN, LOW);
-//     delay(500);
-//     // AT+DMOSETGROUP=1,144.3900,144.3900,0,1,0,0
-//     SerialRF.println("AT+DMOSETGROUP=0,144.3900,144.3900,0,1,0,0");
-//     delay(10);
-//     SerialRF.println("AT+DMOAUTOPOWCONTR=1");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETVOLUME=9");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETVOX=0");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETMIC=8,0,0");
-//     delay(100);
-//     // AFSK_TimerEnable(true);
-//     digitalWrite(POWER_PIN, HL);
-// }
-
-// void SA818_SLEEP()
-// {
-//     digitalWrite(POWER_PIN, LOW);
-//     digitalWrite(PULLDOWN_PIN, LOW);
-//     // SerialGPS.print("$PMTK161,0*28\r\n");
-//     // AFSK_TimerEnable(false);
-// }
-
-// void SA818_CHECK()
-// {
-//     while (SerialRF.available() > 0)
-//         SerialRF.read();
-//     SerialRF.println("AT+DMOCONNECT");
-//     delay(100);
-//     if (SerialRF.available() > 0)
-//     {
-//         String ret = SerialRF.readString();
-//         if (ret.indexOf("DMOCONNECT") > 0)
-//         {
-//             SA818_Timeout = millis();
-// #ifdef DEBUG
-//             // Serial.println(SerialRF.readString());
-//             Serial.println("SA818 Activated");
-// #endif
-//         }
-//     }
-//     else
-//     {
-//         Serial.println("SA818 deActive");
-//         digitalWrite(POWER_PIN, LOW);
-//         digitalWrite(PULLDOWN_PIN, LOW);
-//         delay(500);
-//         SA818_INIT(LOW);
-//     }
-//     // SerialGPS.print("$PMTK161,0*28\r\n");
-//     // AFSK_TimerEnable(false);
-// }
-// #endif
-
 WiFiClient aprsClient;
 
 boolean APRSConnect()
@@ -662,15 +468,15 @@ boolean APRSConnect()
     // Serial.println(con);
     if (con <= 0)
     {
-        if (!aprsClient.connect(config.aprs_host, config.aprs_port)) //เชื่อมต่อกับเซิร์ฟเวอร์ TCP
+        if (!aprsClient.connect(config.aprs_host, config.aprs_port))
         {
             // Serial.print(".");
             delay(100);
             cnt++;
-            if (cnt > 50) //วนร้องขอการเชื่อมต่อ 50 ครั้ง ถ้าไม่ได้ให้รีเทิร์นฟังค์ชั่นเป็น False
+            if (cnt > 50)
                 return false;
         }
-        //ขอเชื่อมต่อกับ aprsc
+        //
         if (config.aprs_ssid == 0)
             login = "user " + String(config.aprs_mycall) + " pass " + String(config.aprs_passcode) + " vers ESP32IGate V" + String(VERSION) + " filter " + String(config.aprs_filter);
         else
@@ -683,18 +489,21 @@ boolean APRSConnect()
     return true;
 }
 
-void setup() {
+void setup()
+{
     byte *ptr;
-    pinMode(0, INPUT_PULLUP); // BOOT Button
+    pinMode(0, INPUT_PULLUP);  // BOOT Button
     // Set up serial port
-    Serial.begin(9600); // debug
+    Serial.begin(9600);  // debug
     Serial.setRxBufferSize(256);
 #if defined(USE_TNC)
-    SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN, SERIAL_TNC_TXPIN);
+    SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
+                    SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
 #if defined(USE_GPS)
-    SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
+    SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
+                    SERIAL_GPS_TXPIN);
     SerialGPS.setRxBufferSize(500);
 #endif
 
@@ -717,14 +526,12 @@ void setup() {
     display.display();
 #endif
 
-    if (!EEPROM.begin(EEPROM_SIZE))
-    {
-        Serial.println(F("failed to initialise EEPROM")); // delay(100000);
+    if (!EEPROM.begin(EEPROM_SIZE)) {
+        Serial.println(F("failed to initialise EEPROM"));  // delay(100000);
     }
 
     delay(3000);
-    if (digitalRead(0) == LOW)
-    {
+    if (digitalRead(0) == LOW) {
         defaultConfig();
         Serial.println("Restoring Factory Default config");
         while (digitalRead(0) == LOW)
@@ -735,9 +542,9 @@ void setup() {
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\n", EEPROM.read(0), chkSum, sizeof(Configuration));
-    if (EEPROM.read(0) != chkSum)
-    {
+    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\n", EEPROM.read(0), chkSum,
+                  sizeof(Configuration));
+    if (EEPROM.read(0) != chkSum) {
         Serial.println("Config EEPROM Error!");
         defaultConfig();
     }
@@ -752,24 +559,22 @@ void setup() {
     enableCore1WDT();
 
     // Task 1
-    xTaskCreatePinnedToCore(
-        taskAPRS,        /* Function to implement the task */
-        "taskAPRS",      /* Name of the task */
-        8192,            /* Stack size in words */
-        NULL,            /* Task input parameter */
-        1,               /* Priority of the task */
-        &taskAPRSHandle, /* Task handle. */
-        0);              /* Core where the task should run */
+    xTaskCreatePinnedToCore(taskAPRS,   /* Function to implement the task */
+                            "taskAPRS", /* Name of the task */
+                            8192,       /* Stack size in words */
+                            NULL,       /* Task input parameter */
+                            1,          /* Priority of the task */
+                            &taskAPRSHandle, /* Task handle. */
+                            0); /* Core where the task should run */
 
     // Task 2
-    xTaskCreatePinnedToCore(
-        taskNetwork,        /* Function to implement the task */
-        "taskNetwork",      /* Name of the task */
-        32768,              /* Stack size in words */
-        NULL,               /* Task input parameter */
-        1,                  /* Priority of the task */
-        &taskNetworkHandle, /* Task handle. */
-        1);                 /* Core where the task should run */
+    xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
+                            "taskNetwork", /* Name of the task */
+                            32768,         /* Stack size in words */
+                            NULL,          /* Task input parameter */
+                            1,             /* Priority of the task */
+                            &taskNetworkHandle, /* Task handle. */
+                            1); /* Core where the task should run */
 }
 
 int pkgCount = 0;
