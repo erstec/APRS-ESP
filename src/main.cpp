@@ -346,10 +346,16 @@ void setup()
     }
 
     display.clearDisplay();
-    display.setTextColor(WHITE);
+    display.setTextColor(WHITE, BLACK);
     display.setTextSize(1);
-    display.setCursor(0, 0);
+    display.setCursor(20, 0);
+    display.setTextWrap(false);
+    display.cp437(true);
     display.print("APRS-ESP V" + String(VERSION));
+
+    display.setCursor(0, 10);
+    display.print("Boot...");
+
     display.display();
 #endif
 
@@ -503,6 +509,38 @@ void updateScreen() {
     Serial.print(gps.location.isUpdated() ? ", updated" : ", not updated");
     Serial.print(", dist: ");
     Serial.println(distance);
+
+#ifdef USE_SCREEN
+        display.setTextSize(1);
+        
+        display.setCursor(display.width() - 6, 0);
+        display.print(gps.location.isValid() ? "+" : "-");
+
+        display.setCursor(0, display.height() - 8 * 2);
+        display.print("lat: ");
+        display.print(lat);
+        display.print("   age: ");
+        display.print(age);
+        display.setCursor(0, display.height() - 8 * 1);
+        display.print("lon: ");
+        display.print(lon);
+        display.print("   dist: ");
+        display.print(distance);
+        
+        display.setCursor(20, display.height() - 8 * 3);
+        display.print("Spd: ");
+        display.print(gps.speed.kmph());
+        display.print("km/h");
+
+
+        display.setCursor(display.width() - 6 * 2, display.height() - 8 * 1);
+        display.print(aprsClient.connected() ? "A+" : "A-");
+
+        display.setCursor(display.width() - 6 * 2, display.height() - 8 * 2);
+        display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+
+        display.display();
+#endif
 }
 
 static int scrUpdTMO = 0;
@@ -525,7 +563,7 @@ long timeCheck = 0;
 
 void loop()
 {
-    vTaskDelay(5 / portTICK_PERIOD_MS);  // remove?
+    //vTaskDelay(5 / portTICK_PERIOD_MS);  // remove?
     if (millis() > timeCheck) {
         timeCheck = millis() + 10000;
         if (ESP.getFreeHeap() < 70000) esp_restart();
@@ -608,14 +646,35 @@ void taskAPRS(void *pvParameters) {
 #endif
 
 #ifdef USE_SCREEN
-    display.setTextSize(1);
-    display.setCursor(0, 32);
-    display.print(config.aprs_mycall);
-    display.print("-");
-    display.print(config.aprs_ssid);
-    display.print(">");
-    display.print(config.aprs_path);
-    display.display();
+    Serial.print(display.getCursorX());
+    Serial.print(" ");
+    Serial.println(display.getCursorY());
+
+    
+    display.setCursor(0, 20);
+    
+    Serial.print(display.getCursorX());
+    Serial.print(" ");
+    Serial.println(display.getCursorY());
+
+    display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
+
+    //display.print("TESTUKAS2");
+
+    Serial.print(display.getCursorX());
+    Serial.print(" ");
+    Serial.println(display.getCursorY());
+    
+    // display.display();
+    
+    // display.setTextSize(1);
+    // display.setCursor(0, 32);
+    // display.print(config.aprs_mycall);
+    // display.print("-");
+    // display.print(config.aprs_ssid);
+    // display.print(">");
+    // display.print(config.aprs_path);
+    // display.display();
 #endif
 
     sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
@@ -858,7 +917,7 @@ void taskNetwork(void *pvParameters) {
 
 #ifdef USE_SCREEN
         display.setTextSize(1);
-        display.setCursor(0, 16);
+        display.setCursor(0, 10);
         display.print("IP: ");
         display.print(WiFi.softAPIP());
         display.display();
@@ -921,7 +980,7 @@ void taskNetwork(void *pvParameters) {
 
 #ifdef USE_SCREEN
                     display.setTextSize(1);
-                    display.setCursor(0, 16);
+                    display.setCursor(0, 10);
                     display.print("IP: ");
                     display.print(WiFi.localIP());
                     display.display();
