@@ -41,7 +41,11 @@
 
 #include "Wire.h"
 #include "Adafruit_GFX.h"
+#if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
+#elif defined(USE_SCREEN_SH1106)
+#include "Adafruit_SH1106.h"
+#endif
 
 #include <WiFiClientSecure.h>
 
@@ -105,8 +109,10 @@ HardwareSerial SerialGPS(SERIAL_GPS_UART);
 
 BluetoothSerial SerialBT;
 
-#ifdef USE_SCREEN
+#if defined(USE_SCREEN_SSD1306)
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
+#elif defined(USE_SCREEN_SH1106)
+Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 #endif
 
 #ifdef USE_ROTARY
@@ -342,11 +348,7 @@ void setup()
     Serial.println("Push BOOT for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 init failed");
-    } else {
-        Serial.println("SSD1306 init ok");
-    }
+    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
 
     display.clearDisplay();
     display.setTextColor(WHITE, BLACK);
