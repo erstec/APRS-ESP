@@ -519,6 +519,10 @@ void printPeriodicDebug() {
 void updateScreen() {
 #ifdef USE_SCREEN
     char buf[10];
+
+    bool isValid = gps.location.isValid();
+    uint32_t satCnt = gps.satellites.value();
+
     // display.clearDisplay();
     // display.setTextColor(WHITE, BLACK);
     // display.setTextSize(1);
@@ -540,35 +544,44 @@ void updateScreen() {
     
     // GPS Section
     // 1st line
+    // Sat count, fix status
     display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
-    display.printf("%d%s ", gps.satellites.value(), gps.location.isValid() ? "+" : "-");
+    display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
     for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
         display.print(" ");
     }
 
+    // altitude
     sprintf(buf, "%.1fm", gps.altitude.meters());
     display.setCursor(display.width() - CHAR_WIDTH * strlen(buf), display.height() - CHAR_HEIGHT * 4);
     display.print(buf);
 
     // 2nd line
+    // speed
     display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
-    display.printf("%.1fkmh", gps.satellites.value() > 0 ? gps.speed.kmph() : 0.0);
+    display.printf("%.1fkmh", satCnt > 0 ? gps.speed.kmph() : 0.0);
     for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
         display.print(" ");
     }
 
+    // course
     sprintf(buf, "%.1f'", gps.course.deg());
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
     display.print(buf);
 
+    // qth
     display.setCursor(display.width() - CHAR_WIDTH * 6, display.height() - CHAR_HEIGHT * 3);
-    display.print(deg_to_qth(lat, lon));
+    display.print(isValid ? deg_to_qth(lat, lon) : "------");
 
     // 3rd line
     display.setCursor(0, display.height() - CHAR_HEIGHT * 2);
     display.print(deg_to_nmea(lat, true));
     display.print(" age ");
-    display.print(age / 1000);  // age in seconds
+    if (isValid) {
+        display.print(age / 1000);  // age in seconds
+    } else {
+        display.print("-");
+    }
     for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
         display.print(" ");
     }
