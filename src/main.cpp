@@ -353,12 +353,16 @@ void setup()
     display.clearDisplay();
     display.setTextColor(WHITE, BLACK);
     display.setTextSize(1);
-    display.setCursor(20, 0);
     display.setTextWrap(false);
     display.cp437(true);
+
+    char buf[16];
+    sprintf(buf, "APRS_ESP V%s", VERSION);
+    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, 0);
     display.print("APRS-ESP V" + String(VERSION));
 
-    display.setCursor(0, CHAR_HEIGHT * 1);
+    sprintf(buf, "Boot...");
+    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
     display.print("Boot...");
 
     display.display();
@@ -515,12 +519,21 @@ void updateScreen() {
     bool isValid = gps.location.isValid();
     uint32_t satCnt = gps.satellites.value();
 
-    // display.clearDisplay();
+    display.clearDisplay();
     // display.setTextColor(WHITE, BLACK);
-    // display.setTextSize(1);
+    display.setTextSize(1);
     //display.setFont
+    display.invertDisplay(false);
 
-    // WiFi IP printed from task
+    // WiFi IP printed from task, but because we are clearing screen draw it again
+    display.setCursor(0, CHAR_HEIGHT * 1);
+    if (config.wifi_mode == WIFI_STA_FIX) {
+        display.print(WiFi.localIP());
+    } else if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {
+        display.print(WiFi.softAPIP());
+    } else {
+        display.print("No IP - BLE Mode");
+    }
 
     // Main section
     // Top line
@@ -951,12 +964,12 @@ void taskNetwork(void *pvParameters) {
         Serial.print(WiFi.softAPIP());
         Serial.println("");
 
-#ifdef USE_SCREEN
-        display.setTextSize(1);
-        display.setCursor(0, CHAR_HEIGHT * 1);
-        display.print(WiFi.softAPIP());
-        display.display();
-#endif
+// #ifdef USE_SCREEN
+//         display.setTextSize(1);
+//         display.setCursor(0, CHAR_HEIGHT * 1);
+//         display.print(WiFi.softAPIP());
+//         display.display();
+// #endif
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
@@ -1013,12 +1026,12 @@ void taskNetwork(void *pvParameters) {
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
 
-#ifdef USE_SCREEN
-                    display.setTextSize(1);
-                    display.setCursor(0, CHAR_HEIGHT * 1);
-                    display.print(WiFi.localIP());
-                    display.display();
-#endif
+// #ifdef USE_SCREEN
+//                     display.setTextSize(1);
+//                     display.setCursor(0, CHAR_HEIGHT * 1);
+//                     display.print(WiFi.localIP());
+//                     display.display();
+// #endif
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
