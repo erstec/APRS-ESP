@@ -409,12 +409,12 @@ int pkgCount = 0;
 String send_gps_location() {
     String tnc2Raw = "";
     
-    long _lat;
-    long _lon;
+    float _lat;
+    float _lon;
     //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
     if (gps.location.isValid()) {
-        _lat = lat;
-        _lon = lon;
+        _lat = lat / 1000000.0;
+        _lon = lon / 1000000.0;
         distance = 0;   // Reset counted distance
         Serial.println("GPS Fix");
     } else {
@@ -426,8 +426,8 @@ String send_gps_location() {
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
     memset(strtmp, 0, 300);
-    DD_DDDDDtoDDMMSS(_lat / 10000000.0, &lat_dd, &lat_mm, &lat_ss);
-    DD_DDDDDtoDDMMSS(_lon / 10000000.0, &lon_dd, &lon_mm, &lon_ss);
+    DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
+    DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
     sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     if (config.aprs_ssid == 0)
