@@ -531,9 +531,7 @@ void updateScreen() {
     // display.setTextColor(WHITE, BLACK);
     // display.setTextSize(1);
     //display.setFont
-#if defined(USE_SCREEN_SH1106)  // Notices that don't need for SSD1306
-    display.invertDisplay(false);
-#endif
+    // display.invertDisplay(false);
 
     // WiFi IP printed from task, but because we are clearing screen draw it again
     display.setCursor(0, CHAR_HEIGHT * 1);
