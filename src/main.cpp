@@ -348,7 +348,15 @@ void setup()
     Serial.println("Push BOOT for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
+#if defined(USE_SCREEN_SSD1306)
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("SSD1306 init failed");
+    } else {
+        Serial.println("SSD1306 init ok");
+    }
+#elif defined(USE_SCREEN_SH1106)
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+#endif
 
     display.clearDisplay();
     display.setTextColor(WHITE, BLACK);
