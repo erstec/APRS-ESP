@@ -508,6 +508,8 @@ void printPeriodicDebug() {
 
 void updateScreen() {
 #ifdef USE_SCREEN
+    if (AFSK_modem->sending) return;
+
     char buf[10];
 
     bool isValid = gps.location.isValid();
