@@ -885,6 +885,9 @@ void taskAPRS(void *pvParameters) {
 //TODO          processPacket();
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
+#ifdef DEBUG_TNC                
+                Serial.println("RX->RF: " + tnc2);
+#endif
 
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
