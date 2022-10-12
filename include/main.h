@@ -13,9 +13,6 @@
 //#define DEBUG_IS
 
 //#define SDCARD
-// #define SA818
-#define SA828
-//#define SR_FRS
 //#define USE_TNC
 #define USE_GPS
 #define USE_SCREEN
@@ -23,7 +20,7 @@
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
 
-#ifdef SA828
+#ifdef USE_SA828
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #else
@@ -33,7 +30,7 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(SA818) || defined(SA828) || defined(SR_FRS)
+#if defined(USE_SA818) || defined(USE_SA828) || defined(USE_SR_FRS)
 #define USE_RF
 #endif
 
@@ -42,8 +39,8 @@
 #endif
 
 #ifdef SR_FRS
-#ifndef SA818
-#define SA818
+#ifndef USE_SA818
+#define USE_SA818
 #endif
 #endif
 
