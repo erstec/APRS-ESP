@@ -361,7 +361,7 @@ void setup()
 
     sprintf(buf, "Boot...");
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
-    display.print("Boot...");
+    display.print(buf);
 
     display.display();
 #endif
@@ -517,9 +517,11 @@ void updateScreen() {
 
     display.clearDisplay();
     // display.setTextColor(WHITE, BLACK);
-    display.setTextSize(1);
+    // display.setTextSize(1);
     //display.setFont
+#if defined(USE_SCREEN_SH1106)  // Notices that don't need for SSD1306
     display.invertDisplay(false);
+#endif
 
     // WiFi IP printed from task, but because we are clearing screen draw it again
     display.setCursor(0, CHAR_HEIGHT * 1);
