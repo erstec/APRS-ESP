@@ -11,6 +11,8 @@
 
 #define DEBUG
 //#define DEBUG_IS
+#define DEBUG_TNC
+#define DEBUG_RF
 
 //#define SDCARD
 //#define USE_TNC

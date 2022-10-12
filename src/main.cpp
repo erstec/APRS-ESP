@@ -47,9 +47,6 @@
 
 #include "AFSK.h"
 
-#define DEBUG_TNC
-#define DEBUG_RF
-
 #define EEPROM_SIZE 1024
 
 #define CHAR_WIDTH 6
