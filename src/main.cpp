@@ -169,8 +169,8 @@ void defaultConfig() {
     config.digi_delay = 2000;
     config.tx_timeslot = 5000;
     sprintf(config.aprs_path, "WIDE1-1");
-    sprintf(config.aprs_comment, "ESP32 Internet Gateway");
-    sprintf(config.tnc_comment, "ESP32 Build in TNC");
+    sprintf(config.aprs_comment, "APRS-ESP Internet Gateway");
+    sprintf(config.tnc_comment, "APRS-ESP Built in TNC");
     sprintf(config.aprs_filter, "g/HS*/E2*");
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
@@ -408,44 +408,32 @@ int pkgCount = 0;
 
 String send_gps_location() {
     String tnc2Raw = "";
+    
+    long _lat;
+    long _lon;
     //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
     if (gps.location.isValid()) {
-        int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
-        char strtmp[300], loc[30];
-        memset(strtmp, 0, 300);
-        DD_DDDDDtoDDMMSS(lat / 10000000.0, &lat_dd, &lat_mm, &lat_ss);
-        DD_DDDDDtoDDMMSS(lon / 10000000.0, &lon_dd, &lon_mm, &lon_ss);
-        sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
-                lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
-        if (config.aprs_ssid == 0)
-            sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
-        else
-            sprintf(strtmp, "%s-%d>APE32E", config.aprs_mycall, config.aprs_ssid);
-        tnc2Raw = String(strtmp);
-        if (config.aprs_path[0] != 0) {
-            tnc2Raw += ",";
-            tnc2Raw += String(config.aprs_path);
-        }
-        tnc2Raw += ":";
-        tnc2Raw += String(loc);
-        tnc2Raw += String(config.aprs_comment);
+        _lat = lat;
+        _lon = lon;
+        distance = 0;   // Reset counted distance
+        Serial.println("GPS Fix");
+    } else {
+        _lat = config.gps_lat;
+        _lon = config.gps_lon;
+        Serial.println("No GPS Fix");
     }
-    return tnc2Raw;
-}
 
-String send_fix_location() {
-    String tnc2Raw = "";
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
     memset(strtmp, 0, 300);
-    DD_DDDDDtoDDMMSS(config.gps_lat, &lat_dd, &lat_mm, &lat_ss);
-    DD_DDDDDtoDDMMSS(config.gps_lon, &lon_dd, &lon_mm, &lon_ss);
-    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c",
+    DD_DDDDDtoDDMMSS(_lat / 10000000.0, &lat_dd, &lat_mm, &lat_ss);
+    DD_DDDDDtoDDMMSS(_lon / 10000000.0, &lon_dd, &lon_mm, &lon_ss);
+    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APE32E", config.aprs_mycall);
+        sprintf(strtmp, "%s>APZ32E", config.aprs_mycall);
     else
-        sprintf(strtmp, "%s-%d>APE32E", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>APZ32E", config.aprs_mycall, config.aprs_ssid);
     tnc2Raw = String(strtmp);
     if (config.aprs_path[0] != 0) {
         tnc2Raw += ",";
@@ -454,6 +442,7 @@ String send_fix_location() {
     tnc2Raw += ":";
     tnc2Raw += String(loc);
     tnc2Raw += String(config.aprs_comment);
+
     return tnc2Raw;
 }
 
@@ -577,9 +566,9 @@ void sendIsPkgMsg(char *raw) {
     for (; i < 9; i++) call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APE32E::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>APZ32E::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APE32E::%s:%s", config.aprs_mycall,
+        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall,
                 config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
@@ -661,12 +650,6 @@ void taskAPRS(void *pvParameters) {
                 {
                     if (config.tnc) {
                         String tnc2Raw = send_gps_location();
-                        if (tnc2Raw != "") {
-                            Serial.println("GPS fix");
-                        } else {
-                            tnc2Raw = send_fix_location();
-                            Serial.println("No GPS fix");
-                        }
                         pkgTxUpdate(tnc2Raw.c_str(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
@@ -703,12 +686,6 @@ void taskAPRS(void *pvParameters) {
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    if (tnc2Raw != "") {
-                        Serial.println("GPS fix");
-                    } else {
-                        tnc2Raw = send_fix_location();
-                        Serial.println("No GPS fix");
-                    }
                     if (aprsClient.connected())
                         aprsClient.println(tnc2Raw);  // Send packet to Inet
                     pkgTxUpdate(tnc2Raw.c_str(), 0);
@@ -718,12 +695,12 @@ void taskAPRS(void *pvParameters) {
 #endif
                 }
             }
-            // send_fix_location();
+            // send_gps_location();
             //  APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
             //  	APRS_setPath1("WIDE1", 1);
             //  	APRS_setPreamble(APRS_PREAMBLE);
             //  	APRS_setTail(APRS_TAIL);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APE32E,TRACE2-2:=1343.76N/10026.06E&ESP32
+            // APRS_sendTNC2Pkt("HS5TQA-6>APZ32E,TRACE2-2:=1343.76N/10026.06E&ESP32
             // APRS Internet Gateway");
         }
 
@@ -738,13 +715,13 @@ void taskAPRS(void *pvParameters) {
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0)
-                    sprintf(rawTlm, "%s>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                    sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                             config.aprs_mycall, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
                 else
                     sprintf(
-                        rawTlm, "%s-%d>APE32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                        rawTlm, "%s-%d>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                         config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);

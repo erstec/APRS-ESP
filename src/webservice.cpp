@@ -1674,7 +1674,7 @@ void handle_test()
 	}
 	if (server.hasArg("sendBeacon"))
 	{
-		String tnc2Raw = send_fix_location();
+		String tnc2Raw = send_gps_location();
 		if (config.tnc)
 			pkgTxUpdate(tnc2Raw.c_str(), 0);
 		// APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
@@ -1704,7 +1704,7 @@ void handle_test()
 	webString += "<table>\n";
 	webString += "<tr><td><form accept-charset=\"UTF-8\" action=\"/test\" class=\"form-horizontal\" id=\"test_form\" method=\"post\">\n";
 	webString += "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn btn-danger\" name=\"sendBeacon\" value='SEND BEACON'></div><br />\n";
-	webString += "<div style=\"margin-left: 20px;\">TNC2 RAW: <input id=\"raw\" name=\"raw\" type=\"text\" size=\"60\" value=\"" + String(config.aprs_mycall) + ">APE32E,WIDE1-1:>Test Status\"/></div>\n";
+	webString += "<div style=\"margin-left: 20px;\">TNC2 RAW: <input id=\"raw\" name=\"raw\" type=\"text\" size=\"60\" value=\"" + String(config.aprs_mycall) + "-" + String(config.aprs_ssid) + ">APZ32E,WIDE1-1:>Test Status\"/></div>\n";
 	webString += "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn btn-primary\" name=\"sendRaw\" value='SEND RAW'></div> <br />\n";
 	webString += "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn btn-danger\" name=\"REBOOT\" value='REBOOT'></div><br />\n";
 	webString += "</form></td></tr>\n";

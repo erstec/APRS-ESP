@@ -204,7 +204,7 @@ boolean isValidNumber(String str);
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
 int processPacket(String &tnc2);
-String send_fix_location();
+String send_gps_location();
 int digiProcess(AX25Msg &Packet);
 void printTime();
 bool pkgTxUpdate(const char *info, int delay);
