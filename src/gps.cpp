@@ -7,6 +7,10 @@
 extern TinyGPSPlus gps;
 extern HardwareSerial SerialGPS;
 
+// buffer for conversions
+#define CONV_BUF_SIZE 15
+static char conv_buf[CONV_BUF_SIZE];
+
 char active_heuristic = H_OFF;
 char selected_heuristic = H_OFF;
 
@@ -160,4 +164,45 @@ void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS) {
     *DD = (int)DD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
     *MM = (int)((DD_DDDDD - *DD) * 60);         //получили минуты
     *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
+}
+
+/*
+**  Convert degrees in long format to NMEA string format
+**  DDMM.hhN for latitude and DDDMM.hhW for longitude
+*/
+char *deg_to_nmea(long deg, boolean is_lat) {
+    unsigned long b = (deg % 1000000UL) * 60UL;
+    unsigned long a = (deg / 1000000UL) * 100UL + b / 1000000UL;
+    b = (b % 1000000UL) / 10000UL;
+    // DDMM.hhN/DDDMM.hhW
+    // http://www.aprs.net/vm/DOS/PROTOCOL.HTM
+    conv_buf[0] = '0';
+    snprintf(conv_buf + 1, 5, "%04u", a);
+    conv_buf[5] = '.';
+    snprintf(conv_buf + 6, 3, "%02u", b);
+    conv_buf[9] = '\0';
+    if (is_lat) {
+        conv_buf[8] = deg > 0 ? 'N' : 'S';
+        return conv_buf + 1;
+    } else {
+        conv_buf[8] = deg > 0 ? 'E' : 'W';
+        return conv_buf;
+    }
+}
+
+/*
+**  Convert latidude and longitude to QTH maidenhead locator
+*/
+char *deg_to_qth(long lat, long lon) {
+    // https://en.wikipedia.org/wiki/Maidenhead_Locator_System
+    float lat_ = ((float)lat) / 1000000.0 + 90.0;
+    float lon_ = ((float)lon) / 1000000.0 + 180.0;
+    conv_buf[0] = 'A' + int(lon_ / 20.0);
+    conv_buf[1] = 'A' + int(lat_ / 10.0);
+    conv_buf[2] = '0' + int(fmod(lon_, 20) / 2.0);
+    conv_buf[3] = '0' + int(fmod(lat_, 10) / 1.0);
+    conv_buf[4] = 'A' + int((lon_ - (int(lon_ / 2.0) * 2)) / (5.0 / 60.0));
+    conv_buf[5] = 'A' + int((lat_ - (int(lat_ / 1.0) * 1)) / (2.5 / 60.0));
+    conv_buf[6] = '\0';
+    return conv_buf;
 }
