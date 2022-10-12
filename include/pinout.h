@@ -39,3 +39,8 @@
 #define OLED_SDA_PIN        21
 #define OLED_SCL_PIN        22
 #define OLED_RST_PIN        -1
+
+// ROTARY ENCODER
+#define PIN_ROT_CLK         18
+#define PIN_ROT_DT          19
+#define PIN_ROT_BTN         5   // IO0 may be handled too?

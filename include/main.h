@@ -1,10 +1,7 @@
 /*
- Name:		ESP32 APRS Internet Gateway
- Created:	1-Nov-2021 14:27:23
- Author:	HS5TQA/Atten
- Support IS: host:aprs.dprns.com port:14580 or aprs.hs5tqa.ampr.org:14580
- Support IS monitor: http://aprs.dprns.com:14501 or
- http://aprs.hs5tqa.ampr.org:14501 Support in LINE Group APRS Only
+ Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
+ Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
+ Author:	LY3PH/Ernest / initially HS5TQA/Atten
 */
 
 #ifndef MAIN_H
@@ -23,6 +20,8 @@
 #define USE_GPS
 #define USE_SCREEN
 //#define USE_BLE
+//#define USE_KISS  // disables tracker, enables kiss serial modem mode
+//#define USE_ROTARY
 
 #ifdef SA828
 #define APRS_PREAMBLE	(350UL * 3)
@@ -158,15 +157,6 @@ typedef struct igateTLM_struct {
     uint8_t DROP;
 } igateTLMType;
 
-typedef struct pkgListStruct {
-    time_t time;
-    char calsign[11];
-    char ssid[5];
-    unsigned int pkg;
-    bool type;
-    uint8_t symbol;
-} pkgListType;
-
 typedef struct statisticStruct {
     uint32_t allCount;
     uint32_t tncCount;
@@ -216,8 +206,6 @@ String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
-void sort(pkgListType a[], int size);
-void sortPkgDesc(pkgListType a[], int size);
 int processPacket(String &tnc2);
 String send_fix_location();
 int digiProcess(AX25Msg &Packet);
