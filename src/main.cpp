@@ -244,6 +244,8 @@ bool pkgTxSend() {
 #ifdef DEBUG_TNC
                 printTime();
                 Serial.println("TX->RF: " + String(txQueue[i].Info));
+                // lastPkg = true;
+                // lastPkgRaw = "TX->RF: " + String(txQueue[i].Info);
 #endif
                 return true;
             }
@@ -534,6 +536,9 @@ void updateScreen() {
     // Top line
     display.setCursor(0, 0);
     display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
+    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
+        display.print(" ");
+    }
 
     // Second line
     display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
