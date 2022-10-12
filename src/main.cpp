@@ -439,6 +439,9 @@ String send_gps_location() {
         tnc2Raw += ":";
         tnc2Raw += String(loc);
         tnc2Raw += String(config.aprs_comment);
+
+        // Reset counted distance
+        distance = 0;
     }
     return tnc2Raw;
 }
@@ -523,42 +526,62 @@ void updateScreen() {
 
     // WiFi IP printed from task
 
+    // Main section
+    // Top line
     display.setCursor(0, 0);
     display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
-    
-    sprintf(buf, "%d%s", gps.satellites.value(), gps.location.isValid() ? "+" : "-");
-    display.setCursor(display.width() - CHAR_WIDTH * strlen(buf), 0);
-    display.print(buf);
 
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 2);
-    display.print(deg_to_nmea(lat, true));
-    display.print(" age: ");
-    display.print(age);
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
-    display.print(deg_to_nmea(lon, false));
-    display.print(" dist: ");
-    display.print(distance);
-    
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
-    display.printf("%.1fkmh", gps.speed.kmph());
-
-    display.setCursor(display.width() - CHAR_WIDTH * 6, display.height() - CHAR_HEIGHT * 3);
-    display.print(deg_to_qth(lat, lon));
-
-    sprintf(buf, "%.1f'", gps.course.deg());
-    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
-    display.print(buf);
-
-    display.setCursor(display.width() - CHAR_WIDTH * 2, display.height() - CHAR_HEIGHT * 1);
+    // Second line
+    display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
     display.print(aprsClient.connected() ? "A+" : "A-");
 
-    display.setCursor(display.width() - CHAR_WIDTH * 2, display.height() - CHAR_HEIGHT * 2);
+    display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
     display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+    
+    // GPS Section
+    // 1st line
+    display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
+    display.printf("%d%s ", gps.satellites.value(), gps.location.isValid() ? "+" : "-");
+    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
+        display.print(" ");
+    }
 
     sprintf(buf, "%.1fm", gps.altitude.meters());
     display.setCursor(display.width() - CHAR_WIDTH * strlen(buf), display.height() - CHAR_HEIGHT * 4);
     display.print(buf);
 
+    // 2nd line
+    display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
+    display.printf("%.1fkmh", gps.satellites.value() > 0 ? gps.speed.kmph() : 0.0);
+    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
+        display.print(" ");
+    }
+
+    sprintf(buf, "%.1f'", gps.course.deg());
+    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
+    display.print(buf);
+
+    display.setCursor(display.width() - CHAR_WIDTH * 6, display.height() - CHAR_HEIGHT * 3);
+    display.print(deg_to_qth(lat, lon));
+
+    // 3rd line
+    display.setCursor(0, display.height() - CHAR_HEIGHT * 2);
+    display.print(deg_to_nmea(lat, true));
+    display.print(" age ");
+    display.print(age / 1000);  // age in seconds
+    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
+        display.print(" ");
+    }
+
+    // 4th line
+    display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
+    display.print(deg_to_nmea(lon, false));
+    display.print(" dist ");
+    display.print(distance);
+    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
+        display.print(" ");
+    }
+    
     display.display();
 #endif
 
