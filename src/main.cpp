@@ -355,9 +355,9 @@ void setup()
     display.cp437(true);
 
     char buf[16];
-    sprintf(buf, "APRS_ESP V%s", VERSION);
+    sprintf(buf, "APRS-ESP V%s", String(VERSION));
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, 0);
-    display.print("APRS-ESP V" + String(VERSION));
+    display.print(buf);
 
     sprintf(buf, "Boot...");
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
