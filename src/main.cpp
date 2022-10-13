@@ -145,19 +145,18 @@ void saveEEPROM() {
 }
 
 void defaultConfig() {
-    Serial.println("Default configure mode!");
+    Serial.println("Applying Factory Default configuration!");
     sprintf(config.aprs_mycall, "MYCALL");
     config.aprs_ssid = 15;
     sprintf(config.aprs_host, "rotate.aprs2.net");
     config.aprs_port = 14580;
     sprintf(config.aprs_passcode, "00000");
-    sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall,
-            config.aprs_ssid);
+    sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall, config.aprs_ssid);
     sprintf(config.aprs_filter, "g/HS*/E2*");
-    sprintf(config.wifi_ssid, "APRSTH");
-    sprintf(config.wifi_pass, "aprsthnetwork");
-    sprintf(config.wifi_ap_ssid, "ESP32IGate");
-    sprintf(config.wifi_ap_pass, "aprsthnetwork");
+    sprintf(config.wifi_ssid, "APRS-ESP32");
+    sprintf(config.wifi_pass, "aprs");
+    sprintf(config.wifi_ap_ssid, "APRS-ESP32");
+    sprintf(config.wifi_ap_pass, "aprs");
     config.wifi_client = true;
     config.synctime = true;
     config.aprs_beacon = 600;

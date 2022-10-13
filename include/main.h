@@ -79,8 +79,6 @@
 #define PKGLISTSIZE 10
 #define PKGTXSIZE 5
 
-const int timeZone = 7;  // Bangkok
-
 #include <Arduino.h>
 #include <FS.h>
 #include <SD.h>
