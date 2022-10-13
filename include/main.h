@@ -17,10 +17,19 @@
 //#define SDCARD
 //#define USE_TNC
 #define USE_GPS
-#define USE_SCREEN
+//#define USE_SCREEN_SSD1306
+#define USE_SCREEN_SH1106
 //#define USE_BLE
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
+
+#if defined(USE_SCREEN_SSD1306) && defined(USE_SCREEN_SH1106)
+#error "Only one screen can be specified at once in main.h"
+#endif
+
+#if defined(USE_SCREEN_SSD1306) || defined(USE_SCREEN_SH1106)
+#define USE_SCREEN
+#endif
 
 #ifdef USE_SA828
 #define APRS_PREAMBLE	(350UL * 3)
