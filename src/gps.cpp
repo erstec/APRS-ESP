@@ -1,3 +1,12 @@
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for the GPS processing.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/sh123/aprs_tracker
+*/
+
 #include "gps.h"
 #include "TinyGPSPlus.h"
 
@@ -123,7 +132,7 @@ void updateDistance() {
 #endif
 }
 
-void updateGpsData() {
+void GpsUpdate() {
 #ifdef USE_GPS
     //     for (unsigned long start = millis(); millis() - start <
     //     GPS_POLL_DURATION_MS;)

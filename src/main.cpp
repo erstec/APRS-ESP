@@ -1,13 +1,18 @@
 /*
- Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
- Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
- Author:	LY3PH/Ernest / initially HS5TQA/Atten
+    Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
+    Created:    2022-10-10
+    Author:     Ernest (ErNis) / LY3PH
+    License:    GNU General Public License v3.0
+    Includes code from:
+                https://github.com/nakhonthai/ESP32IGate
+                https://github.com/sh123/aprs_tracker
 */
 
 #include <Arduino.h>
 #include "main.h"
-#include "helpers.h"
+#include "utilities.h"
 #include "pkgList.h"
+#include "config.h"
 #include <LibAPRSesp.h>
 #include <limits.h>
 #include <KISS.h>
@@ -39,6 +44,7 @@
 
 #include "rotaryProc.h"
 
+#ifdef USE_SCREEN
 #include "Wire.h"
 #include "Adafruit_GFX.h"
 #if defined(USE_SCREEN_SSD1306)
@@ -46,15 +52,12 @@
 #elif defined(USE_SCREEN_SH1106)
 #include "Adafruit_SH1106.h"
 #endif
+#include "oled.h"
+#endif
 
 #include <WiFiClientSecure.h>
 
 #include "AFSK.h"
-
-#define EEPROM_SIZE 1024
-
-#define CHAR_WIDTH 6
-#define CHAR_HEIGHT 8
 
 #ifdef SDCARD
 #include <SPI.h> //SPI.h must be included as DMD is written by SPI (the IDE complains otherwise)
@@ -85,7 +88,7 @@ String lastPkgRaw = "";
 float dBV = 0;
 int mVrms = 0;
 
-cppQueue PacketBuffer(sizeof(AX25Msg), 5, IMPLEMENTATION); // Instantiate queue
+cppQueue PacketBuffer(sizeof(AX25Msg), 5, IMPLEMENTATION);
 
 statusType status;
 RTC_DATA_ATTR igateTLMType igateTLM;
@@ -125,79 +128,6 @@ IPAddress gateway(192, 168, 4, 254);
 IPAddress subnet(255, 255, 255, 0);
 
 int pkgTNC_count = 0;
-
-void saveEEPROM() {
-    uint8_t chkSum = 0;
-    byte *ptr;
-    ptr = (byte *)&config;
-    EEPROM.writeBytes(1, ptr, sizeof(Configuration));
-    chkSum = checkSum(ptr, sizeof(Configuration));
-    EEPROM.write(0, chkSum);
-    EEPROM.commit();
-#ifdef DEBUG
-    Serial.print("Save EEPROM ChkSUM=");
-    Serial.println(chkSum, HEX);
-#endif
-}
-
-void defaultConfig() {
-    Serial.println("Default configure mode!");
-    sprintf(config.aprs_mycall, "MYCALL");
-    config.aprs_ssid = 15;
-    sprintf(config.aprs_host, "rotate.aprs2.net");
-    config.aprs_port = 14580;
-    sprintf(config.aprs_passcode, "00000");
-    sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall,
-            config.aprs_ssid);
-    sprintf(config.aprs_filter, "g/HS*/E2*");
-    sprintf(config.wifi_ssid, "APRSTH");
-    sprintf(config.wifi_pass, "aprsthnetwork");
-    sprintf(config.wifi_ap_ssid, "ESP32IGate");
-    sprintf(config.wifi_ap_pass, "aprsthnetwork");
-    config.wifi_client = true;
-    config.synctime = true;
-    config.aprs_beacon = 600;
-    config.gps_lat = 54.6842;
-    config.gps_lon = 25.2398;
-    config.gps_alt = 10;
-    config.tnc = true;
-    config.inet2rf = true;
-    config.rf2inet = true;
-    config.aprs = false;
-    config.wifi = true;
-    config.wifi_mode = WIFI_AP_STA_FIX;
-    config.tnc_digi = true;
-    config.tnc_telemetry = true;
-    config.tnc_btext[0] = 0;
-    config.tnc_beacon = 0;
-    config.aprs_table = '/';
-    config.aprs_symbol = '&';
-    config.digi_delay = 2000;
-    config.tx_timeslot = 5000;
-    sprintf(config.aprs_path, "WIDE1-1");
-    sprintf(config.aprs_comment, "APRS-ESP Internet Gateway");
-    sprintf(config.tnc_comment, "APRS-ESP Built in TNC");
-    sprintf(config.aprs_filter, "g/HS*/E2*");
-    sprintf(config.tnc_path, "WIDE1-1");
-    config.wifi_power = 44;
-    config.input_hpf = true;
-#ifdef USE_RF
-    config.freq_rx = 144.8000;
-    config.freq_tx = 144.8000;
-    config.offset_rx = 0;
-    config.offset_tx = 0;
-    config.tone_rx = 0;
-    config.tone_tx = 0;
-    config.band = 0;
-    config.sql_level = 1;
-    config.rf_power = LOW;
-    config.volume = 4;
-    config.input_hpf = false;
-#endif
-    input_HPF = config.input_hpf;
-    config.timeZone = 0;
-    saveEEPROM();
-}
 
 unsigned long NTP_Timeout;
 unsigned long pingTimeout;
@@ -308,35 +238,39 @@ boolean APRSConnect() {
             if (cnt > 50) return false;
         }
         //
-        if (config.aprs_ssid == 0)
+        if (config.aprs_ssid == 0) {
             login = "user " + String(config.aprs_mycall) + " pass " +
-                    String(config.aprs_passcode) + " vers ESP32IGate V" +
+                    String(config.aprs_passcode) + " vers APRS-ESP V" +
                     String(VERSION) + " filter " + String(config.aprs_filter);
-        else
+        } else {
             login = "user " + String(config.aprs_mycall) + "-" +
                     String(config.aprs_ssid) + " pass " +
-                    String(config.aprs_passcode) + " vers ESP32IGate V" +
+                    String(config.aprs_passcode) + " vers APRS-ESP V" +
                     String(VERSION) + " filter " + String(config.aprs_filter);
+        }
         aprsClient.println(login);
         // Serial.println(login);
         // Serial.println("Success");
         delay(500);
     }
+
     return true;
 }
 
 void setup()
 {
-    byte *ptr;
-    pinMode(0, INPUT_PULLUP);  // BOOT Button
+    pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
+
     // Set up serial port
     Serial.begin(9600);  // debug
     Serial.setRxBufferSize(256);
+
 #if defined(USE_TNC)
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
                     SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
+
 #if defined(USE_GPS)
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
                     SERIAL_GPS_TXPIN);
@@ -348,57 +282,10 @@ void setup()
     Serial.println("Push BOOT for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
-#if defined(USE_SCREEN_SSD1306)
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 init failed");
-    } else {
-        Serial.println("SSD1306 init ok");
-    }
-#elif defined(USE_SCREEN_SH1106)
-    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    OledStartup();
 #endif
 
-    display.clearDisplay();
-    display.setTextColor(WHITE, BLACK);
-    display.setTextSize(1);
-    display.setTextWrap(false);
-    display.cp437(true);
-
-    char buf[16];
-    sprintf(buf, "APRS-ESP V%s", String(VERSION));
-    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, 0);
-    display.print(buf);
-
-    sprintf(buf, "Boot...");
-    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
-    display.print(buf);
-
-    display.display();
-#endif
-
-    if (!EEPROM.begin(EEPROM_SIZE)) {
-        Serial.println(F("failed to initialise EEPROM"));  // delay(100000);
-    }
-
-    delay(3000);
-    if (digitalRead(0) == LOW) {
-        defaultConfig();
-        Serial.println("Restoring Factory Default config");
-        while (digitalRead(0) == LOW)
-            ;
-    }
-
-    // Check for configuration errors
-    ptr = (byte *)&config;
-    EEPROM.readBytes(1, ptr, sizeof(Configuration));
-    uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\n", EEPROM.read(0), chkSum,
-                  sizeof(Configuration));
-    if (EEPROM.read(0) != chkSum) {
-        Serial.println("Config EEPROM Error!");
-        defaultConfig();
-    }
-    input_HPF = config.input_hpf;
+    LoadConfig();
 
 #ifdef USE_RF
     RF_Init(true);
@@ -434,6 +321,7 @@ String send_gps_location() {
     
     float _lat;
     float _lon;
+
     //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
     if (gps.location.isValid()) {
         _lat = lat / 1000000.0;
@@ -451,20 +339,26 @@ String send_gps_location() {
 
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
+
     memset(strtmp, 0, 300);
     DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
+
     sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+
     if (config.aprs_ssid == 0)
         sprintf(strtmp, "%s>APZ32E", config.aprs_mycall);
     else
         sprintf(strtmp, "%s-%d>APZ32E", config.aprs_mycall, config.aprs_ssid);
+
     tnc2Raw = String(strtmp);
+
     if (config.aprs_path[0] != 0) {
         tnc2Raw += ",";
         tnc2Raw += String(config.aprs_path);
     }
+
     tnc2Raw += ":";
     tnc2Raw += String(loc);
     tnc2Raw += String(config.aprs_comment);
@@ -474,17 +368,22 @@ String send_gps_location() {
 
 int packet2Raw(String &tnc2, AX25Msg &Packet) {
     if (Packet.len < 5) return 0;
+
     tnc2 = String(Packet.src.call);
+
     if (Packet.src.ssid > 0) {
         tnc2 += String(F("-"));
         tnc2 += String(Packet.src.ssid);
     }
+
     tnc2 += String(F(">"));
     tnc2 += String(Packet.dst.call);
+
     if (Packet.dst.ssid > 0) {
         tnc2 += String(F("-"));
         tnc2 += String(Packet.dst.ssid);
     }
+
     for (int i = 0; i < Packet.rpt_count; i++) {
         tnc2 += String(",");
         tnc2 += String(Packet.rpt_list[i].call);
@@ -494,6 +393,7 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
         }
         if (Packet.rpt_flags & (1 << i)) tnc2 += "*";
     }
+
     tnc2 += String(F(":"));
     tnc2 += String((const char *)Packet.info);
     tnc2 += String("\n");
@@ -502,10 +402,12 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     //     Serial.printf("[%d] ", ++pkgTNC_count);
     //     Serial.print(tnc2);
     // #endif
+
     return tnc2.length();
 }
 
 void printPeriodicDebug() {
+    printTime();
     Serial.print("lat: ");
     Serial.print(lat);
     Serial.print(" lon: ");
@@ -518,140 +420,17 @@ void printPeriodicDebug() {
     Serial.println(distance);
 }
 
-void updateScreen() {
-#ifdef USE_SCREEN
-    if (AFSK_modem->sending) return;
-
-    char buf[10];
-
-    bool isValid = gps.location.isValid();
-    uint32_t satCnt = gps.satellites.value();
-
-    display.clearDisplay();
-    // display.setTextColor(WHITE, BLACK);
-    // display.setTextSize(1);
-    //display.setFont
-    // display.invertDisplay(false);
-
-    // WiFi IP printed from task, but because we are clearing screen draw it again
-    display.setCursor(0, CHAR_HEIGHT * 1);
-    if (config.wifi_mode == WIFI_STA_FIX) {
-        display.print(WiFi.localIP());
-    } else if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {
-        display.print(WiFi.softAPIP());
-    } else {
-        display.print("No IP - BLE Mode");
-    }
-
-    // Main section
-    // Top line
-    display.setCursor(0, 0);
-    display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // Second line
-    display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
-    display.print(aprsClient.connected() ? "A+" : "A-");
-
-    display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
-    display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
-    
-    // GPS Section
-    // 1st line
-    // Sat count, fix status
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
-    display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // altitude
-    sprintf(buf, "%.1fm", gps.altitude.meters());
-    display.setCursor(display.width() - CHAR_WIDTH * strlen(buf), display.height() - CHAR_HEIGHT * 4);
-    display.print(buf);
-
-    // 2nd line
-    // speed
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
-    display.printf("%.1fkmh", satCnt > 0 ? gps.speed.kmph() : 0.0);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // course
-    sprintf(buf, "%.1f'", gps.course.deg());
-    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
-    display.print(buf);
-
-    // qth
-    display.setCursor(display.width() - CHAR_WIDTH * 6, display.height() - CHAR_HEIGHT * 3);
-    display.print(isValid ? deg_to_qth(lat, lon) : "------");
-
-    // 3rd line
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 2);
-    display.print(deg_to_nmea(lat, true));
-    display.print(" age ");
-    if (isValid) {
-        display.print(age / 1000);  // age in seconds
-    } else {
-        display.print("-");
-    }
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // 4th line
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
-    display.print(deg_to_nmea(lon, false));
-    display.print(" dist ");
-    display.print(distance);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-    
-    display.display();
-#endif
-
-//     // // active mode / selected mode / free memory
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[active_heuristic])));
-//     // display.print(F("/"));
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[selected_heuristic])));
-//     // display.print(F("/"));
-//     // display.print(freeMemory());
-//     // display.print(F("/"));
-//     // display.println((char)cur_symbol);
-
-//     // count updates / count tx / count rx / satellites / age
-//     // display.print(cnt);
-//     // display.print(F("/"));
-//     // display.print(cnt_tx);
-//     // display.print(F("tx"));
-//     // display.print(F("/"));
-//     // display.print(cnt_rx);
-//     // display.println(F("rx"));
-//
-//     display.display();
-// #endif
-//     // cnt++;
-}
-
 static int scrUpdTMO = 0;
 void updateScreenAndGps() {
-    updateGpsData();
+    GpsUpdate();
 
     // 1/sec
     if (millis() - scrUpdTMO > 1000) {
-        updateScreen();
+        OledUpdate();
         printPeriodicDebug();
         scrUpdTMO = millis();
     }
 }
-
-// ----------------- GPS END -----------------
 
 long sendTimer = 0;
 bool AFSKInitAct = false;
@@ -687,14 +466,14 @@ void loop()
 #endif
     }
 
-    bool update_screen = processRotary();
+    bool update_screen = RotaryProcess();
 
     if (send_aprs_update) {
         btn_count++;  // emulate button press // TEMPORARY
         update_screen |= true;
         send_aprs_update = false;
     }
-    if (update_screen) updateScreen();
+    if (update_screen) OledUpdate();
 
     updateScreenAndGps();
 }
@@ -703,28 +482,35 @@ void sendIsPkgMsg(char *raw) {
     char str[300];
     char call[11];
     int i;
+
     memset(&call[0], 0, 11);
+
     if (config.aprs_ssid == 0)
         sprintf(call, "%s", config.aprs_mycall);
     else
         sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
+
     i = strlen(call);
+
     for (; i < 9; i++) call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
         sprintf(str, "%s>APZ32E::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall,
-                config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
+    
     if (aprsClient.connected())
         aprsClient.println(tnc2Raw);  // Send packet to Inet
+    
     if (config.tnc && config.tnc_digi) pkgTxUpdate(str, 0);
+    
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 }
 
 long timeSlot;
+
 void taskAPRS(void *pvParameters) {
     //	long start, stop;
     // char *raw;
@@ -746,6 +532,7 @@ void taskAPRS(void *pvParameters) {
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
     timeSlot = millis();
+    
     for (;;) {
         long now = millis();
         // wdtSensorTimer = now;
@@ -755,17 +542,17 @@ void taskAPRS(void *pvParameters) {
         // serviceHandle();
         if (now > (timeSlot + 10)) {
             if (!digitalRead(RX_LED_PIN)) {  // RX State Fail
-                if (pkgTxSend())
-                    timeSlot =
-                        millis() + config.tx_timeslot;  // Tx Time Slot = 5sec.
-                else
+                if (pkgTxSend()) {
+                    timeSlot = millis() + config.tx_timeslot;  // Tx Time Slot = 5sec.
+                } else {
                     timeSlot = millis();
+                }
             } else {
                 timeSlot = millis() + 500;
             }
         }
 
-        if (digitalRead(0) == LOW) {
+        if (digitalRead(BOOT_PIN) == LOW) {
             btn_count++;
             if (btn_count > 1000)  // Push BOOT 10sec
             {
@@ -777,11 +564,10 @@ void taskAPRS(void *pvParameters) {
                 // Serial.printf("btn_count=%dms\n", btn_count * 10);
                 if (btn_count > 1000)  // Push BOOT 10sec to Factory Default
                 {
-                    defaultConfig();
+                    DefaultConfig();
                     Serial.println("SYSTEM REBOOT NOW!");
                     esp_restart();
-                } else if (btn_count >
-                           10)  // Push BOOT >100mS to PTT Fix location
+                } else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
                 {
                     if (config.tnc) {
                         String tnc2Raw = send_gps_location();
@@ -821,8 +607,9 @@ void taskAPRS(void *pvParameters) {
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    if (aprsClient.connected())
+                    if (aprsClient.connected()) {
                         aprsClient.println(tnc2Raw);  // Send packet to Inet
+                    }
                     pkgTxUpdate(tnc2Raw.c_str(), 0);
                     // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
 #ifdef DEBUG_TNC
@@ -849,21 +636,25 @@ void taskAPRS(void *pvParameters) {
                     sendIsPkgMsg((char *)&EQNS[0]);
                 }
                 char rawTlm[100];
-                if (config.aprs_ssid == 0)
+                if (config.aprs_ssid == 0) {
                     sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                             config.aprs_mycall, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
-                else
+                } else {
                     sprintf(
                         rawTlm, "%s-%d>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                         config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);
+                }
 
-                if (aprsClient.connected())
+                if (aprsClient.connected()) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
-                if (config.tnc && config.tnc_digi) pkgTxUpdate(rawTlm, 0);
+                }
+                if (config.tnc && config.tnc_digi){
+                    pkgTxUpdate(rawTlm, 0);
+                }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF
                 igateTLM.Sequence++;
                 if (igateTLM.Sequence > 999) igateTLM.Sequence = 0;
@@ -904,11 +695,11 @@ void taskAPRS(void *pvParameters) {
                         Serial.println(tnc2);
 #endif
                         char call[11];
-                        if (incomingPacket.src.ssid > 0)
-                            sprintf(call, "%s-%d", incomingPacket.src.call,
-                                    incomingPacket.src.ssid);
-                        else
+                        if (incomingPacket.src.ssid > 0) {
+                            sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
+                        } else {
                             sprintf(call, "%s", incomingPacket.src.call);
+                        }
                         pkgListUpdate(call, 1);
                     }
                 }
@@ -955,29 +746,20 @@ void taskNetwork(void *pvParameters) {
     int c = 0;
     Serial.println("Task <Network> started");
 
-    if (config.wifi_mode == WIFI_AP_STA_FIX ||
-        config.wifi_mode == WIFI_AP_FIX) {  // AP=false
+    if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {  // AP=false
         // WiFi.mode(config.wifi_mode);
         if (config.wifi_mode == WIFI_AP_STA_FIX) {
             WiFi.mode(WIFI_AP_STA);
         } else if (config.wifi_mode == WIFI_AP_FIX) {
             WiFi.mode(WIFI_AP);
         }
-        //กำหนดค่าการทำงานไวไฟเป็นแอสเซสพ้อย
-        WiFi.softAP(config.wifi_ap_ssid,
-                    config.wifi_ap_pass);  // Start HOTspot removing password
-                                           // will disable security
+        // Configure Wi-Fi as an access point
+        WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass);  // Start HOTspot removing password
+        // will disable security
         WiFi.softAPConfig(local_IP, gateway, subnet);
         Serial.print("Access point running. IP address: ");
         Serial.print(WiFi.softAPIP());
         Serial.println("");
-
-// #ifdef USE_SCREEN
-//         display.setTextSize(1);
-//         display.setCursor(0, CHAR_HEIGHT * 1);
-//         display.print(WiFi.softAPIP());
-//         display.display();
-// #endif
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
@@ -987,12 +769,13 @@ void taskNetwork(void *pvParameters) {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
-        Serial.println(F("WiFi OFF All mode"));
+        Serial.println(F("WiFi OFF. BT only mode"));
         SerialBT.begin("ESP32TNC");
     }
 
     webService();
     pingTimeout = millis() + 10000;
+
     for (;;) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -1011,11 +794,10 @@ void taskNetwork(void *pvParameters) {
                     // udp.endPacket();
                     WiFi.disconnect();
                     WiFi.setTxPower((wifi_power_t)config.wifi_power);
-                    WiFi.setHostname("ESP32IGate");
+                    WiFi.setHostname("APRS_ESP");
                     WiFi.begin(config.wifi_ssid, config.wifi_pass);
                     // Wait up to 1 minute for connection...
-                    for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED);
-                         c++) {
+                    for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
                         // Serial.write('.');
                         vTaskDelay(1000 / portTICK_PERIOD_MS);
                         // for (t = millis(); (millis() - t) < 1000; refresh());
@@ -1034,13 +816,6 @@ void taskNetwork(void *pvParameters) {
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
 
-// #ifdef USE_SCREEN
-//                     display.setTextSize(1);
-//                     display.setCursor(0, CHAR_HEIGHT * 1);
-//                     display.print(WiFi.localIP());
-//                     display.display();
-// #endif
-
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
 // Serial.println("Contacting Time Server");
@@ -1056,8 +831,7 @@ void taskNetwork(void *pvParameters) {
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
                     Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26",
-                               "110.170.126.101", "77.68.122.252");
+                    configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
                     time(&systemTime);
@@ -1075,8 +849,7 @@ void taskNetwork(void *pvParameters) {
                         if (aprsClient.available()) {
                             // pingTimeout = millis() + 300000; // Reset ping
                             // timout
-                            String line = aprsClient.readStringUntil(
-                                '\n');  //อ่านค่าที่ Server ตอบหลับมาทีละบรรทัด
+                            String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
                             Serial.print("APRS-IS ");
@@ -1084,7 +857,7 @@ void taskNetwork(void *pvParameters) {
 #endif
                             status.isCount++;
                             int start_val =
-                                line.indexOf(">", 0);  // หาตำแหน่งแรกของ >
+                                line.indexOf(">", 0);  // find the first position of >
                             if (start_val > 3) {
                                 // raw = (char *)malloc(line.length() + 1);
                                 String src_call = line.substring(0, start_val);
@@ -1093,15 +866,12 @@ void taskNetwork(void *pvParameters) {
                                 status.allCount++;
                                 igateTLM.RX++;
                                 if (config.tnc && config.inet2rf) {
-                                    if (line.indexOf(msg_call) <=
-                                        0)  // src callsign = msg callsign
-                                            // ไม่ใช่หัวข้อโทรมาตร
+                                    if (line.indexOf(msg_call) <= 0)  // src callsign = msg callsign
+                                    // Not a telemetry topic
                                     {
-                                        if (line.indexOf(":T#") <
-                                            0)  //ไม่ใช่ข้อความโทรมาตร
+                                        if (line.indexOf(":T#") < 0)  // not telemetry
                                         {
-                                            if (line.indexOf("::") >
-                                                0)  //ข้อความเท่านั้น
+                                            if (line.indexOf("::") > 0)  // text only
                                             {  // message only
                                                 // raw[0] = '}';
                                                 // line.toCharArray(&raw[1],

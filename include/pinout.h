@@ -1,3 +1,14 @@
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for pinouts / settings and etc.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/nakhonthai/ESP32IGate
+*/
+
+#define BOOT_PIN            0
+
 // SA8x8 radio module
 //#define VBAT_PIN            35
 //#define POWER_PIN           12

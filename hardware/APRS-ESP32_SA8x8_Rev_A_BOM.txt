@@ -1,5 +1,3 @@
-Partlist exported from C:/_repo/_fw/ESP32IGate/hardware/ESP32DevKitCv4_SA8x8.sch at 2022-10-07 21:05
-
 Qty Value              Device                    Package                  Parts                       Description                                           MF                 MPN          OC_FARNELL OC_NEWARK POPULARITY PROD_ID    SF_ID     SF_SKU    SPICEPREFIX
 4   0                  R-US_R0805                R0805                    R15, R16, R17, R18          RESISTOR, American symbol                                                                                                                                       
 4   100                R-US_R0805                R0805                    R11, R12, R13, R14          RESISTOR, American symbol                                                                                                                                       

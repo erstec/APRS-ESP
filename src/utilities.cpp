@@ -1,4 +1,13 @@
-#include "helpers.h"
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for various common functions.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/nakhonthai/ESP32IGate
+*/
+
+#include "utilities.h"
 
 String getValue(String data, char separator, int index) {
     int found = 0;
@@ -20,17 +29,6 @@ boolean isValidNumber(String str) {
         if (isDigit(str.charAt(i))) return true;
     }
     return false;
-}
-
-uint8_t checkSum(uint8_t *ptr, size_t count) {
-    uint8_t lrc, tmp;
-    uint16_t i;
-    lrc = 0;
-    for (i = 0; i < count; i++) {
-        tmp = *ptr++;
-        lrc = lrc ^ tmp;
-    }
-    return lrc;
 }
 
 void printTime() {

@@ -1,3 +1,12 @@
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for the GPS processing.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/sh123/aprs_tracker
+*/
+
 #ifndef GNSS_H
 #define GNSS_H
 
@@ -30,7 +39,7 @@ extern bool send_aprs_update;
 extern char active_heuristic;
 extern char selected_heuristic;
 
-void updateGpsData();
+void GpsUpdate();
 
 float conv_coords(float in_coords);
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS);

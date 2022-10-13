@@ -1,4 +1,14 @@
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for the RF modem control.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/nakhonthai/ESP32IGate                    
+*/
+
 #include "rfModem.h"
+#include "config.h"
 #include "main.h"
 
 extern HardwareSerial SerialRF;
