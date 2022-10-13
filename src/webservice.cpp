@@ -9,6 +9,7 @@
 #include "AFSK.h"
 #include "webservice.h"
 #include "base64.hpp"
+#include "utilities.h"
 #include <LibAPRSesp.h>
 
 WebServer server(80);
@@ -807,7 +808,7 @@ void handle_setting() {
     // bool moniEn = false;
 
     if (defaultSetting) {
-        defaultConfig();
+        DefaultConfig();
     } else {
 #ifndef I2S_INTERNAL
         AFSK_TimerEnable(false);
@@ -888,7 +889,7 @@ void handle_setting() {
             }
 
             config.synctime = synctime;
-            saveEEPROM();
+            SaveConfig();
             // topBar(WiFi.RSSI());
         }
 #ifndef I2S_INTERNAL
@@ -1147,7 +1148,7 @@ void handle_service() {
         config.inet2rf = inet2rfEn;
         config.input_hpf = hpfEn;
         input_HPF = hpfEn;
-        saveEEPROM();
+        SaveConfig();
 // if(config.tnc) tncInit();
 #ifndef I2S_INTERNAL
         AFSK_TimerEnable(true);
@@ -1488,7 +1489,7 @@ void handle_radio() {
         }
         // config.noise=noiseEn;
         // config.agc=agcEn;
-        saveEEPROM();
+        SaveConfig();
         // delay(100);
         RF_Init(false);
     }
@@ -1704,7 +1705,7 @@ void handle_system() {
                 break;
             }
         }
-        saveEEPROM();
+        SaveConfig();
     } else if (server.hasArg("updateTimeNtp")) {
         for (uint8_t i = 0; i < server.args(); i++) {
             // Serial.print("SERVER ARGS ");
@@ -1720,7 +1721,7 @@ void handle_system() {
                 break;
             }
         }
-        saveEEPROM();
+        SaveConfig();
     } else if (server.hasArg("updateTime")) {
         for (uint8_t i = 0; i < server.args(); i++) {
             // Serial.print("SERVER ARGS ");
@@ -1777,7 +1778,7 @@ void handle_system() {
                 break;
             }
         }
-        saveEEPROM();
+        SaveConfig();
     } else if (server.hasArg("updateWifi")) {
         bool wifiSTA = false;
         bool wifiAP = false;
@@ -1849,7 +1850,7 @@ void handle_system() {
         } else {
             config.wifi_mode = WIFI_OFF_FIX;
         }
-        saveEEPROM();
+        SaveConfig();
     } else if (server.hasArg("REBOOT")) {
         esp_restart();
     }
@@ -2453,7 +2454,7 @@ void handle_upgrade() {
 
 void handle_default() {
     defaultSetting = true;
-    defaultConfig();
+    DefaultConfig();
     // webMessage = "";
     handle_setting();
     defaultSetting = false;

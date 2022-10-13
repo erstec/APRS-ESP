@@ -8,7 +8,7 @@
 */
 
 #include "digirepeater.h"
-
+#include "config.h"
 #include "main.h"
 
 RTC_DATA_ATTR digiTLMType digiLog;

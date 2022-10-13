@@ -31,17 +31,6 @@ boolean isValidNumber(String str) {
     return false;
 }
 
-uint8_t checkSum(uint8_t *ptr, size_t count) {
-    uint8_t lrc, tmp;
-    uint16_t i;
-    lrc = 0;
-    for (i = 0; i < count; i++) {
-        tmp = *ptr++;
-        lrc = lrc ^ tmp;
-    }
-    return lrc;
-}
-
 void printTime() {
     char buf[3];
     struct tm tmstruct;

@@ -8,6 +8,7 @@
 */
 
 #include "rfModem.h"
+#include "config.h"
 #include "main.h"
 
 extern HardwareSerial SerialRF;

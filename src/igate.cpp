@@ -8,6 +8,7 @@
 */
 
 #include "igate.h"
+#include "config.h"
 
 extern WiFiClient aprsClient;
 extern Configuration config;

@@ -15,6 +15,7 @@
 #include <TimeLib.h>
 
 #include "main.h"
+#include "config.h"
 #include "pkgList.h"
 
 extern statusType status;
