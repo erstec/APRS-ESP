@@ -61,7 +61,8 @@ Schematic PDF is [here](hardware/APRS-ESP32_SA8x8_Rev_B_Schematics.pdf)
 
 Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_B_BOM.txt)
 
-## First time only. Later, update via Web Interface
+## FLASHING FIRMWARE
+### First time only. Later update via Web Interface
 
 ### Using Pecompiled Binaries
 - Connect the USB cable to the ESP32 Module while BOOT button pressed
