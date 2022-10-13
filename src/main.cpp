@@ -262,7 +262,7 @@ void setup()
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
-    Serial.begin(9600);  // debug
+    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
     Serial.setRxBufferSize(256);
 
 #if defined(USE_TNC)
