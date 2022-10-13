@@ -132,6 +132,9 @@ int pkgTNC_count = 0;
 unsigned long NTP_Timeout;
 unsigned long pingTimeout;
 
+static long scrUpdTMO = 0;
+static long gpsUpdTMO = 0;
+
 const char *lastTitle = "LAST HERT";
 
 bool pkgTxUpdate(const char *info, int delay) {
@@ -291,6 +294,12 @@ void setup()
     RF_Init(true);
 #endif
 
+    // if SmartBeaconing - delay processing GPS data
+    if (config.aprs_beacon == 0) {
+        Serial.println("SmartBeaconing, delayed GPS processing");
+        gpsUpdTMO = 30000;  // 30 sec
+    }
+
     // enableLoopWDT();
     // enableCore0WDT();
     enableCore1WDT();
@@ -420,23 +429,32 @@ void printPeriodicDebug() {
     Serial.println(distance);
 }
 
-static long scrUpdTMO = 0;
-static long gpsUpdTMO = 0;
+bool gpsUnlock = false;
+
 void updateScreenAndGps(bool force) {
     // GpsUpdate();
-
-    // 1/sec
-    if ((millis() - gpsUpdTMO) > 1000) {
-        GpsUpdate();
-        heuristicDistanceChanged();
-        gpsUpdTMO = millis();
-    }
 
     // 1/sec
     if ((millis() - scrUpdTMO > 1000) || force) {
         OledUpdate();
         printPeriodicDebug();
         scrUpdTMO = millis();
+    }
+
+    // If startup dealy not expired
+    if (!gpsUnlock) {
+        if ((long)millis() - gpsUpdTMO < 0) {
+            return;
+        } else {
+            Serial.println("GPS Unlocked");
+            gpsUnlock = true;
+        }
+    }
+    // 1/sec
+    if (millis() - gpsUpdTMO > 1000) {
+        GpsUpdate();
+        heuristicDistanceChanged();
+        gpsUpdTMO = millis();
     }
 }
 
