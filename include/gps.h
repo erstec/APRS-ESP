@@ -35,4 +35,7 @@ void updateGpsData();
 float conv_coords(float in_coords);
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS);
 
+char *deg_to_nmea(long deg, boolean is_lat);
+char *deg_to_qth(long lat, long lon);
+
 #endif // GNSS_H
