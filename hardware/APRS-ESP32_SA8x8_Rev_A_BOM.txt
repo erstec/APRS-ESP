@@ -1,0 +1,40 @@
+Qty Value              Device                    Package                  Parts                       Description                                           MF                 MPN          OC_FARNELL OC_NEWARK POPULARITY PROD_ID    SF_ID     SF_SKU    SPICEPREFIX
+4   0                  R-US_R0805                R0805                    R15, R16, R17, R18          RESISTOR, American symbol                                                                                                                                       
+4   100                R-US_R0805                R0805                    R11, R12, R13, R14          RESISTOR, American symbol                                                                                                                                       
+3   560                R-US_R0805                R0805                    R2, R5, R10                 RESISTOR, American symbol                                                                                                                                       
+2   1k                 R-US_R0805                R0805                    R1, R19                     RESISTOR, American symbol                                                                                                                                       
+1   5k6                R-US_R0805                R0805                    R3                          RESISTOR, American symbol                                                                                                                                       
+2   10k                R-US_R0805                R0805                    R6, R7                      RESISTOR, American symbol                                                                                                                                       
+1   33k                R-US_R0805                R0805                    R8                          RESISTOR, American symbol                                                                                                                                       
+
+2   10k                TRIM_EU-CA6H              CA6H                     R4, R9                      POTENTIOMETER                                                                                              0                                                    
+
+1   1n                 C-EUC0805                 C0805                    C1                          CAPACITOR, European symbol                                                                                                                                      
+1   10n                C-EUC0805                 C0805                    C2                          CAPACITOR, European symbol                                                                                                                                      
+9   100n               C-EUC0805                 C0805                    C3, C5, C6, C7, C8, C9, C14 CAPACITOR, European symbol                                                                                                                                      
+                                                                          C11, C13
+2   1u                 C-EUC0805                 C0805                    C4, C10                     CAPACITOR, European symbol                                                                                                                                      
+2   100u               CPOL-EUSMCD               SMC_D                    C12, C15                    POLARIZED CAPACITOR, European symbol                                                                       0                                         C          
+
+1   BLU                LEDCHIP-LED0805           CHIP-LED0805             LED3                        LED                                                                                                        68                                                   
+1   GRN                LEDCHIP-LED0805           CHIP-LED0805             LED2                        LED                                                                                                        68                                                   
+1   RED                LEDCHIP-LED0805           CHIP-LED0805             LED1                        LED                                                                                                        68                                                   
+1   YEL                LEDCHIP-LED0805           CHIP-LED0805             LED4                        LED                                                                                                        68                                                   
+
+2   LL4148             LL4148                    SOD80_DO213AA_MINIMELF   D1, D2                      1N4148 General Purpose Rectifie                                                                                                                                 
+
+1   2N3904             MMBT3904LT1-NPN-SOT23-BEC SOT23-BEC                T1                          NPN Transistror                                                                                            0                                                    
+
+1   ENCODER-SWITCH     ENCODER-SWITCH            ROTARY_ENC_PLAIN         S1                          Rotary Encoder w/ Select Switch                                                                                                            COM-09117            
+
+1   + TX RX GND        PINHD-1X4                 1X04                     GPS                         PIN HEADER                                                                                                 91                                                   
+1   VCC GND SCL SDA    PINHD-1X4                 1X04                     OLED1                       PIN HEADER                                                                                                 91                                                   
+
+1   50 Z               LTI-SASF54GT              LTI-SASF54GT             ANT1                        SMA vertical PCB thrue hole jack                                                      unknown    unknown   3                                                    
+1   50 Z               SMA-142-0701-801/806      J502-ND-142-0701-801/806 ANT2                        SMA 50 Ohm End Launch Jack Receptacle - Round Contact JOHNSON COMPONENTS 142-0701-801 1608592    90F2624   5                                                    
+
+1   POWER_JACKPTH_LOCK POWER_JACKPTH_LOCK        POWER_JACK_PTH_LOCK      J1                          Power Jack Connector                                                                                                  CONN-08197 PRT-00119                      
+
+1                      DRA818A                   DRA818A                  DRA818V                                                                                                                                                                                     
+1   CP8-ADJ            CP8-ADJ                   CP8-ADJ                  U$2                         Voltage regulator                                                                                                                                               
+1   ESP32DEVKITC       ESP32DEVKITC              ESP32-DEVKITC            U$1                                                                                                                                                                                         

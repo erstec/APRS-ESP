@@ -177,22 +177,17 @@ inline static uint8_t sinSample(uint16_t i)
 
 #define I2S_INTERNAL
 
-#define SPK_PIN ADC1_CHANNEL_0 // Read ADC1_0 From PIN 36(VP)
-#define MIC_PIN 26             // Out wave to PIN 26
-#define RSSI_PIN 33
-#define PTT_PIN 32
-#define LED_PIN 2
-#define LED_TX_PIN 4
+#include "../../include/pinout.h"
 
 #ifdef I2S_INTERNAL
 #include "driver/i2s.h"
 #include "driver/dac.h"
 
-#define SAMPLE_RATE 9600 //9580 ปรับชดเชยแซมปลิงค์ของ I2S
-#define PIN_I2S_BCLK 26
-#define PIN_I2S_LRC 27
-#define PIN_I2S_DIN 35
-#define PIN_I2S_DOUT 25
+#define SAMPLE_RATE     9600 //9580 adjust the compensation of the sample link I2S
+#define PIN_I2S_BCLK    26
+#define PIN_I2S_LRC     27
+#define PIN_I2S_DIN     35
+#define PIN_I2S_DOUT    25
 
 typedef enum
 {
@@ -265,14 +260,14 @@ typedef struct Afsk
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = true;      \
-        digitalWrite(LED_TX_PIN,HIGH);\
+        digitalWrite(TX_LED_PIN,HIGH);\
     } while (0)
 #define AFSK_DAC_IRQ_STOP()          \
     do                               \
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = false;     \
-        digitalWrite(LED_TX_PIN,LOW);\
+        digitalWrite(TX_LED_PIN,LOW);\
     } while (0)
 //#define AFSK_DAC_INIT()        do { DAC_DDR |= (DAC_PINS) ; PTT_DDR = 0b01000000;} while (0)
 
@@ -282,10 +277,12 @@ typedef struct Afsk
 // and _OFF() functions writes to the PORT registers
 // to turn the pins on or off.
 
-#define LED_RX_ON() digitalWrite(LED_PIN, HIGH);
-#define LED_RX_OFF() digitalWrite(LED_PIN, LOW);
+#define LED_RX_ON() digitalWrite(RX_LED_PIN, HIGH);
+#define LED_RX_OFF() digitalWrite(RX_LED_PIN, LOW);
 
 extern bool input_HPF;
+
+extern Afsk *AFSK_modem;
 
 void AFSK_init(Afsk *afsk);
 void AFSK_transmit(char *buffer, size_t size);
@@ -293,7 +290,7 @@ void AFSK_poll(Afsk *afsk);
 
 void afsk_putchar(char c);
 int afsk_getchar(void);
-void AFSK_Poll(bool SA818,bool RFPower);
+void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin);
 void AFSK_TimerEnable(bool sts);
 
 #endif

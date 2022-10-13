@@ -29,9 +29,9 @@ bool hw_afsk_dac_isr = false;
 
 Afsk *AFSK_modem;
 
-// //กรองความถี่สูงผ่าน >300Hz  HPF Butterworth Filter. 0-300Hz ช่วงความถี่ต่ำใช้กับโทน CTCSS/DCS ในวิทยุสื่อสารจะถูกรองทิ้ง
+// //high pass filter >300Hz  HPF Butterworth Filter. 0-300Hz The low frequency range applies to tones CTCSS/DCS in radio communications will be discarded
 ButterworthFilter hp_filter(1600, 9600, ButterworthFilter::ButterworthFilter::Highpass, 1);
-// //กรองความถี่ต่ำผ่าน <3KHz  LPF Butterworth Filter. ความถี่เสียงที่มากกว่า 3.5KHz ไม่ใช่ความถี่เสียงคนพูดจะถูกกรองทิ้ง
+// //low pass filter <3KHz  LPF Butterworth Filter. higher sound frequency 3.5KHz It's not the frequency of the speaker's voice being filtered out.
 // ButterworthFilter lp_filter(3500, 9600, ButterworthFilter::ButterworthFilter::Lowpass, 2);
 
 // // Bandpass Filter
@@ -214,10 +214,10 @@ void AFSK_hw_init(void)
   // Set up ADC
   pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
-  pinMode(4, OUTPUT);
+  pinMode(TX_LED_PIN, OUTPUT);
 
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  pinMode(RX_LED_PIN, OUTPUT);
+  digitalWrite(RX_LED_PIN, LOW);
 
   digitalWrite(PTT_PIN, LOW);
 
@@ -275,7 +275,7 @@ static void AFSK_txStart(Afsk *afsk)
     afsk->phaseAcc = 0;
     afsk->bitstuffCount = 0;
     // LED_TX_ON();
-    digitalWrite(LED_TX_PIN, HIGH);
+    digitalWrite(TX_LED_PIN, HIGH);
     digitalWrite(PTT_PIN, HIGH);
     afsk->preambleLength = DIV_ROUND(custom_preamble * BITRATE, 9600);
     AFSK_DAC_IRQ_START();
@@ -328,7 +328,7 @@ uint8_t AFSK_dac_isr(Afsk *afsk)
   if (afsk->sampleIndex == 0)
   {
     // LED_RX_ON();
-    // digitalWrite(LED_PIN), LOW);
+    // digitalWrite(RX_LED_PIN), LOW);
     if (afsk->txBit == 0)
     {
       if (fifo_isempty(&afsk->txFifo) && afsk->tailLength == 0)
@@ -790,10 +790,10 @@ extern bool afskSync;
 
 long mVsum = 0;
 int mVsumCount = 0;
-long lastVrms=0;
-bool VrmsFlag=false;
+long lastVrms = 0;
+bool VrmsFlag = false;
 
-void AFSK_Poll(bool SA818,bool RFPower)
+void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
 {
   int mV;
   int x = 0;
@@ -819,7 +819,7 @@ void AFSK_Poll(bool SA818,bool RFPower)
       if (AFSK_modem->sending == false && adcVal == 0)
         break;
 
-      //ไม่สามารถใช้งานในโหมด MONO ได้ จะต้องส่งข้อมูลตามลำดับซ้ายและขวา เอาต์พุต DAC บน I2S เป็นสเตอริโอเสมอ
+      // Not available in MONO mode. Data must be transmitted in left and right sequence. The DAC output on the I2S is always stereo.
       // Ref: https://lang-ship.com/blog/work/esp32-i2s-dac/#toc6
       // Left Channel GPIO 26
       pcm_out[x] = (uint16_t)adcVal; // MSB
@@ -842,7 +842,7 @@ void AFSK_Poll(bool SA818,bool RFPower)
       }
     }
 
-    //รอให้ I2S DAC ส่งให้หมดบัพเฟอร์ก่อนสั่งปิด DAC/PTT
+    // Wait for the I2S DAC to pass all buffers before turning the DAC/PTT off.
     if (AFSK_modem->sending == false)
     {
       int txEvents = 0;
@@ -867,8 +867,8 @@ void AFSK_Poll(bool SA818,bool RFPower)
       i2s_zero_dma_buffer(I2S_NUM_0);
       //i2s_adc_enable(I2S_NUM_0);
       digitalWrite(PTT_PIN, LOW);
-      if(SA818){
-        digitalWrite(12, LOW); //RF Power LOW
+      if (SA818) {
+        digitalWrite(powerPin, RFPower ? HIGH : LOW); //RF Power LOW
       }
     }
 #endif
