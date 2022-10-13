@@ -5,10 +5,11 @@ ASK [ME](https://github.com/erstec) BY EMAIL OR DISCORD BEFORE USING IT !!!
 # APRS-ESP32 Project
 
 APRS-ESP32 is a APRS AFSK1200 Tracker + Digipeater + Internet Gateway + TNC built-in that is implemented for Espressif ESP32 MCU.
+
 APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to work standalone, without any USB connection.
 
-## Features:
-### FW:
+## Features
+### FW
 - IGate
 - Digipeater
 - Position beaconing (periodical)
@@ -16,7 +17,8 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 - OLED display operation states and etc.
 - All parameters changeable via WEB interface
 - Some parameters changeable via OLED / Rotary encoder (NOT IMPLEMENTED)
-### HW:
+
+### HW
 - ESP32-DevKitC-v4 (or any pin/size compatible)
 - SA818/SA868 RF Modem
 - Any NMEA output serial (UART) GNSS Receiver
@@ -30,7 +32,7 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 * Support Bell202 1200bps AFSK modulation
 * Software modem for decoding and encoding
 * ---about >800 packets can be decoded against WA8LMF TNC TEST CD Track 1 (MP3) (TESTS NEEDED)
-*(REMOVE) ---support TNC2 Raw protocol only
+* (REMOVE) ---support TNC2 Raw protocol only
 * Using USB serial for host connection and power supply (modem can work in LOW Power mode only! DON'T SET MODEM POWER TO HIGH)
 * DC barrel socker for powering board (5.5x2.1mm with pin positive, 7-40V DC)
 * XT60 socket for powering from 2S-6S LiPo battery
@@ -74,11 +76,9 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_B_BOM.txt)
 - Open a browser and go to address http://192.168.4.1
 - Make all required configuration
 
-![ESP32Tool](image/ESP32Tool.png)
-
 ### Building yourself
 - Pull and Compile with PlatformIO on the Visual Studio Code
-- Adjust settings (if needed) in `main.h' and `pinout.h`
+- Adjust settings (if needed) in `main.h` and `pinout.h`
 - Select correct Target
 - Connect USB cable to the ESP32 module
 - Build and Upload using PlatforIO buttons
@@ -87,8 +87,8 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_B_BOM.txt)
 - Make all required configuration
 
 ## NOTE
-Short Press of BOOT button ()>100 ms) - TX Position
-Long press of BOOT button (10 sec) - Reset Configuration to Factory Default
+* Short Press of BOOT button ()>100 ms) - TX Position
+* Long press of BOOT button (10 sec) - Reset Configuration to Factory Default
 
 ## NOTE
 (REMOVE)---This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
