@@ -132,7 +132,7 @@ void updateDistance() {
 #endif
 }
 
-void updateGpsData() {
+void GpsUpdate() {
 #ifdef USE_GPS
     //     for (unsigned long start = millis(); millis() - start <
     //     GPS_POLL_DURATION_MS;)

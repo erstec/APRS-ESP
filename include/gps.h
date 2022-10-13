@@ -39,7 +39,7 @@ extern bool send_aprs_update;
 extern char active_heuristic;
 extern char selected_heuristic;
 
-void updateGpsData();
+void GpsUpdate();
 
 float conv_coords(float in_coords);
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS);

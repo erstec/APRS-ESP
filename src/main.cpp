@@ -44,6 +44,7 @@
 
 #include "rotaryProc.h"
 
+#ifdef USE_SCREEN
 #include "Wire.h"
 #include "Adafruit_GFX.h"
 #if defined(USE_SCREEN_SSD1306)
@@ -51,13 +52,12 @@
 #elif defined(USE_SCREEN_SH1106)
 #include "Adafruit_SH1106.h"
 #endif
+#include "oled.h"
+#endif
 
 #include <WiFiClientSecure.h>
 
 #include "AFSK.h"
-
-#define CHAR_WIDTH 6
-#define CHAR_HEIGHT 8
 
 #ifdef SDCARD
 #include <SPI.h> //SPI.h must be included as DMD is written by SPI (the IDE complains otherwise)
@@ -277,32 +277,7 @@ void setup()
     Serial.println("Push BOOT for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
-#if defined(USE_SCREEN_SSD1306)
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 init failed");
-    } else {
-        Serial.println("SSD1306 init ok");
-    }
-#elif defined(USE_SCREEN_SH1106)
-    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
-#endif
-
-    display.clearDisplay();
-    display.setTextColor(WHITE, BLACK);
-    display.setTextSize(1);
-    display.setTextWrap(false);
-    display.cp437(true);
-
-    char buf[16];
-    sprintf(buf, "APRS-ESP V%s", VERSION);
-    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, 0);
-    display.print(buf);
-
-    sprintf(buf, "Boot...");
-    display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
-    display.print(buf);
-
-    display.display();
+    OledStartup();
 #endif
 
     LoadConfig();
@@ -425,140 +400,17 @@ void printPeriodicDebug() {
     Serial.println(distance);
 }
 
-void updateScreen() {
-#ifdef USE_SCREEN
-    if (AFSK_modem->sending) return;
-
-    char buf[10];
-
-    bool isValid = gps.location.isValid();
-    uint32_t satCnt = gps.satellites.value();
-
-    display.clearDisplay();
-    // display.setTextColor(WHITE, BLACK);
-    // display.setTextSize(1);
-    //display.setFont
-    // display.invertDisplay(false);
-
-    // WiFi IP printed from task, but because we are clearing screen draw it again
-    display.setCursor(0, CHAR_HEIGHT * 1);
-    if (config.wifi_mode == WIFI_STA_FIX) {
-        display.print(WiFi.localIP());
-    } else if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {
-        display.print(WiFi.softAPIP());
-    } else {
-        display.print("No IP - BLE Mode");
-    }
-
-    // Main section
-    // Top line
-    display.setCursor(0, 0);
-    display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // Second line
-    display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
-    display.print(aprsClient.connected() ? "A+" : "A-");
-
-    display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
-    display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
-    
-    // GPS Section
-    // 1st line
-    // Sat count, fix status
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
-    display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // altitude
-    sprintf(buf, "%.1fm", gps.altitude.meters());
-    display.setCursor(display.width() - CHAR_WIDTH * strlen(buf), display.height() - CHAR_HEIGHT * 4);
-    display.print(buf);
-
-    // 2nd line
-    // speed
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
-    display.printf("%.1fkmh", satCnt > 0 ? gps.speed.kmph() : 0.0);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // course
-    sprintf(buf, "%.1f'", gps.course.deg());
-    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
-    display.print(buf);
-
-    // qth
-    display.setCursor(display.width() - CHAR_WIDTH * 6, display.height() - CHAR_HEIGHT * 3);
-    display.print(isValid ? deg_to_qth(lat, lon) : "------");
-
-    // 3rd line
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 2);
-    display.print(deg_to_nmea(lat, true));
-    display.print(" age ");
-    if (isValid) {
-        display.print(age / 1000);  // age in seconds
-    } else {
-        display.print("-");
-    }
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-
-    // 4th line
-    display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
-    display.print(deg_to_nmea(lon, false));
-    display.print(" dist ");
-    display.print(distance);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
-    
-    display.display();
-#endif
-
-//     // // active mode / selected mode / free memory
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[active_heuristic])));
-//     // display.print(F("/"));
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[selected_heuristic])));
-//     // display.print(F("/"));
-//     // display.print(freeMemory());
-//     // display.print(F("/"));
-//     // display.println((char)cur_symbol);
-
-//     // count updates / count tx / count rx / satellites / age
-//     // display.print(cnt);
-//     // display.print(F("/"));
-//     // display.print(cnt_tx);
-//     // display.print(F("tx"));
-//     // display.print(F("/"));
-//     // display.print(cnt_rx);
-//     // display.println(F("rx"));
-//
-//     display.display();
-// #endif
-//     // cnt++;
-}
-
 static int scrUpdTMO = 0;
 void updateScreenAndGps() {
-    updateGpsData();
+    GpsUpdate();
 
     // 1/sec
     if (millis() - scrUpdTMO > 1000) {
-        updateScreen();
+        OledUpdate();
         printPeriodicDebug();
         scrUpdTMO = millis();
     }
 }
-
-// ----------------- GPS END -----------------
 
 long sendTimer = 0;
 bool AFSKInitAct = false;
@@ -594,14 +446,14 @@ void loop()
 #endif
     }
 
-    bool update_screen = processRotary();
+    bool update_screen = RotaryProcess();
 
     if (send_aprs_update) {
         btn_count++;  // emulate button press // TEMPORARY
         update_screen |= true;
         send_aprs_update = false;
     }
-    if (update_screen) updateScreen();
+    if (update_screen) OledUpdate();
 
     updateScreenAndGps();
 }
@@ -870,7 +722,7 @@ void taskNetwork(void *pvParameters) {
         } else if (config.wifi_mode == WIFI_AP_FIX) {
             WiFi.mode(WIFI_AP);
         }
-        //กำหนดค่าการทำงานไวไฟเป็นแอสเซสพ้อย
+        // Configure Wi-Fi as an access point
         WiFi.softAP(config.wifi_ap_ssid,
                     config.wifi_ap_pass);  // Start HOTspot removing password
                                            // will disable security
@@ -878,13 +730,6 @@ void taskNetwork(void *pvParameters) {
         Serial.print("Access point running. IP address: ");
         Serial.print(WiFi.softAPIP());
         Serial.println("");
-
-// #ifdef USE_SCREEN
-//         display.setTextSize(1);
-//         display.setCursor(0, CHAR_HEIGHT * 1);
-//         display.print(WiFi.softAPIP());
-//         display.display();
-// #endif
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
@@ -940,13 +785,6 @@ void taskNetwork(void *pvParameters) {
                     Serial.println("WiFi connected");
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
-
-// #ifdef USE_SCREEN
-//                     display.setTextSize(1);
-//                     display.setCursor(0, CHAR_HEIGHT * 1);
-//                     display.print(WiFi.localIP());
-//                     display.display();
-// #endif
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;

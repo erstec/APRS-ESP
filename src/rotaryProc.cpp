@@ -137,7 +137,7 @@ void onLongBtnReleased() {
     send_aprs_update = true;
 }
 
-bool processRotary() {
+bool RotaryProcess() {
     bool update_screen = false;
 #ifdef USE_ROTARY
     unsigned char rotary_state = rotary.process();

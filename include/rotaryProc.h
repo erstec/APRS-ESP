@@ -13,6 +13,6 @@
 #include <Arduino.h>
 #include "main.h"
 
-bool processRotary();
+bool RotaryProcess();
 
 #endif // ROTARYPROC_H
