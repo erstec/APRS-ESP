@@ -278,8 +278,8 @@ void setup()
 #endif
 
     Serial.println();
-    Serial.println("Start APRS_ESP V" + String(VERSION));
-    Serial.println("Push BOOT for 3 sec to Factory Default config");
+    Serial.println("Start APRS-ESP V" + String(VERSION));
+    Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
 
 #ifdef USE_SCREEN
     OledStartup();
