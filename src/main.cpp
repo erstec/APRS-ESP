@@ -1,12 +1,16 @@
 /*
- Name:		ESP32 APRS Internet Gateway / Tracker / Digipeater
- Created:	2022-10-10 / initially 1-Nov-2021 14:27:23
- Author:	LY3PH/Ernest / initially HS5TQA/Atten
+    Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
+    Created:    2022-10-10
+    Author:     Ernest (ErNis) / LY3PH
+    License:    GNU General Public License v3.0
+    Includes code from:
+                https://github.com/nakhonthai/ESP32IGate
+                https://github.com/sh123/aprs_tracker
 */
 
 #include <Arduino.h>
 #include "main.h"
-#include "helpers.h"
+#include "utilities.h"
 #include "pkgList.h"
 #include <LibAPRSesp.h>
 #include <limits.h>

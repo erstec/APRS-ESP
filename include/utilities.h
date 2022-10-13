@@ -7,22 +7,14 @@
                     https://github.com/nakhonthai/ESP32IGate
 */
 
-#ifndef PKGLIST_H
-#define PKGLIST_H
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #include <Arduino.h>
 
-typedef struct pkgListStruct {
-    time_t time;
-    char calsign[11];
-    char ssid[5];
-    unsigned int pkg;
-    bool type;
-    uint8_t symbol;
-} pkgListType;
+String getValue(String data, char separator, int index);
+boolean isValidNumber(String str);
+uint8_t checkSum(uint8_t *ptr, size_t count);
+void printTime();
 
-void sort(pkgListType a[], int size);
-void sortPkgDesc(pkgListType a[], int size);
-void pkgListUpdate(char *call, bool type);
-
-#endif // PKGLIST_H
+#endif // HELPERS_H
