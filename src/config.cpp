@@ -103,10 +103,10 @@ void LoadConfig() {
     }
 
     delay(3000);
-    if (digitalRead(0) == LOW) {
+    if (digitalRead(BOOT_PIN) == LOW) {
         DefaultConfig();
         Serial.println("Restoring Factory Default config");
-        while (digitalRead(0) == LOW)
+        while (digitalRead(BOOT_PIN) == LOW)
             ;
     }
 

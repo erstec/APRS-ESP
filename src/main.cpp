@@ -88,7 +88,7 @@ String lastPkgRaw = "";
 float dBV = 0;
 int mVrms = 0;
 
-cppQueue PacketBuffer(sizeof(AX25Msg), 5, IMPLEMENTATION); // Instantiate queue
+cppQueue PacketBuffer(sizeof(AX25Msg), 5, IMPLEMENTATION);
 
 statusType status;
 RTC_DATA_ATTR igateTLMType igateTLM;
@@ -238,34 +238,39 @@ boolean APRSConnect() {
             if (cnt > 50) return false;
         }
         //
-        if (config.aprs_ssid == 0)
+        if (config.aprs_ssid == 0) {
             login = "user " + String(config.aprs_mycall) + " pass " +
-                    String(config.aprs_passcode) + " vers ESP32IGate V" +
+                    String(config.aprs_passcode) + " vers APRS-ESP V" +
                     String(VERSION) + " filter " + String(config.aprs_filter);
-        else
+        } else {
             login = "user " + String(config.aprs_mycall) + "-" +
                     String(config.aprs_ssid) + " pass " +
-                    String(config.aprs_passcode) + " vers ESP32IGate V" +
+                    String(config.aprs_passcode) + " vers APRS-ESP V" +
                     String(VERSION) + " filter " + String(config.aprs_filter);
+        }
         aprsClient.println(login);
         // Serial.println(login);
         // Serial.println("Success");
         delay(500);
     }
+
     return true;
 }
 
 void setup()
 {
-    pinMode(0, INPUT_PULLUP);  // BOOT Button
+    pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
+
     // Set up serial port
     Serial.begin(9600);  // debug
     Serial.setRxBufferSize(256);
+
 #if defined(USE_TNC)
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
                     SERIAL_TNC_TXPIN);
     SerialTNC.setRxBufferSize(500);
 #endif
+
 #if defined(USE_GPS)
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
                     SERIAL_GPS_TXPIN);
@@ -316,6 +321,7 @@ String send_gps_location() {
     
     float _lat;
     float _lon;
+
     //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
     if (gps.location.isValid()) {
         _lat = lat / 1000000.0;
@@ -333,20 +339,26 @@ String send_gps_location() {
 
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
+
     memset(strtmp, 0, 300);
     DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
+
     sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+
     if (config.aprs_ssid == 0)
         sprintf(strtmp, "%s>APZ32E", config.aprs_mycall);
     else
         sprintf(strtmp, "%s-%d>APZ32E", config.aprs_mycall, config.aprs_ssid);
+
     tnc2Raw = String(strtmp);
+
     if (config.aprs_path[0] != 0) {
         tnc2Raw += ",";
         tnc2Raw += String(config.aprs_path);
     }
+
     tnc2Raw += ":";
     tnc2Raw += String(loc);
     tnc2Raw += String(config.aprs_comment);
@@ -356,17 +368,22 @@ String send_gps_location() {
 
 int packet2Raw(String &tnc2, AX25Msg &Packet) {
     if (Packet.len < 5) return 0;
+
     tnc2 = String(Packet.src.call);
+
     if (Packet.src.ssid > 0) {
         tnc2 += String(F("-"));
         tnc2 += String(Packet.src.ssid);
     }
+
     tnc2 += String(F(">"));
     tnc2 += String(Packet.dst.call);
+
     if (Packet.dst.ssid > 0) {
         tnc2 += String(F("-"));
         tnc2 += String(Packet.dst.ssid);
     }
+
     for (int i = 0; i < Packet.rpt_count; i++) {
         tnc2 += String(",");
         tnc2 += String(Packet.rpt_list[i].call);
@@ -376,6 +393,7 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
         }
         if (Packet.rpt_flags & (1 << i)) tnc2 += "*";
     }
+
     tnc2 += String(F(":"));
     tnc2 += String((const char *)Packet.info);
     tnc2 += String("\n");
@@ -384,10 +402,12 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     //     Serial.printf("[%d] ", ++pkgTNC_count);
     //     Serial.print(tnc2);
     // #endif
+
     return tnc2.length();
 }
 
 void printPeriodicDebug() {
+    printTime();
     Serial.print("lat: ");
     Serial.print(lat);
     Serial.print(" lon: ");
@@ -462,28 +482,35 @@ void sendIsPkgMsg(char *raw) {
     char str[300];
     char call[11];
     int i;
+
     memset(&call[0], 0, 11);
+
     if (config.aprs_ssid == 0)
         sprintf(call, "%s", config.aprs_mycall);
     else
         sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
+
     i = strlen(call);
+
     for (; i < 9; i++) call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
         sprintf(str, "%s>APZ32E::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall,
-                config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
+    
     if (aprsClient.connected())
         aprsClient.println(tnc2Raw);  // Send packet to Inet
+    
     if (config.tnc && config.tnc_digi) pkgTxUpdate(str, 0);
+    
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 }
 
 long timeSlot;
+
 void taskAPRS(void *pvParameters) {
     //	long start, stop;
     // char *raw;
@@ -505,6 +532,7 @@ void taskAPRS(void *pvParameters) {
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
     timeSlot = millis();
+    
     for (;;) {
         long now = millis();
         // wdtSensorTimer = now;
@@ -514,17 +542,17 @@ void taskAPRS(void *pvParameters) {
         // serviceHandle();
         if (now > (timeSlot + 10)) {
             if (!digitalRead(RX_LED_PIN)) {  // RX State Fail
-                if (pkgTxSend())
-                    timeSlot =
-                        millis() + config.tx_timeslot;  // Tx Time Slot = 5sec.
-                else
+                if (pkgTxSend()) {
+                    timeSlot = millis() + config.tx_timeslot;  // Tx Time Slot = 5sec.
+                } else {
                     timeSlot = millis();
+                }
             } else {
                 timeSlot = millis() + 500;
             }
         }
 
-        if (digitalRead(0) == LOW) {
+        if (digitalRead(BOOT_PIN) == LOW) {
             btn_count++;
             if (btn_count > 1000)  // Push BOOT 10sec
             {
@@ -539,8 +567,7 @@ void taskAPRS(void *pvParameters) {
                     DefaultConfig();
                     Serial.println("SYSTEM REBOOT NOW!");
                     esp_restart();
-                } else if (btn_count >
-                           10)  // Push BOOT >100mS to PTT Fix location
+                } else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
                 {
                     if (config.tnc) {
                         String tnc2Raw = send_gps_location();
@@ -580,8 +607,9 @@ void taskAPRS(void *pvParameters) {
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    if (aprsClient.connected())
+                    if (aprsClient.connected()) {
                         aprsClient.println(tnc2Raw);  // Send packet to Inet
+                    }
                     pkgTxUpdate(tnc2Raw.c_str(), 0);
                     // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
 #ifdef DEBUG_TNC
@@ -608,21 +636,25 @@ void taskAPRS(void *pvParameters) {
                     sendIsPkgMsg((char *)&EQNS[0]);
                 }
                 char rawTlm[100];
-                if (config.aprs_ssid == 0)
+                if (config.aprs_ssid == 0) {
                     sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                             config.aprs_mycall, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
-                else
+                } else {
                     sprintf(
                         rawTlm, "%s-%d>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
                         config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);
+                }
 
-                if (aprsClient.connected())
+                if (aprsClient.connected()) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
-                if (config.tnc && config.tnc_digi) pkgTxUpdate(rawTlm, 0);
+                }
+                if (config.tnc && config.tnc_digi){
+                    pkgTxUpdate(rawTlm, 0);
+                }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF
                 igateTLM.Sequence++;
                 if (igateTLM.Sequence > 999) igateTLM.Sequence = 0;
@@ -663,11 +695,11 @@ void taskAPRS(void *pvParameters) {
                         Serial.println(tnc2);
 #endif
                         char call[11];
-                        if (incomingPacket.src.ssid > 0)
-                            sprintf(call, "%s-%d", incomingPacket.src.call,
-                                    incomingPacket.src.ssid);
-                        else
+                        if (incomingPacket.src.ssid > 0) {
+                            sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
+                        } else {
                             sprintf(call, "%s", incomingPacket.src.call);
+                        }
                         pkgListUpdate(call, 1);
                     }
                 }
@@ -714,8 +746,7 @@ void taskNetwork(void *pvParameters) {
     int c = 0;
     Serial.println("Task <Network> started");
 
-    if (config.wifi_mode == WIFI_AP_STA_FIX ||
-        config.wifi_mode == WIFI_AP_FIX) {  // AP=false
+    if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {  // AP=false
         // WiFi.mode(config.wifi_mode);
         if (config.wifi_mode == WIFI_AP_STA_FIX) {
             WiFi.mode(WIFI_AP_STA);
@@ -723,9 +754,8 @@ void taskNetwork(void *pvParameters) {
             WiFi.mode(WIFI_AP);
         }
         // Configure Wi-Fi as an access point
-        WiFi.softAP(config.wifi_ap_ssid,
-                    config.wifi_ap_pass);  // Start HOTspot removing password
-                                           // will disable security
+        WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass);  // Start HOTspot removing password
+        // will disable security
         WiFi.softAPConfig(local_IP, gateway, subnet);
         Serial.print("Access point running. IP address: ");
         Serial.print(WiFi.softAPIP());
@@ -739,12 +769,13 @@ void taskNetwork(void *pvParameters) {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
-        Serial.println(F("WiFi OFF All mode"));
+        Serial.println(F("WiFi OFF. BT only mode"));
         SerialBT.begin("ESP32TNC");
     }
 
     webService();
     pingTimeout = millis() + 10000;
+
     for (;;) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -763,11 +794,10 @@ void taskNetwork(void *pvParameters) {
                     // udp.endPacket();
                     WiFi.disconnect();
                     WiFi.setTxPower((wifi_power_t)config.wifi_power);
-                    WiFi.setHostname("ESP32IGate");
+                    WiFi.setHostname("APRS_ESP");
                     WiFi.begin(config.wifi_ssid, config.wifi_pass);
                     // Wait up to 1 minute for connection...
-                    for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED);
-                         c++) {
+                    for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
                         // Serial.write('.');
                         vTaskDelay(1000 / portTICK_PERIOD_MS);
                         // for (t = millis(); (millis() - t) < 1000; refresh());
@@ -801,8 +831,7 @@ void taskNetwork(void *pvParameters) {
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
                     Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26",
-                               "110.170.126.101", "77.68.122.252");
+                    configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
                     time(&systemTime);
@@ -820,8 +849,7 @@ void taskNetwork(void *pvParameters) {
                         if (aprsClient.available()) {
                             // pingTimeout = millis() + 300000; // Reset ping
                             // timout
-                            String line = aprsClient.readStringUntil(
-                                '\n');  //อ่านค่าที่ Server ตอบหลับมาทีละบรรทัด
+                            String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
                             Serial.print("APRS-IS ");
@@ -829,7 +857,7 @@ void taskNetwork(void *pvParameters) {
 #endif
                             status.isCount++;
                             int start_val =
-                                line.indexOf(">", 0);  // หาตำแหน่งแรกของ >
+                                line.indexOf(">", 0);  // find the first position of >
                             if (start_val > 3) {
                                 // raw = (char *)malloc(line.length() + 1);
                                 String src_call = line.substring(0, start_val);
@@ -838,15 +866,12 @@ void taskNetwork(void *pvParameters) {
                                 status.allCount++;
                                 igateTLM.RX++;
                                 if (config.tnc && config.inet2rf) {
-                                    if (line.indexOf(msg_call) <=
-                                        0)  // src callsign = msg callsign
-                                            // ไม่ใช่หัวข้อโทรมาตร
+                                    if (line.indexOf(msg_call) <= 0)  // src callsign = msg callsign
+                                    // Not a telemetry topic
                                     {
-                                        if (line.indexOf(":T#") <
-                                            0)  //ไม่ใช่ข้อความโทรมาตร
+                                        if (line.indexOf(":T#") < 0)  // not telemetry
                                         {
-                                            if (line.indexOf("::") >
-                                                0)  //ข้อความเท่านั้น
+                                            if (line.indexOf("::") > 0)  // text only
                                             {  // message only
                                                 // raw[0] = '}';
                                                 // line.toCharArray(&raw[1],

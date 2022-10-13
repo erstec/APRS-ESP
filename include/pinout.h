@@ -7,6 +7,8 @@
                     https://github.com/nakhonthai/ESP32IGate
 */
 
+#define BOOT_PIN            0
+
 // SA8x8 radio module
 //#define VBAT_PIN            35
 //#define POWER_PIN           12
