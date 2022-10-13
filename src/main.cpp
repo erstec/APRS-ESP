@@ -420,12 +420,20 @@ void printPeriodicDebug() {
     Serial.println(distance);
 }
 
-static int scrUpdTMO = 0;
-void updateScreenAndGps() {
-    GpsUpdate();
+static long scrUpdTMO = 0;
+static long gpsUpdTMO = 0;
+void updateScreenAndGps(bool force) {
+    // GpsUpdate();
 
     // 1/sec
-    if (millis() - scrUpdTMO > 1000) {
+    if ((millis() - gpsUpdTMO) > 1000) {
+        GpsUpdate();
+        heuristicDistanceChanged();
+        gpsUpdTMO = millis();
+    }
+
+    // 1/sec
+    if ((millis() - scrUpdTMO > 1000) || force) {
         OledUpdate();
         printPeriodicDebug();
         scrUpdTMO = millis();
@@ -468,14 +476,13 @@ void loop()
 
     bool update_screen = RotaryProcess();
 
-    if (send_aprs_update) {
-        btn_count++;  // emulate button press // TEMPORARY
-        update_screen |= true;
-        send_aprs_update = false;
-    }
-    if (update_screen) OledUpdate();
+    // if (send_aprs_update) {
+    //     update_screen |= true;
+    //     // send_aprs_update = false;    // moved to APRS task
+    // }
+    // if (update_screen) OledUpdate();
 
-    updateScreenAndGps();
+    updateScreenAndGps(update_screen);
 }
 
 void sendIsPkgMsg(char *raw) {
@@ -501,10 +508,13 @@ void sendIsPkgMsg(char *raw) {
 
     String tnc2Raw = String(str);
     
-    if (aprsClient.connected())
+    if (aprsClient.connected()) {
         aprsClient.println(tnc2Raw);  // Send packet to Inet
+    }
     
-    if (config.tnc && config.tnc_digi) pkgTxUpdate(str, 0);
+    if (config.tnc && config.tnc_digi) {
+        pkgTxUpdate(str, 0);
+    }
     
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 }
@@ -567,7 +577,8 @@ void taskAPRS(void *pvParameters) {
                     DefaultConfig();
                     Serial.println("SYSTEM REBOOT NOW!");
                     esp_restart();
-                } else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
+                } 
+                else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
                 {
                     if (config.tnc) {
                         String tnc2Raw = send_gps_location();
@@ -598,8 +609,21 @@ void taskAPRS(void *pvParameters) {
 // }
 #endif
 
-        if (now > (sendTimer + (config.aprs_beacon * 1000))) {
+        bool sendByTime = false;
+        if (config.aprs_beacon > 0) {   // it interval configured
+            sendByTime = (now > (sendTimer + (config.aprs_beacon * 1000)));
+        }
+        bool sendByFlag = send_aprs_update;
+
+        send_aprs_update = false;
+
+        if (sendByTime || sendByFlag) {
             sendTimer = now;
+            
+            Serial.print("Send by ");
+            if (sendByTime) Serial.println("Time");
+            if (sendByFlag) Serial.println("Flag");
+
             if (digiCount > 0) digiCount--;
 #ifdef USE_RF
             RF_Check();
@@ -652,7 +676,7 @@ void taskAPRS(void *pvParameters) {
                 if (aprsClient.connected()) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
                 }
-                if (config.tnc && config.tnc_digi){
+                if (config.tnc && config.tnc_digi) {
                     pkgTxUpdate(rawTlm, 0);
                 }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF

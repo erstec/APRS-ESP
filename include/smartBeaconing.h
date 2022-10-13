@@ -13,8 +13,6 @@
 
 #include <Arduino.h>
 
-#define USE_SMART_BEACONING
-
-void SmartBeaconingProc();
+bool SmartBeaconingProc();
 
 #endif

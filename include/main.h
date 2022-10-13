@@ -26,6 +26,7 @@
 //#define USE_BLE
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
+#define USE_SMART_BEACONING
 
 #if defined(USE_SCREEN_SSD1306) && defined(USE_SCREEN_SH1106)
 #error "Only one screen can be specified at once in main.h"
@@ -58,6 +59,15 @@
 #define USE_SA818
 #endif
 #endif
+
+// smart beaconing parameters
+#define APRS_SB_FAST_SPEED      100         // At this speed or above, beacons will be transmitted at the Fast Rate
+#define APRS_SB_FAST_RATE       60          // How often beacons will be sent when you are travelling at or above the Fast Speed
+#define APRS_SB_SLOW_SPEED      5           // This is the speed below which you’re considered stationary
+#define APRS_SB_SLOW_RATE       1200        // How often beacons will be sent when you are are below the Slow Speed
+#define APRS_SB_MIN_TURN_TIME   10          // The smallest time interval between beacons when you are continuously changing direction
+#define APRS_SB_MIN_TURN_ANGLE  15          // The minimum angle by which you must change course before it will trigger a beacon
+#define APRS_SB_TURN_SLOPE      240         // This number, when divided by your current speed will be added to the Min Turn Angle in order to increase the turn threshold at lower speeds
 
 #define EEPROM_SIZE 1024
 

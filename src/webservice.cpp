@@ -537,7 +537,7 @@ void setHTML(byte page) {
     else
         myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
     webString +=
-        "<div class='w3-card-2 topnav notranslate' id='topnav'><b>ESP32 APRS "
+        "<div class='w3-card-2 topnav notranslate' id='topnav'><b>APRS-ESP32 "
         "Internet Gateway by " +
         myStation + "</div>\n";
     webString += "<div class=\"row\">\n";
@@ -967,7 +967,7 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval "
-        "(sec)</label>\n";
+        "(sec)<br>0 - SmartBeaconing</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" "
         "id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" +

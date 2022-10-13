@@ -57,7 +57,7 @@ void heuristicDistanceChanged() {
             }
             break;
         default:
-            SmartBeaconingProc();
+            needs_update = SmartBeaconingProc();
             break;
     }
     if (needs_update) {
@@ -81,7 +81,7 @@ void updateDistance() {
 #ifdef USE_GPS
         distance += distanceBetween(lon_prev, lat_prev, lon, lat);
 #endif
-        heuristicDistanceChanged();
+        // heuristicDistanceChanged();
     }
 #ifndef USE_PRECISE_DISTANCE
     else {

@@ -8,6 +8,7 @@
         "vector": "cpp",
         "initializer_list": "cpp",
         "cmath": "cpp",
-        "cstdlib": "cpp"
+        "cstdlib": "cpp",
+        "random": "cpp"
     }
 }

@@ -62,7 +62,7 @@ void OledUpdate() {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
 
-    char buf[10];
+    char buf[24];
 
     bool isValid = gps.location.isValid();
     uint32_t satCnt = gps.satellites.value();
@@ -97,6 +97,25 @@ void OledUpdate() {
 
     display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
     display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+
+    // Configuration Section
+    // Tx interval or SB - SmartBeaconing
+    display.setCursor(0, display.height() - CHAR_HEIGHT * 5);
+    if (config.aprs_beacon > 0) {
+        display.printf("T%d", config.aprs_beacon);
+    } else {
+        display.print("SB");
+    }
+    // TN - TNC, TM - Telemetry, DG - Digipeater, IS - APRS-IS, RI - RF->IGate, IR - IGate->RF
+    sprintf(buf, "%s%s%s%s%s%s", 
+            (config.tnc ? " TN" : ""),
+            (config.tnc_telemetry ? " TM" : ""),
+            (config.tnc_digi ? " DG" : ""),
+            (config.aprs ? " IS" : ""),
+            (config.rf2inet ? " RI" : ""),
+            (config.inet2rf ? " IR" : ""));
+    display.setCursor(display.width() - strlen(buf) * CHAR_WIDTH, display.height() - CHAR_HEIGHT * 5);
+    display.print(buf);
     
     // GPS Section
     // 1st line
