@@ -26,6 +26,9 @@
 #define TX_LED_PIN          4
 #define RSSI_PIN            33
 
+// DEBUG UART
+#define SERIAL_DEBUG_BAUD   115200
+
 // RF UART
 #define SERIAL_RF_UART      1
 #define SERIAL_RF_BAUD      9600

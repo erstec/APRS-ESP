@@ -132,6 +132,9 @@ int pkgTNC_count = 0;
 unsigned long NTP_Timeout;
 unsigned long pingTimeout;
 
+static long scrUpdTMO = 0;
+static long gpsUpdTMO = 0;
+
 const char *lastTitle = "LAST HERT";
 
 bool pkgTxUpdate(const char *info, int delay) {
@@ -262,7 +265,7 @@ void setup()
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
-    Serial.begin(9600);  // debug
+    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
     Serial.setRxBufferSize(256);
 
 #if defined(USE_TNC)
@@ -290,6 +293,12 @@ void setup()
 #ifdef USE_RF
     RF_Init(true);
 #endif
+
+    // if SmartBeaconing - delay processing GPS data
+    if (config.aprs_beacon == 0) {
+        Serial.println("SmartBeaconing, delayed GPS processing");
+        gpsUpdTMO = 30000;  // 30 sec
+    }
 
     // enableLoopWDT();
     // enableCore0WDT();
@@ -420,15 +429,32 @@ void printPeriodicDebug() {
     Serial.println(distance);
 }
 
-static int scrUpdTMO = 0;
-void updateScreenAndGps() {
-    GpsUpdate();
+bool gpsUnlock = false;
+
+void updateScreenAndGps(bool force) {
+    // GpsUpdate();
 
     // 1/sec
-    if (millis() - scrUpdTMO > 1000) {
+    if ((millis() - scrUpdTMO > 1000) || force) {
         OledUpdate();
         printPeriodicDebug();
         scrUpdTMO = millis();
+    }
+
+    // If startup dealy not expired
+    if (!gpsUnlock) {
+        if ((long)millis() - gpsUpdTMO < 0) {
+            return;
+        } else {
+            Serial.println("GPS Unlocked");
+            gpsUnlock = true;
+        }
+    }
+    // 1/sec
+    if (millis() - gpsUpdTMO > 1000) {
+        GpsUpdate();
+        heuristicDistanceChanged();
+        gpsUpdTMO = millis();
     }
 }
 
@@ -468,14 +494,13 @@ void loop()
 
     bool update_screen = RotaryProcess();
 
-    if (send_aprs_update) {
-        btn_count++;  // emulate button press // TEMPORARY
-        update_screen |= true;
-        send_aprs_update = false;
-    }
-    if (update_screen) OledUpdate();
+    // if (send_aprs_update) {
+    //     update_screen |= true;
+    //     // send_aprs_update = false;    // moved to APRS task
+    // }
+    // if (update_screen) OledUpdate();
 
-    updateScreenAndGps();
+    updateScreenAndGps(update_screen);
 }
 
 void sendIsPkgMsg(char *raw) {
@@ -501,10 +526,13 @@ void sendIsPkgMsg(char *raw) {
 
     String tnc2Raw = String(str);
     
-    if (aprsClient.connected())
+    if (aprsClient.connected()) {
         aprsClient.println(tnc2Raw);  // Send packet to Inet
+    }
     
-    if (config.tnc && config.tnc_digi) pkgTxUpdate(str, 0);
+    if (config.tnc && config.tnc_digi) {
+        pkgTxUpdate(str, 0);
+    }
     
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 }
@@ -567,7 +595,8 @@ void taskAPRS(void *pvParameters) {
                     DefaultConfig();
                     Serial.println("SYSTEM REBOOT NOW!");
                     esp_restart();
-                } else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
+                } 
+                else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
                 {
                     if (config.tnc) {
                         String tnc2Raw = send_gps_location();
@@ -598,8 +627,21 @@ void taskAPRS(void *pvParameters) {
 // }
 #endif
 
-        if (now > (sendTimer + (config.aprs_beacon * 1000))) {
+        bool sendByTime = false;
+        if (config.aprs_beacon > 0) {   // it interval configured
+            sendByTime = (now > (sendTimer + (config.aprs_beacon * 1000)));
+        }
+        bool sendByFlag = send_aprs_update;
+
+        send_aprs_update = false;
+
+        if (sendByTime || sendByFlag) {
             sendTimer = now;
+            
+            Serial.print("Send by ");
+            if (sendByTime) Serial.println("Time");
+            if (sendByFlag) Serial.println("Flag");
+
             if (digiCount > 0) digiCount--;
 #ifdef USE_RF
             RF_Check();
@@ -652,7 +694,7 @@ void taskAPRS(void *pvParameters) {
                 if (aprsClient.connected()) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
                 }
-                if (config.tnc && config.tnc_digi){
+                if (config.tnc && config.tnc_digi) {
                     pkgTxUpdate(rawTlm, 0);
                 }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF

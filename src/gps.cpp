@@ -8,6 +8,7 @@
 */
 
 #include "gps.h"
+#include "smartBeaconing.h"
 #include "TinyGPSPlus.h"
 
 // #define DEBUG_GPS
@@ -27,7 +28,6 @@ char selected_heuristic = H_OFF;
 
 #define USE_PRECISE_DISTANCE
 #define GPS_POLL_DURATION_MS 1000  // for how long to poll gps
-//#define USE_SMART_BEACONING
 
 long lat = 0;
 long lon = 0;
@@ -37,45 +37,6 @@ long distance = 0;
 unsigned long age = 0;
 
 bool send_aprs_update = false;
-
-void heuristicProcessSmartBeaconing() {
-#ifdef USE_SMART_BEACONING
-
-    // https://github.com/ge0rg/aprsdroid/blob/master/src/location/SmartBeaconing.scala
-
-    float speed = gps.f_speed_kmph();
-    float course_prev = gps.course();
-    float heading_change_since_beacon = abs(course_prev - gps.course());
-    long beacon_rate, secs_since_beacon, turn_time;
-
-    if (speed < APRS_SB_LOW_SPEED) {
-        beacon_rate = APRS_SB_SLOW_RATE;
-    } else {
-        // Adjust beacon rate according to speed
-        if (speed > APRS_SB_HIGH_SPEED) {
-            beacon_rate = APRS_SB_FAST_RATE;
-        } else {
-            beacon_rate = APRS_SB_FAST_RATE * APRS_SB_HIGH_SPEED / speed;
-        }
-
-        // Corner pegging - ALWAYS occurs if not "stopped"
-        // Note turn threshold is speed-dependent
-
-        // what is mph?
-        float turn_threshold =
-            APRS_SB_TURN_MIN + APRS_SB_TURN_SLOPE / (speed * 2.23693629);
-
-        if ((heading_change_since_beacon > APRS_SB_TURN_TH) &&
-            (secs_since_beacon > turn_time)) {
-            secs_since_beacon = beacon_rate;
-        }
-    }
-
-    if (secs_since_beacon > beacon_rate) {
-        send_aprs_update = true;
-    }
-#endif
-}
 
 void heuristicDistanceChanged() {
     bool needs_update = false;
@@ -96,7 +57,7 @@ void heuristicDistanceChanged() {
             }
             break;
         default:
-            heuristicProcessSmartBeaconing();
+            needs_update = SmartBeaconingProc();
             break;
     }
     if (needs_update) {
@@ -120,7 +81,7 @@ void updateDistance() {
 #ifdef USE_GPS
         distance += distanceBetween(lon_prev, lat_prev, lon, lat);
 #endif
-        heuristicDistanceChanged();
+        // heuristicDistanceChanged();
     }
 #ifndef USE_PRECISE_DISTANCE
     else {
