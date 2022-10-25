@@ -21,8 +21,8 @@
 //#define SDCARD
 //#define USE_TNC
 #define USE_GPS
-//#define USE_SCREEN_SSD1306
-#define USE_SCREEN_SH1106
+#define USE_SCREEN_SSD1306
+//#define USE_SCREEN_SH1106
 //#define USE_BLE
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
