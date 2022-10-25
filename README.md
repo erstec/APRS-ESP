@@ -1,161 +1,105 @@
-# NOTICE
-This fork of project combines parent project with anothers, plus my own HW and FW implementation
+# ATTENTION: WORK IN PROGRESS, BOTH FW AND HW
+ASK [ME](https://github.com/erstec) BY EMAIL OR DISCORD BEFORE USING IT !!!
+# This notice will be removed as soon as thing will be tested and stable to reproduce
 
-Firmware part uses ideas and code snippets from:
-- https://github.com/nakhonthai/ESP32IGate (parent project)
-- https://github.com/sh123/aprs_tracker
+# APRS-ESP32 Project
 
-Hardware part uses ideas, libraries and designs from:
-- https://github.com/nakhonthai/ESP32IGate (parent project) / schematics base
-- https://github.com/handiko/Dorji-TX-Shield / board base
-- some another Eagle libraries
+APRS-ESP32 is a APRS AFSK1200 Tracker + Digipeater + Internet Gateway + TNC built-in that is implemented for Espressif ESP32 MCU.
 
-**ATTENTION:** Both FW and HW parts are in development and this notice will be removes as soon as thing will be tested and stable to reproduce! Code will be merged to `master` branch also.
+APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to work standalone, without any USB connection.
 
-## Summary:
-FW:
+## Features
+### FW
 - IGate
 - Digipeater
-- Position beaconing
-- SmartBeaconing
+- Position beaconing (periodical)
+- SmartBeaconing (IN PROGRESS)
 - OLED display operation states and etc.
 - All parameters changeable via WEB interface
-- Some parameters changeable via OLED / Rotary encoder
-HW:
-- ESP32-DevKitC-v4
-- SA818 RF Modem
-- Any NMEA output serial GNSS receiver
-- SSD106 0.96" OLED screen
+- Some parameters changeable via OLED / Rotary encoder (NOT IMPLEMENTED)
+
+### HW
+- ESP32-DevKitC-v4 (or any pin/size compatible)
+- SA818/SA868 RF Modem
+- Any NMEA output serial (UART) GNSS Receiver
+- SSD1306 0.96" / SH1106 1.3" OLED Screen
 - Rotary encoder
-- Regulated buck converted (LM2596S based)
-- PCB ready (Gerber and Eagle) / BOM in /hardware folder
+- Adjustable Regulated buck converter (LM2596S based)
+- PCB (Gerber and Eagle), BOMs in /hardware folder
 
-# ESP32IGate Simple Project
+### Details
+* Development based on PlatformIO / Visual Studio Code IDE
+* Support Bell202 1200bps AFSK modulation
+* Software modem for decoding and encoding
+* ---about >800 packets can be decoded against WA8LMF TNC TEST CD Track 1 (MP3) (TESTS NEEDED)
+* (REMOVE) ---support TNC2 Raw protocol only
+* Using USB serial for host connection and power supply (modem can work in LOW Power mode only! DON'T SET MODEM POWER TO HIGH)
+* DC barrel socker for powering board (5.5x2.1mm with pin positive, 7-40V DC)
+* XT60 socket for powering from 2S-6S LiPo battery
+* Support Wi-Fi connection (TCP and UDP) to APRS-IS
+* Support Web Service config and control system
+* Display status on the OLED
+* Manual Position transmission - short press button
 
-ESP32IGate is a Internet Gateway + TNC Built in that is implemented for Espressif ESP32 processor.
-The development of ESP32IGate is for the study of converting analog signals to digital data. using the LibAPRS library to further develop
-To receive signals via ADC SAR using interrupt sampling or using I2S to read sampling signals at 9600 sample/sec on ESP32 microcontrollers and improve data conductivity. Access to the Internet Gateway (APRS-IS) for further applications or developments. 
+### Schematics
 
-## Feature
+![SCH](doc/APRS-ESP32_SA8x8_Rev_B_Schematics.png)
 
-* supported hardware: ESP32DR Simple or ESP32DR_SA818 by Module ESP32 DevKit
-* using ESP-Arduino development on Visual studio code IDE
-* support Bell202 1200bps AFSK
-* implementing software modem, decoding and encoding
-  * about >800 packets can be decoded against WA8LMF TNC TEST CD Track 1 (MP3)
-* support TNC2 Raw protocol only
-* using USB serial for host connection and power supply
-* support Wi-Fi connection (TCP and UDP) to APRS-IS
-* support Web Service config and control system
-* display received and transmit packet on the LED
+### PCB
 
-![esp32dr-test](image/ESP32DR_Simple_Test.png)
-
-## ESP32DR Simple
-
-ESP32DR Simple Circut is small interface board for connecting to a transceiver.
-
-* PCB size is 64x58mm
-* PCB Single size
-* RJ11 6 Pin out to Radio
-
-### Schematic
-
-[![schematic](image/ESP32DR_SimpleCircuit.png)](image/ESP32DR_SimpleCircuit.png)
+![PCB](doc/APRS-ESP32_SA8x8_Rev_B_PCB.png)
 
 ### CAD data
  
-The gerber data is [here](doc/Gerber_ESP32DR_Simple.zip)
+GERBER data is [here](hardware/GERBER/APRS-ESP32_SA8x8_V1.5_Rev_B_2022-10-11.zip)
 
-The PCB film positive is [here](doc/PCB_Bottom.pdf)
+PCB Layout is [here](hardware/APRS-ESP32_SA8x8_Rev_B_PCB.pdf)
 
-The PCB film negative is [here](doc/PCB_Bottom_Invert.pdf)
-
-The PCB Layout is [here](doc/PCB_Layout.pdf)
-
-The Schematic PDF is [here](doc/ESP32DR_Simple_Schematic.pdf)
+Schematic PDF is [here](hardware/APRS-ESP32_SA8x8_Rev_B_Schematics.pdf)
 
 ### BOM list  
 
-|Reference|Value|Description|
-|---|:---:|---|
-|U1|ESP32 DEVKIT|DOIT ESP32 DEVKIT (โมดูล ESP32)|
-|RP2|1K|VR 3362W (R ปรับค่าเสียงออก)|
-|RP1|10K|VR 3362W (R ปรับค่าเสียงเข้า)|
-|RJ11|RJ11-6P6C|แจ๊คโมดูล RJ11 แบบ 6ขา|
-|R13,R12,R11,R5,R3,R9|1K|R 1K 1/4W (ค่าสี: น้ำตาล ดำ แดง)|
-|R7,R18,R19|100R|R 100R  1/4W (ค่าสี: น้ำตาล ดำ ดำ)|
-|R6,R2,R1|10K|R 10k  1/4W  (ค่าสี: น้ำตาล ดำ ส้ม)|
-|R4|3K|R 3k 1/4W (ค่าสี: ส้ม ดำ แดง)|
-|R10|33K|R 33K 1/4W (ค่าสี: ส้ม ส้ม ส้ม)|
-|Q1|2N3904|ทรานซิสเตอร์ NPN (TO-92)|
-|LED3|LED 3.5mm|สีเหลือง แสดงส่งสัญญาณ TX|
-|LED2|LED 3.5mm|สีเขียว แสดงรับสัญญาณ RX|
-|LED1|LED 3.5mm|สีแดง แสดงไฟเข้าทำงาน|
-|L1|L or JMP|L Isolate or Jumper|
-|C11|100uF/6.3V|ตัวเก็บประจุแบบอิเล็กโทรไลติก|
-|C4,C5|100nF|ตัวเก็บประจุแบบเซรามิกมัลติเลเยอร์|
-|C6|470uF/10V|ตัวเก็บประจุแบบอิเล็กโทรไลติก|
-|C1,C3,C10|100nF หรือ 0.1uF|ตัวเก็บประจุแบบโพลีโพรไพลีน|
-|C2|10nF หรือ 0.01uF|ตัวเก็บประจุแบบโพลีโพรไพลีน|
-|D2,D1|1N4148|ไดโอด หรือใช้ C 0.01uF แทนได้|
+Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_B_BOM.txt)
 
-*R18 and R19 ไม่ใส่ก็ได้.  
-*D2,D1 เปลี่ยนเป็นตัวเก็บประจุแบบเซรามิกมัลติเลเยอร์ค่า 10nF แทนได้ 
-*หากใช้ต่อกับวิทยุรับส่งเข้าขาไมค์นอก ให้เปลี่ยน R4 เป็น 100K
+## FLASHING FIRMWARE
+### First time only. Later update via Web Interface
 
-จัดซื้อชุดคิทผ่าน Shopee ได้ที่ [คลิ๊ก](https://shopee.co.th/product/45191268/13373396785)
+### Using Pecompiled Binaries
+- Connect the USB cable to the ESP32 Module while BOOT button pressed
+- [Download](https://github.com/erstec/releases) required firmware file
+- [Download](https://www.espressif.com/en/support/download/other-tools) Espressif Flash Download Tool and start it
+- Select SPISownload tab
+- Open file downloaded in ESP32 DOWNLOAD TOOL
+- Set location to 0x10000(0xe000?)
+- Press START button ans wait till FINISH appears
+- Restart ESP32 Module (replug USB or press Reset button)
+- Search WiFi for AP SSID APRS-ESP32, Password: aprs
+- Open a browser and go to address http://192.168.4.1
+- Make all required configuration
 
-The Howto DIY is [here](doc/ESP32DR_DIY-Thai.pdf)
+### Building yourself
+- Pull and Compile with PlatformIO on the Visual Studio Code
+- Adjust settings (if needed) in `main.h` and `pinout.h`
+- Select correct Target
+- Connect USB cable to the ESP32 module
+- Build and Upload using PlatforIO buttons
+- Search WiFi for AP SSID APRS-ESP32, Password: aprs
+- Open a browser and go to address http://192.168.4.1
+- Make all required configuration
 
-### Mounting drawing
+## NOTE
+* Short Press of BOOT button ()>100 ms) - TX Position
+* Long press of BOOT button (10 sec) - Reset Configuration to Factory Default
 
-![mounting](image/ESP32DR_SimpleLayout.png)
+## NOTE
+(REMOVE)---This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
 
-### Transceiver connection
+# COPYRIGHT NOTICE
+Firmware part uses ideas and code snippets from:
+- https://github.com/nakhonthai/ESP32IGate
+- https://github.com/sh123/aprs_tracker
 
-Solder jumper is needed depending on a transceiver.
-
-![ESP32DR_Pinout](image/RJ12Pinout.png)
-
-|Manufacture|RJ11-1 (+VIN)|RJ11-2 (SPK)|RJ11-3 (PTT)|RJ11-4 (GND)|RJ11-5 (MIC)|RJ11-6 (SQL)|
-|---|---|---|---|---|---|---|
-|Alinco DR-135(DB9)|-|2|7|5|9|1|
-|IC2200(RJ45)|-|SP|4|5|6|-|
-|FT-2800(RJ11)|-|SP|1|3|2|-|
-|HT Mic Cable|-|SPK|PTT|GND|MIC|-|
-
-for Alinco DR-135(DB9)
-
-![Alinco](image/ESP32DR_DR135.png)
-
-for ICOM IC2200(RJ45)
-
-![IC2200](image/ESP32DR_IC2200.png)
-
-for Yaesu FT-2800(RJ11)
-
-![FT2800](image/ESP32DR_FT2800.png)
-
-for Handheld
-
-![Handheld](image/ESP32DR_HT.png)
-
-![HT-RX](image/ESP32DR_RxOnly.png)
-
-## Howto Devellop
--Pull and Compile by PlatformIO on the Visual Studio Code.
-
-## ESP32IGate firmware installation (do it first, next, update via web)
-- 1.Connect the USB cable to the ESP32 Module.
-- 2.Download firmware and open the program ESP32 DOWNLOAD TOOL, set it in the firmware upload program, set the firmware to ESP32IGate_Vxx.bin, location 0x10000 and partitions.bin at 0x8000 and bootloader.bin at 0x1000 and boot.bin at 0xe000, if not loaded, connect GPIO0 cable to GND, press START button finished, press power button or reset (red) again.
-- 3.Then go to WiFi AP SSID: ESP32IGate and open a browser to the website. http://192.168.4.1 password: aprsthnetwork Can be fixed Or turn on your Wi-Fi router.
-- 4.Push BOOT button long >100ms to TX Position and >10Sec to Factory Default
-
-![ESP32Tool](image/ESP32Tool.png)
-
-## ESP32 Flash Download Tools
-https://www.espressif.com/en/support/download/other-tools
-
-## HITH
-This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
+Hardware part uses ideas, libraries and designs from:
+- https://github.com/nakhonthai/ESP32IGate / schematics base
+- https://github.com/handiko/Dorji-TX-Shield / board base
+- some another Eagle libraries from various sources

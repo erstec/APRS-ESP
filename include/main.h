@@ -1,30 +1,42 @@
 /*
- Name:		ESP32 APRS Internet Gateway
- Created:	1-Nov-2021 14:27:23
- Author:	HS5TQA/Atten
- Support IS: host:aprs.dprns.com port:14580 or aprs.hs5tqa.ampr.org:14580
- Support IS monitor: http://aprs.dprns.com:14501 or
- http://aprs.hs5tqa.ampr.org:14501 Support in LINE Group APRS Only
+    Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
+    Created:    2022-10-10
+    Author:     Ernest (ErNis) / LY3PH
+    License:    GNU General Public License v3.0
+    Includes code from:
+                https://github.com/nakhonthai/ESP32IGate
+                https://github.com/sh123/aprs_tracker
 */
 
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.1"
+#define VERSION "0.1a"
 
 #define DEBUG
 //#define DEBUG_IS
+#define DEBUG_TNC
+#define DEBUG_RF
 
 //#define SDCARD
-// #define SA818
-#define SA828
-//#define SR_FRS
 //#define USE_TNC
 #define USE_GPS
-#define USE_SCREEN
+//#define USE_SCREEN_SSD1306
+#define USE_SCREEN_SH1106
 //#define USE_BLE
+//#define USE_KISS  // disables tracker, enables kiss serial modem mode
+//#define USE_ROTARY
+#define USE_SMART_BEACONING
 
-#ifdef SA828
+#if defined(USE_SCREEN_SSD1306) && defined(USE_SCREEN_SH1106)
+#error "Only one screen can be specified at once in main.h"
+#endif
+
+#if defined(USE_SCREEN_SSD1306) || defined(USE_SCREEN_SH1106)
+#define USE_SCREEN
+#endif
+
+#ifdef USE_SA828
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #else
@@ -34,7 +46,7 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(SA818) || defined(SA828) || defined(SR_FRS)
+#if defined(USE_SA818) || defined(USE_SA828) || defined(USE_SR_FRS)
 #define USE_RF
 #endif
 
@@ -43,10 +55,21 @@
 #endif
 
 #ifdef SR_FRS
-#ifndef SA818
-#define SA818
+#ifndef USE_SA818
+#define USE_SA818
 #endif
 #endif
+
+// smart beaconing parameters
+#define APRS_SB_FAST_SPEED      100         // At this speed or above, beacons will be transmitted at the Fast Rate
+#define APRS_SB_FAST_RATE       60          // How often beacons will be sent when you are travelling at or above the Fast Speed
+#define APRS_SB_SLOW_SPEED      5           // This is the speed below which you’re considered stationary
+#define APRS_SB_SLOW_RATE       1200        // How often beacons will be sent when you are are below the Slow Speed
+#define APRS_SB_MIN_TURN_TIME   10          // The smallest time interval between beacons when you are continuously changing direction
+#define APRS_SB_MIN_TURN_ANGLE  15          // The minimum angle by which you must change course before it will trigger a beacon
+#define APRS_SB_TURN_SLOPE      240         // This number, when divided by your current speed will be added to the Min Turn Angle in order to increase the turn threshold at lower speeds
+
+#define EEPROM_SIZE 1024
 
 #include "pinout.h"
 
@@ -68,8 +91,6 @@
 #define PKGLISTSIZE 10
 #define PKGTXSIZE 5
 
-const int timeZone = 7;  // Bangkok
-
 #include <Arduino.h>
 #include <FS.h>
 #include <SD.h>
@@ -90,63 +111,6 @@ enum M17Flags {
     CONNECTED_RO = 1 << 6
 };
 
-typedef struct Config_Struct {
-    bool synctime;
-    bool aprs;
-    bool wifi_client;
-    bool wifi;
-    char wifi_mode;  // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
-    float gps_lat;
-    float gps_lon;
-    float gps_alt;
-    uint8_t aprs_ssid;
-    uint16_t aprs_port;
-    uint8_t aprs_moniSSID;
-    uint32_t api_id;
-    bool tnc;
-    bool rf2inet;
-    bool inet2rf;
-    bool tnc_digi = false;
-    bool tnc_telemetry = false;
-    int tnc_beacon = 0;
-    int aprs_beacon;
-    char aprs_table;
-    char aprs_symbol;
-    char aprs_mycall[10];
-    char aprs_host[20];
-    char aprs_passcode[10];
-    char aprs_moniCall[10];
-    char aprs_filter[30];
-    char aprs_comment[50];
-    char aprs_path[72];
-    char wifi_ssid[32];
-    char wifi_pass[63];
-    char wifi_ap_ssid[32];
-    char wifi_ap_pass[63];
-    char tnc_path[50];
-    char tnc_btext[50];
-    char tnc_comment[50];
-    char aprs_object[10];
-    char wifi_power;
-    uint16_t tx_timeslot;
-    uint16_t digi_delay;
-    bool input_hpf;
-#ifdef USE_RF
-    float freq_rx;
-    float freq_tx;
-    int offset_rx;
-    int offset_tx;
-    int tone_rx;
-    int tone_tx;
-    uint8_t band;
-    uint8_t sql_level;
-    bool rf_power;
-    uint8_t volume;
-#endif
-    int8_t timeZone;
-
-} Configuration;
-
 typedef struct igateTLM_struct {
     uint16_t Sequence;
     unsigned long ParmTimeout;
@@ -157,15 +121,6 @@ typedef struct igateTLM_struct {
     uint8_t TX;
     uint8_t DROP;
 } igateTLMType;
-
-typedef struct pkgListStruct {
-    time_t time;
-    char calsign[11];
-    char ssid[5];
-    unsigned int pkg;
-    bool type;
-    uint8_t symbol;
-} pkgListType;
 
 typedef struct statisticStruct {
     uint32_t allCount;
@@ -210,18 +165,11 @@ const float wifiPwr[12][2] = {{-4, -1},  {8, 2},     {20, 5},  {28, 7},
                               {34, 8.5}, {44, 11},   {52, 13}, {60, 15},
                               {68, 17},  {74, 18.5}, {76, 19}, {78, 19.5}};
 
-void saveEEPROM();
-void defaultConfig();
-String getValue(String data, char separator, int index);
-boolean isValidNumber(String str);
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
-void sort(pkgListType a[], int size);
-void sortPkgDesc(pkgListType a[], int size);
 int processPacket(String &tnc2);
-String send_fix_location();
+String send_gps_location();
 int digiProcess(AX25Msg &Packet);
-void printTime();
 bool pkgTxUpdate(const char *info, int delay);
 
 #endif

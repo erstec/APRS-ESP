@@ -1,3 +1,14 @@
+/*
+    Description:    This file is part of the APRS-ESP project.
+                    This file contains the code for pinouts / settings and etc.
+    Author:         Ernest (ErNis) / LY3PH
+    License:        GNU General Public License v3.0
+    Includes code from:
+                    https://github.com/nakhonthai/ESP32IGate
+*/
+
+#define BOOT_PIN            0
+
 // SA8x8 radio module
 //#define VBAT_PIN            35
 //#define POWER_PIN           12
@@ -14,6 +25,9 @@
 #define RX_LED_PIN          2
 #define TX_LED_PIN          4
 #define RSSI_PIN            33
+
+// DEBUG UART
+#define SERIAL_DEBUG_BAUD   115200
 
 // RF UART
 #define SERIAL_RF_UART      1
@@ -39,3 +53,8 @@
 #define OLED_SDA_PIN        21
 #define OLED_SCL_PIN        22
 #define OLED_RST_PIN        -1
+
+// ROTARY ENCODER
+#define PIN_ROT_CLK         18
+#define PIN_ROT_DT          19
+#define PIN_ROT_BTN         5   // IO0 may be handled too?
