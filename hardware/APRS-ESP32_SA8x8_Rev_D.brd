@@ -198,7 +198,7 @@
 <plain>
 <text x="48.26" y="4.60375" size="1.778" layer="25" ratio="10">APRS-ESP32
 V1.7 Rev.D</text>
-<text x="32.54375" y="1.5875" size="1.6764" layer="25" ratio="10">github.com/erstec/APRS-ESP</text>
+<text x="26.3525" y="0.79375" size="1.6764" layer="25" ratio="10">github.com/erstec/APRS-ESP</text>
 <wire x1="0.3175" y1="61.75375" x2="0.3175" y2="0.15875" width="0.254" layer="20"/>
 <wire x1="0.3175" y1="0.15875" x2="83.02625" y2="0.15875" width="0.254" layer="20"/>
 <wire x1="83.02625" y1="0.15875" x2="83.02625" y2="61.75375" width="0.254" layer="20"/>
@@ -3242,13 +3242,13 @@ Please make sure your boards conform to these design rules.
 <attribute name="NAME" x="41.275" y="37.211" size="1.27" layer="25" ratio="10" rot="R180"/>
 <attribute name="POPULARITY" value="0" x="43.4975" y="41.275" size="1.778" layer="27" rot="R180" display="off"/>
 </element>
-<element name="R10" library="resistor" package="R0805" value="560" x="37.465" y="25.4" smashed="yes" rot="R90">
+<element name="R10" library="resistor" package="R0805" value="680" x="37.465" y="25.4" smashed="yes" rot="R90">
 <attribute name="NAME" x="36.195" y="23.8125" size="1.27" layer="25" rot="R90"/>
 </element>
-<element name="R11" library="resistor" package="R0805" value="100" x="33.02" y="19.84375" smashed="yes" rot="R90">
+<element name="R11" library="resistor" package="R0805" value="0" x="33.02" y="19.84375" smashed="yes" rot="R90">
 <attribute name="NAME" x="33.655" y="14.44625" size="1.27" layer="25" rot="R90"/>
 </element>
-<element name="R12" library="resistor" package="R0805" value="100" x="33.02" y="24.13" smashed="yes" rot="R90">
+<element name="R12" library="resistor" package="R0805" value="0" x="33.02" y="24.13" smashed="yes" rot="R90">
 <attribute name="NAME" x="33.655" y="18.7325" size="1.27" layer="25" rot="R90"/>
 </element>
 <element name="R13" library="resistor" package="R0805" value="100" x="17.78" y="9.04875" smashed="yes" rot="R90">

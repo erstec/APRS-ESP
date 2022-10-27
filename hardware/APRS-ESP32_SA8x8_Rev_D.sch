@@ -24795,9 +24795,9 @@ Source: www.johnsoncomponents.com .. J502-ND.pdf</description>
 <part name="GND25" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND26" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND19" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="R10" library="resistor" deviceset="R-US_" device="R0805" value="560"/>
-<part name="R11" library="resistor" deviceset="R-US_" device="R0805" value="100"/>
-<part name="R12" library="resistor" deviceset="R-US_" device="R0805" value="100"/>
+<part name="R10" library="resistor" deviceset="R-US_" device="R0805" value="680"/>
+<part name="R11" library="resistor" deviceset="R-US_" device="R0805" value="0"/>
+<part name="R12" library="resistor" deviceset="R-US_" device="R0805" value="0"/>
 <part name="R13" library="resistor" deviceset="R-US_" device="R0805" value="100"/>
 <part name="R14" library="resistor" deviceset="R-US_" device="R0805" value="100"/>
 <part name="R15" library="resistor" deviceset="R-US_" device="R0805" value="0"/>
