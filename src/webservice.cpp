@@ -2277,7 +2277,9 @@ void handle_firmware() {
 #elif defined(USE_SA828)
     webString += " <b>(MODEL:SA828_1.5W)</b>";
 #elif defined(USE_SA818)
-    webString += " <b>(MODEL:SA818/SA868)</b>";
+    webString += " <b>(MODEL:SA818)</b>";
+#elif defined(USE_SA868)
+    webString += " <b>(MODEL:SA868)</b>";
 #endif
 #else
     webString += " <b>(MODEL: Simple)</b>";

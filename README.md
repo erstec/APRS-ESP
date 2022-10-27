@@ -1,6 +1,5 @@
-# ATTENTION: WORK IN PROGRESS, BOTH FW AND HW
-ASK [ME](https://github.com/erstec) BY EMAIL OR DISCORD BEFORE USING IT !!!
-# This notice will be removed as soon as thing will be tested and stable to reproduce
+# ATTENTION: FW and HW is tested and stable. Rotary encoder/menu not implemented yet, but will be added later.
+Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https://github.com/erstec/APRS-ESP/discussions/new), by e-mail or via Discord.
 
 # APRS-ESP32 Project
 
