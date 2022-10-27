@@ -16,7 +16,7 @@
 #include "main.h"
 
 #if defined(USE_SCREEN_SSD1306)
-#include <Adafruit_SSd1306.h>
+#include <Adafruit_SSD1306.h>
 extern Adafruit_SSD1306 display;
 #elif defined(USE_SCREEN_SH1106)
 #include <Adafruit_SH1106.h>
