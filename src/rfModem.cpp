@@ -20,7 +20,9 @@ void RF_Init(bool boot) {
 #if defined(USE_SR_FRS)
     Serial.println("SR_FRS Init");
 #elif defined(USE_SA818)
-    Serial.println("SA818/SA868 Init");
+    Serial.println("SA818 Init");
+#elif defined(USE_SA868)
+    Serial.println("SA868 Init");
 #elif defined(USE_SA828)
     Serial.println("SA828 Init");
 #endif
@@ -39,11 +41,19 @@ void RF_Init(bool boot) {
 #if !defined(USE_SA828)
         SerialRF.println();
         delay(500);
+        while (SerialRF.available()) {
+            char c = SerialRF.read();
+            Serial.print(c);
+        }
 #endif
     }
 #if !defined(USE_SA828)
     SerialRF.println();
     delay(500);
+    while (SerialRF.available()) {
+        char c = SerialRF.read();
+        Serial.print(c);
+    }
 #endif
     // #if defined(USE_SA828)
     // char str[512];
@@ -65,15 +75,36 @@ void RF_Init(bool boot) {
     delay(500);
     SerialRF.println("AT+DMOSETMIC=1,0,0");
 #elif defined(USE_SA818)
-    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", config.band,
+    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
+            config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
             config.freq_rx + ((float)config.offset_rx / 1000000),
             config.tone_tx, config.sql_level, config.tone_rx);
     SerialRF.println(str);
+    Serial.println(str);
     delay(500);
     SerialRF.println("AT+SETTAIL=0");
+    Serial.println("AT+SETTAIL=0");
     delay(500);
     SerialRF.println("AT+SETFILTER=1,1,1");
+    Serial.println("AT+SETFILTER=1,1,1");
+#elif defined(USE_SA868)
+    //sprintf(str, "\r\n\r\n\r\nAT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
+    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
+            config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
+            config.freq_tx + ((float)config.offset_tx / 1000000),
+            config.freq_rx + ((float)config.offset_rx / 1000000),
+            config.tone_tx, config.sql_level, config.tone_rx);
+    SerialRF.println(str);
+    Serial.println(str);
+    delay(500);
+    while (SerialRF.available()) {
+        char c = SerialRF.read();
+        Serial.print(c);
+    }
+
+    SerialRF.println("AT+SETFILTER=1,1,1");
+    Serial.println("AT+SETFILTER=1,1,1");
 #elif defined(USE_SA828)
     // int idx = sprintf(str, "AAFA3");
     // for (uint8_t i = 0; i < 16; i++) {
@@ -106,9 +137,20 @@ void RF_Init(bool boot) {
 #endif
     // SerialRF.println(str);
     delay(500);
+    while (SerialRF.available()) {
+        char c = SerialRF.read();
+        Serial.print(c);
+    }
+
     if (config.volume > 8) config.volume = 8;
 #if !defined(USE_SA828)
     SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
+    Serial.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
+    delay(500);
+    while (SerialRF.available()) {
+        char c = SerialRF.read();
+        Serial.print(c);
+    }
 #endif
 }
 
@@ -125,18 +167,20 @@ void RF_Check() {
     }
 #if !defined(USE_SA828)
     SerialRF.println("AT+DMOCONNECT");
+    Serial.println("AT+DMOCONNECT");
     delay(100);
     if (SerialRF.available() > 0) {
         String ret = SerialRF.readString();
+        Serial.println(ret);
         if (ret.indexOf("DMOCONNECT") > 0) {
             SA818_Timeout = millis();
 #ifdef DEBUG
             // Serial.println(SerialRF.readString());
-            Serial.println("SA818/SR_FRS OK");
+            Serial.println("SA818/SA868/SR_FRS OK");
 #endif
         }
     } else {
-        Serial.println("SA818/SR_FRS Error");
+        Serial.println("SA818/SA868/SR_FRS Error");
         digitalWrite(POWER_PIN, LOW);
         digitalWrite(PULLDOWN_PIN, LOW);
         delay(500);

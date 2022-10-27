@@ -473,9 +473,11 @@ void loop()
     }
 #ifdef USE_RF
 #ifdef DEBUG_RF
+#ifdef USE_SA828
     if (SerialRF.available()) {
         Serial.print(SerialRF.readString());
     }
+#endif
 #endif
 #endif
     if (AFSKInitAct == true) {
