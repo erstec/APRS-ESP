@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.1a"
+#define VERSION "0.2a"
 
 #define DEBUG
 //#define DEBUG_IS
@@ -36,7 +36,10 @@
 #define USE_SCREEN
 #endif
 
-#ifdef USE_SA828
+#if defined (USE_SA828)
+#define APRS_PREAMBLE	(350UL * 3)
+#define APRS_TAIL       (250UL)
+#elif defined(USE_SA868)
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #else
@@ -46,7 +49,7 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(USE_SA818) || defined(USE_SA828) || defined(USE_SR_FRS)
+#if defined(USE_SA818) || defined(USE_SA868) || defined(USE_SA828) || defined(USE_SR_FRS)
 #define USE_RF
 #endif
 

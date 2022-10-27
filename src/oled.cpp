@@ -92,8 +92,10 @@ void OledUpdate() {
     }
 
     // Second line
-    display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
-    display.print(aprsClient.connected() ? "A+" : "A-");
+    if (config.aprs) {
+        display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
+        display.print(aprsClient.connected() ? "A+" : "A-");
+    }
 
     display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
     display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");

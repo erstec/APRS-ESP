@@ -473,9 +473,11 @@ void loop()
     }
 #ifdef USE_RF
 #ifdef DEBUG_RF
+#ifdef USE_SA828
     if (SerialRF.available()) {
         Serial.print(SerialRF.readString());
     }
+#endif
 #endif
 #endif
     if (AFSKInitAct == true) {
@@ -677,11 +679,6 @@ void taskAPRS(void *pvParameters) {
                     sendIsPkgMsg((char *)&UNIT[0]);
                     sendIsPkgMsg((char *)&EQNS[0]);
                 }
-#warning "Make RF telemetry with WIDE path"
-//     if (config.aprs_path[0] != 0) {
-//         tnc2Raw += ",";
-//         tnc2Raw += String(config.aprs_path);
-//     }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0) {
                     sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
