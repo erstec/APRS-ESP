@@ -50,15 +50,15 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 
 ### CAD data
  
-GERBER data is [here](hardware/GERBER/APRS-ESP32_SA8x8_V1.5_Rev_B_2022-10-11.zip)
+GERBER data is [here](hardware/GERBER/APRS-ESP32_SA8x8_V1.7_Rev_D_2022-10-27.zip)
 
-PCB Layout is [here](hardware/APRS-ESP32_SA8x8_Rev_B_PCB.pdf)
+PCB Layout is [here](hardware/APRS-ESP32_SA8x8_Rev_D_PCB.pdf)
 
-Schematic PDF is [here](hardware/APRS-ESP32_SA8x8_Rev_B_Schematics.pdf)
+Schematic PDF is [here](hardware/APRS-ESP32_SA8x8_Rev_D_Schematics.pdf)
 
 ### BOM list  
 
-Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_B_BOM.txt)
+Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 
 ## FLASHING FIRMWARE
 ### First time only. Later update via Web Interface
