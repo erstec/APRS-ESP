@@ -43,11 +43,11 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 
 ### Schematics
 
-![SCH](doc/APRS-ESP32_SA8x8_Rev_B_Schematics.png)
+![SCH](doc/APRS-ESP32_SA8x8_Rev_D_Schematics.png)
 
 ### PCB
 
-![PCB](doc/APRS-ESP32_SA8x8_Rev_B_PCB.png)
+![PCB](doc/APRS-ESP32_SA8x8_Rev_D_PCB.png)
 
 ### CAD data
  
