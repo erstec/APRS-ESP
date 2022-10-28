@@ -558,7 +558,7 @@ void taskAPRS(void *pvParameters) {
     kiss_init(&AX25, &modem, &Serial, 0);
 #endif
 
-    sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
+    sendTimer = millis() - (config.aprs_beacon * 60 * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
     timeSlot = millis();
@@ -631,7 +631,7 @@ void taskAPRS(void *pvParameters) {
 
         bool sendByTime = false;
         if (config.aprs_beacon > 0) {   // it interval configured
-            sendByTime = (now > (sendTimer + (config.aprs_beacon * 1000)));
+            sendByTime = (now > (sendTimer + (config.aprs_beacon * 60 * 1000)));
         }
         bool sendByFlag = send_aprs_update;
 
@@ -825,8 +825,7 @@ void taskNetwork(void *pvParameters) {
         vTaskDelay(5 / portTICK_PERIOD_MS);
         serviceHandle();
 
-        if (config.wifi_mode == WIFI_AP_STA_FIX ||
-            config.wifi_mode == WIFI_STA_FIX) {
+        if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
             if (WiFi.status() != WL_CONNECTED) {
                 unsigned long int tw = millis();
                 if (tw > wifiTTL) {
@@ -896,58 +895,70 @@ void taskNetwork(void *pvParameters) {
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
-                            Serial.print("APRS-IS ");
+                            Serial.print("APRS-IS: ");
                             Serial.println(line);
 #endif
                             status.isCount++;
-                            int start_val =
-                                line.indexOf(">", 0);  // find the first position of >
+
+                            int start_val = line.indexOf(">", 0);  // find the first position of >
                             if (start_val > 3) {
                                 // raw = (char *)malloc(line.length() + 1);
                                 String src_call = line.substring(0, start_val);
-                                String msg_call = "::" + src_call;
-
+                                int msg_call_idx = line.indexOf("::");  // text only
+                                String msg_call = "";
+                                if (msg_call_idx > 0) {
+                                    msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
+                                }
+#ifdef DEBUG_IS
+                                Serial.printf("SRC_CALL: %s\r\n", src_call.c_str());
+                                if (msg_call_idx > 0) {
+                                    Serial.printf("MSG_CALL: %s\r\n", msg_call.c_str());
+                                }
+#endif
                                 status.allCount++;
                                 igateTLM.RX++;
-                                if (config.tnc && config.inet2rf) {
-                                    if (line.indexOf(msg_call) <= 0)  // src callsign = msg callsign
-                                    // Not a telemetry topic
-                                    {
-                                        if (line.indexOf(":T#") < 0)  // not telemetry
-                                        {
-                                            if (line.indexOf("::") > 0)  // text only
-                                            {  // message only
-                                                // raw[0] = '}';
-                                                // line.toCharArray(&raw[1],
-                                                // line.length()); tncTxEnable =
-                                                // false; SerialTNC.flush();
-                                                // SerialTNC.println(raw);
-                                                pkgTxUpdate(line.c_str(), 0);
-                                                // APRS_sendTNC2Pkt(line); //
-                                                // Send out RF by TNC build in
-                                                //  tncTxEnable = true;
-                                                status.inet2rf++;
-                                                igateTLM.INET2RF++;
-                                                printTime();
+
+                                // Is it not Telemetry?
+                                if (line.indexOf(":T#") < 0
+                                    && line.indexOf("PARM.") < 0
+                                    && line.indexOf("UNIT.") < 0
+                                    && line.indexOf("EQNS.") < 0
+                                    && line.indexOf("BITS.") < 0)
+                                {
+                                    // Is INET2RF configured and MSG_CALL present
+                                    if (config.tnc && config.inet2rf && (msg_call != "")) {
+                                        // Is adresse is in owner callsigns group?
+                                        if (msg_call.startsWith(config.aprs_mycall)) {
+                                            Serial.println("MSG to Owner group");
+                                            pkgTxUpdate(line.c_str(), 0);
+                                            status.inet2rf++;
+                                            igateTLM.INET2RF++;
+                                            printTime();
 #ifdef DEBUG
-                                                Serial.print("INET->RF ");
-                                                Serial.println(line);
+                                            Serial.print("INET->RF " + line);
 #endif
+                                        } else {
+                                            // Is it a message for last heard stations?
+                                            for (int i = 0; i < PKGLISTSIZE; i++) {
+                                                if (pkgList[i].time > 0) {
+                                                    if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
+                                                        Serial.println("MSG to last heard");
+                                                        pkgTxUpdate(line.c_str(), 0);
+                                                        status.inet2rf++;
+                                                        igateTLM.INET2RF++;
+                                                        printTime();
+                                                        Serial.println("INET->RF " + line);
+                                                    }
+                                                }
                                             }
                                         }
-                                    } else {
-                                        igateTLM.DROP++;
-                                        Serial.print(
-                                            "INET Message TELEMETRY from ");
-                                        Serial.println(src_call);
                                     }
+                                } else {
+                                    // Telemetry found
+                                    igateTLM.DROP++;
+                                    Serial.print("INET Message TELEMETRY from ");
+                                    Serial.println(src_call);
                                 }
-
-                                // memset(&raw[0], 0, sizeof(raw));
-                                // line.toCharArray(&raw[0], start_val + 1);
-                                // raw[start_val + 1] = 0;
-                                // pkgListUpdate(&raw[0], 0);
-                                // free(raw);
                             }
                         }
                     }

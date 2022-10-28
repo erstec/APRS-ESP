@@ -967,7 +967,7 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval "
-        "(sec)<br>0 - SmartBeaconing</label>\n";
+        "(min)<br>0 - SmartBeaconing</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" "
         "id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" +
