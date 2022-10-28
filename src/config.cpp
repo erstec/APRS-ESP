@@ -114,7 +114,7 @@ void LoadConfig() {
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\n", EEPROM.read(0), chkSum,
+    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
                   sizeof(Configuration));
     if (EEPROM.read(0) != chkSum) {
         Serial.println("Config EEPROM Error!");

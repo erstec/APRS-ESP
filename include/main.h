@@ -14,7 +14,7 @@
 #define VERSION "1.0a"
 
 #define DEBUG
-//#define DEBUG_IS
+#define DEBUG_IS
 #define DEBUG_TNC
 #define DEBUG_RF
 
