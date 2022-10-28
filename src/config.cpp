@@ -52,7 +52,7 @@ void DefaultConfig() {
     sprintf(config.wifi_ap_pass, "aprs");
     config.wifi_client = true;
     config.synctime = true;
-    config.aprs_beacon = 600;
+    config.aprs_beacon = 10;    // minutes
     config.gps_lat = 54.6842;
     config.gps_lon = 25.2398;
     config.gps_alt = 10;

@@ -558,7 +558,7 @@ void taskAPRS(void *pvParameters) {
     kiss_init(&AX25, &modem, &Serial, 0);
 #endif
 
-    sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
+    sendTimer = millis() - (config.aprs_beacon * 60 * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
     timeSlot = millis();
@@ -631,7 +631,7 @@ void taskAPRS(void *pvParameters) {
 
         bool sendByTime = false;
         if (config.aprs_beacon > 0) {   // it interval configured
-            sendByTime = (now > (sendTimer + (config.aprs_beacon * 1000)));
+            sendByTime = (now > (sendTimer + (config.aprs_beacon * 60 * 1000)));
         }
         bool sendByFlag = send_aprs_update;
 
