@@ -291,7 +291,8 @@ void setup()
     LoadConfig();
 
 #ifdef USE_RF
-    RF_Init(true);
+    // RF SHOULD BE Initialized or there is no reason to startup at all
+    while (!RF_Init(true)) {};
 #endif
 
     // if SmartBeaconing - delay processing GPS data

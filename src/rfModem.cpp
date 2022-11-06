@@ -16,7 +16,29 @@ extern Configuration config;
 
 unsigned long SA818_Timeout = 0;
 
-void RF_Init(bool boot) {
+bool rfAnswerCheck(void) {
+#ifdef USE_SA828
+    return true;
+#else
+    if (SerialRF.available() > 0) {
+        String ret = SerialRF.readString();
+        Serial.print("->" + ret);
+        if (ret.indexOf(":0") > 0) {
+            // SA818_Timeout = millis();
+#ifdef DEBUG
+            Serial.println("SA Answer OK");
+#endif
+            return true;
+        }
+        return false;
+    } else {
+        Serial.println("SA Answer Error");
+        return false;
+    }
+#endif
+}
+
+bool RF_Init(bool boot) {
 #if defined(USE_SR_FRS)
     Serial.println("SR_FRS Init");
 #elif defined(USE_SA818)
@@ -29,15 +51,16 @@ void RF_Init(bool boot) {
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
-        pinMode(POWER_PIN, OUTPUT);
-        pinMode(PULLDOWN_PIN, OUTPUT);
+        pinMode(POWER_PIN, OUTPUT_OPEN_DRAIN);
+        pinMode(POWERDOWN_PIN, OUTPUT);
         pinMode(SQL_PIN, INPUT_PULLUP);
 
         digitalWrite(POWER_PIN, LOW);
-        digitalWrite(PULLDOWN_PIN, LOW);
+        digitalWrite(POWERDOWN_PIN, LOW);
         delay(500);
-        digitalWrite(PULLDOWN_PIN, HIGH);
+        digitalWrite(POWERDOWN_PIN, HIGH);
         delay(1500);
+        Serial.println("RF Modem powered up");
 #if !defined(USE_SA828)
         SerialRF.println();
         delay(500);
@@ -98,10 +121,7 @@ void RF_Init(bool boot) {
     SerialRF.println(str);
     Serial.println(str);
     delay(500);
-    while (SerialRF.available()) {
-        char c = SerialRF.read();
-        Serial.print(c);
-    }
+    if (!rfAnswerCheck()) return false;
 
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
@@ -137,26 +157,21 @@ void RF_Init(bool boot) {
 #endif
     // SerialRF.println(str);
     delay(500);
-    while (SerialRF.available()) {
-        char c = SerialRF.read();
-        Serial.print(c);
-    }
+    if (!rfAnswerCheck()) return false;
 
     if (config.volume > 8) config.volume = 8;
 #if !defined(USE_SA828)
     SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
     Serial.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
     delay(500);
-    while (SerialRF.available()) {
-        char c = SerialRF.read();
-        Serial.print(c);
-    }
+    if (!rfAnswerCheck()) return false;
 #endif
+    return true;
 }
 
 void RF_Sleep() {
     digitalWrite(POWER_PIN, LOW);
-    digitalWrite(PULLDOWN_PIN, LOW);
+    digitalWrite(POWERDOWN_PIN, LOW);
     // SerialGPS.print("$PMTK161,0*28\r\n");
     // AFSK_TimerEnable(false);
 }
@@ -169,20 +184,11 @@ void RF_Check() {
     SerialRF.println("AT+DMOCONNECT");
     Serial.println("AT+DMOCONNECT");
     delay(100);
-    if (SerialRF.available() > 0) {
-        String ret = SerialRF.readString();
-        Serial.println(ret);
-        if (ret.indexOf("DMOCONNECT") > 0) {
-            SA818_Timeout = millis();
-#ifdef DEBUG
-            // Serial.println(SerialRF.readString());
-            Serial.println("SA818/SA868/SR_FRS OK");
-#endif
-        }
+    if (rfAnswerCheck()) {
+        SA818_Timeout = millis();
     } else {
-        Serial.println("SA818/SA868/SR_FRS Error");
         digitalWrite(POWER_PIN, LOW);
-        digitalWrite(PULLDOWN_PIN, LOW);
+        digitalWrite(POWERDOWN_PIN, LOW);
         delay(500);
         RF_Init(true);
     }
@@ -197,12 +203,12 @@ void RF_Check() {
 
 //     pinMode(0, INPUT);
 //     pinMode(POWER_PIN, OUTPUT);
-//     pinMode(PULLDOWN_PIN, OUTPUT);
+//     pinMode(POWERDOWN_PIN, OUTPUT);
 //     pinMode(SQL_PIN, INPUT_PULLUP);
 
 //     SerialRF.begin(9600, SERIAL_8N1, 14, 13);
 
-//     digitalWrite(PULLDOWN_PIN, HIGH);
+//     digitalWrite(POWERDOWN_PIN, HIGH);
 //     digitalWrite(POWER_PIN, LOW);
 //     delay(500);
 //     // AT+DMOSETGROUP=1,144.3900,144.3900,0,1,0,0
@@ -223,7 +229,7 @@ void RF_Check() {
 // void RF_Sleep()
 // {
 //     digitalWrite(POWER_PIN, LOW);
-//     digitalWrite(PULLDOWN_PIN, LOW);
+//     digitalWrite(POWERDOWN_PIN, LOW);
 //     // SerialGPS.print("$PMTK161,0*28\r\n");
 //     // AFSK_TimerEnable(false);
 // }
@@ -250,7 +256,7 @@ void RF_Check() {
 //     {
 //         Serial.println("SA818 deActive");
 //         digitalWrite(POWER_PIN, LOW);
-//         digitalWrite(PULLDOWN_PIN, LOW);
+//         digitalWrite(POWERDOWN_PIN, LOW);
 //         delay(500);
 //         SA818_INIT(LOW);
 //     }

@@ -14,7 +14,7 @@
 //#define POWER_PIN           12
 //#define POWER_PIN           23
 #define POWER_PIN           25
-#define PULLDOWN_PIN        27
+#define POWERDOWN_PIN       27
 #define SQL_PIN             33
 
 // Interface to the radio / radio module
