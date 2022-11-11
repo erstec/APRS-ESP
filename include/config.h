@@ -73,5 +73,6 @@ void DefaultConfig();
 uint8_t checkSum(uint8_t *ptr, size_t count);
 void SaveConfig();
 void LoadConfig();
+void LoadReConfig();
 
 #endif

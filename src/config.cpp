@@ -36,7 +36,7 @@ void SaveConfig() {
     Serial.println(chkSum, HEX);
 #endif
     SPIFFS.begin();
-    File f = SPIFFS.open("/config.txt", "w");
+    File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
         Serial.println("Failed to open config file for writing");
         return;
@@ -131,4 +131,38 @@ void LoadConfig() {
         DefaultConfig();
     }
     input_HPF = config.input_hpf;
+}
+
+void LoadReConfig() {
+    byte *ptr;
+
+    SPIFFS.begin();
+    File f = SPIFFS.open("/config.bin", "r");
+    if (!f) {
+        Serial.println("Failed to open config file for reading");
+        return;
+    }
+    
+    Configuration tmpConfig;
+
+    uint8_t chkSum = f.read();
+    size_t sz = f.read((byte *)&tmpConfig, sizeof(Configuration));
+    f.close();
+    SPIFFS.end();
+
+    if (sz != sizeof(Configuration)) {
+        Serial.println("Config File Error!");
+        return;
+    }
+
+    ptr = (byte *)&tmpConfig;
+
+    uint8_t chkSum2 = checkSum(ptr, sizeof(Configuration));
+    Serial.printf("SPIFFS Check %0Xh=%0Xh(%dByte)\r\n", chkSum, chkSum2, sizeof(Configuration));
+
+    if (chkSum == chkSum2) {
+        memcpy(&config, &tmpConfig, sizeof(Configuration));
+        input_HPF = config.input_hpf;
+        SaveConfig();
+    }
 }

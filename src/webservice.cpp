@@ -2457,9 +2457,13 @@ void handle_upgrade() {
     webString.clear();
 }
 
+//holds the current upload
+File fsUploadFile;
+
 void handle_configuration() {
+    // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
     if (server.hasArg("backupConfig")) {
-        String path = "config.txt";
+        String path = "config.bin";
         String dataType = "text/plain";
 
         SPIFFS.begin();
@@ -2473,9 +2477,33 @@ void handle_configuration() {
         }
         SPIFFS.end();
     } else if (server.hasArg("restoreConfig")) {
-        //
-        webString += "<hr>";
-        webString += "<div class = \"col-pad\">\n<h3>Restore Config OK</h3>\n";
+        HTTPUpload& upload = server.upload();
+        Serial.println(upload.filename);
+        Serial.println(upload.totalSize);
+        Serial.println(upload.status);
+        if (upload.totalSize != (sizeof(Configuration) + 1)) {
+            Serial.println("Upload file size error!");
+            server.send(500, "text/plain", "Upload file size error!");
+            return;
+        }
+        //if (upload.status == UPLOAD_FILE_START) {
+            String filename = upload.filename;
+            filename = "config.bin";    // override filename
+            if (!filename.startsWith("/")) filename = "/" + filename;
+            Serial.print("handleFileUpload Name: "); Serial.println(filename);
+            SPIFFS.begin();
+            // SPIFFS.remove(filename);
+            fsUploadFile = SPIFFS.open(filename, "w");
+            filename = String();
+        //} else if (upload.status == UPLOAD_FILE_WRITE) {
+            Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+            if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+        //} else if (upload.status == UPLOAD_FILE_END) {
+            if (fsUploadFile) fsUploadFile.close();
+            Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+            SPIFFS.end();
+        //}
+        LoadReConfig();
     }
 
     char strCID[50];
