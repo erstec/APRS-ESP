@@ -39,6 +39,7 @@ void SaveConfig() {
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
         Serial.println("Failed to open config file for writing");
+        SPIFFS.end();
         return;
     }
     f.write(chkSum);
@@ -140,6 +141,7 @@ void LoadReConfig() {
     File f = SPIFFS.open("/config.bin", "r");
     if (!f) {
         Serial.println("Failed to open config file for reading");
+        SPIFFS.end();
         return;
     }
     
