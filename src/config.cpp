@@ -114,11 +114,20 @@ void LoadConfig() {
     }
 
     delay(3000);
-    if (digitalRead(BOOT_PIN) == LOW) {
+    
+    uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+    bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         DefaultConfig();
         Serial.println("Restoring Factory Default config");
-        while (digitalRead(BOOT_PIN) == LOW)
-            ;
+        while (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+#ifndef USE_ROTARY
+            bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+        };
     }
 
     // Check for configuration errors
