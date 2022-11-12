@@ -2466,7 +2466,7 @@ void handle_configuration() {
         String path = "config.bin";
         String dataType = "text/plain";
 
-        SPIFFS.begin();
+        SPIFFS.begin(true);
         File myFile = SPIFFS.open("/" + path, "r");
         if (myFile) {
             server.sendHeader("Content-Type", dataType);
@@ -2491,7 +2491,7 @@ void handle_configuration() {
             filename = "config.bin";    // override filename
             if (!filename.startsWith("/")) filename = "/" + filename;
             Serial.print("handleFileUpload Name: "); Serial.println(filename);
-            SPIFFS.begin();
+            SPIFFS.begin(true);
             // SPIFFS.remove(filename);
             fsUploadFile = SPIFFS.open(filename, "w");
             filename = String();
@@ -2786,8 +2786,7 @@ void webService() {
         []() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
-                Serial.printf("Firmware Update FILE: %s\n",
-                              upload.filename.c_str());
+                Serial.printf("Firmware Update FILE: %s\r\n", upload.filename.c_str());
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
                                                            // available size
                     Update.printError(Serial);
@@ -2812,13 +2811,14 @@ void webService() {
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
-                /* flashing firmware to ESP*/
-                if (Update.write(upload.buf, upload.currentSize) !=
-                    upload.currentSize) {
+                /* flashing firmware to ESP*/                
+                // Serial.print("Firmware Update Data: "); Serial.println(upload.totalSize);
+                if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     Update.printError(Serial);
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_END) {
+                Serial.print("Firmware Update Size: "); Serial.println(upload.totalSize);
                 if (Update.end(true)) {  // true to set the size to the current
                                          // progress
                     delay(3);

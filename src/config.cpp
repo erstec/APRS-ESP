@@ -35,7 +35,7 @@ void SaveConfig() {
     Serial.print("Save EEPROM ChkSUM=");
     Serial.println(chkSum, HEX);
 #endif
-    SPIFFS.begin();
+    SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
         Serial.println("Failed to open config file for writing");
@@ -114,11 +114,20 @@ void LoadConfig() {
     }
 
     delay(3000);
-    if (digitalRead(BOOT_PIN) == LOW) {
+    
+    uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+    bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         DefaultConfig();
         Serial.println("Restoring Factory Default config");
-        while (digitalRead(BOOT_PIN) == LOW)
-            ;
+        while (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+#ifndef USE_ROTARY
+            bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+        };
     }
 
     // Check for configuration errors
@@ -137,7 +146,7 @@ void LoadConfig() {
 void LoadReConfig() {
     byte *ptr;
 
-    SPIFFS.begin();
+    SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "r");
     if (!f) {
         Serial.println("Failed to open config file for reading");

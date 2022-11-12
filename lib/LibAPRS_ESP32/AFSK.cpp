@@ -215,6 +215,7 @@ void AFSK_hw_init(void)
   pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
   pinMode(TX_LED_PIN, OUTPUT);
+  digitalWrite(TX_LED_PIN, LOW);
 
   pinMode(RX_LED_PIN, OUTPUT);
   digitalWrite(RX_LED_PIN, LOW);
