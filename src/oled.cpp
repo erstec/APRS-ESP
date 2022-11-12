@@ -78,7 +78,11 @@ void OledUpdate() {
     if (config.wifi_mode == WIFI_STA_FIX) {
         display.print(WiFi.localIP());
     } else if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {
-        display.print(WiFi.softAPIP());
+        if (WiFi.localIP() != IPAddress(0, 0, 0, 0)) {
+            display.print(WiFi.localIP());
+        } else {
+            display.print(WiFi.softAPIP());
+        }
     } else {
         display.print("No IP - BLE Mode");
     }

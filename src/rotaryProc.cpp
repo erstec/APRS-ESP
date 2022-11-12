@@ -174,7 +174,9 @@ bool RotaryProcess() {
     }
 #else
     if (digitalRead(PIN_ROT_BTN) == LOW) {
+#ifdef USE_ROTARY
         update_screen = true;
+#endif
     }
 #endif
 

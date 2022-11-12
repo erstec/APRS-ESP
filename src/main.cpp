@@ -280,6 +280,10 @@ void setup()
     SerialGPS.setRxBufferSize(500);
 #endif
 
+#ifndef USE_ROTARY
+    pinMode(PIN_ROT_BTN, INPUT_PULLUP);
+#endif
+
     Serial.println();
     Serial.println("Start APRS-ESP V" + String(VERSION));
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
@@ -583,7 +587,12 @@ void taskAPRS(void *pvParameters) {
             }
         }
 
-        if (digitalRead(BOOT_PIN) == LOW) {
+        uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+        bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+        if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
             btn_count++;
             if (btn_count > 1000)  // Push BOOT 10sec
             {
