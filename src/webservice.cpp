@@ -981,12 +981,8 @@ void handle_setting() {
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Comment</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-10\"><input class=\"form-control\" "
-        "id=\"comment\" name=\"comment\" type=\"text\" value=\"" +
-        String(config.aprs_comment) + "\" /></div>\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Comment</label>\n";
+    webString += "<div class=\"col-sm-6 col-xs-10\"><input class=\"form-control\" id=\"comment\" name=\"comment\" type=\"text\" maxlength=\"" + String(sizeof(config.aprs_comment)) + "\" value=\"" + String(config.aprs_comment) + "\" /></div>\n";
     webString += "</div>\n";
 
     String syncFlage = "";
