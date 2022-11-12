@@ -2466,7 +2466,7 @@ void handle_configuration() {
         String path = "config.bin";
         String dataType = "text/plain";
 
-        SPIFFS.begin();
+        SPIFFS.begin(true);
         File myFile = SPIFFS.open("/" + path, "r");
         if (myFile) {
             server.sendHeader("Content-Type", dataType);
@@ -2491,7 +2491,7 @@ void handle_configuration() {
             filename = "config.bin";    // override filename
             if (!filename.startsWith("/")) filename = "/" + filename;
             Serial.print("handleFileUpload Name: "); Serial.println(filename);
-            SPIFFS.begin();
+            SPIFFS.begin(true);
             // SPIFFS.remove(filename);
             fsUploadFile = SPIFFS.open(filename, "w");
             filename = String();

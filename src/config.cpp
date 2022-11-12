@@ -35,7 +35,7 @@ void SaveConfig() {
     Serial.print("Save EEPROM ChkSUM=");
     Serial.println(chkSum, HEX);
 #endif
-    SPIFFS.begin();
+    SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
         Serial.println("Failed to open config file for writing");
@@ -137,7 +137,7 @@ void LoadConfig() {
 void LoadReConfig() {
     byte *ptr;
 
-    SPIFFS.begin();
+    SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "r");
     if (!f) {
         Serial.println("Failed to open config file for reading");
