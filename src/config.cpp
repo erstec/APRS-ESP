@@ -84,7 +84,7 @@ void DefaultConfig() {
     sprintf(config.aprs_path, "WIDE1-1");
     sprintf(config.aprs_comment, "ESP IG github.com/erstec/APRS-ESP");
     sprintf(config.tnc_comment, "APRS-ESP Built in TNC");
-    sprintf(config.aprs_filter, "g/HS*/E2*");
+    sprintf(config.aprs_filter, "m/150");
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
     config.input_hpf = true;
