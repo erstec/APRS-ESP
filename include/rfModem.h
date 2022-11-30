@@ -12,7 +12,7 @@
 
 #include <Arduino.h>
 
-void RF_Init(bool boot);
+bool RF_Init(bool boot);
 void RF_Sleep();
 void RF_Check();
 

@@ -52,5 +52,5 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels);
 void webService();
 #ifdef USE_RF
 void handle_radio();
-extern void RF_Init(bool boot);
+extern bool RF_Init(bool boot);
 #endif

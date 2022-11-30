@@ -1,4 +1,5 @@
-# ATTENTION: FW and HW is tested and stable. Rotary encoder/menu not implemented yet, but will be added later.
+# FW and HW is tested and stable. Rotary encoder/menu not implemented yet, but will be added later.
+# Use HW RevD !
 Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https://github.com/erstec/APRS-ESP/discussions/new), by e-mail or via Discord.
 
 # APRS-ESP32 Project
@@ -42,11 +43,11 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 
 ### Schematics
 
-![SCH](doc/APRS-ESP32_SA8x8_Rev_B_Schematics.png)
+![SCH](doc/APRS-ESP32_SA8x8_Rev_D_Schematics.png)
 
 ### PCB
 
-![PCB](doc/APRS-ESP32_SA8x8_Rev_B_PCB.png)
+![PCB](doc/APRS-ESP32_SA8x8_Rev_D_PCB.png)
 
 ### CAD data
  

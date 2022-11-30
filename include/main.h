@@ -11,10 +11,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "0.2a"
+#define VERSION "1.5"
 
 #define DEBUG
-//#define DEBUG_IS
+#define DEBUG_IS
 #define DEBUG_TNC
 #define DEBUG_RF
 

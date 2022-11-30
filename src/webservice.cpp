@@ -513,8 +513,11 @@ void setHTML(byte page) {
     String strActiveP6 = "";
     String strActiveP7 = "";
     String strActiveP8 = "";
+    String strActiveP9 = "";
 
-    if (page == 7)
+    if (page == 8)
+        strActiveP9 = "class=active";
+    else if (page == 7)
         strActiveP8 = "class=active";
     else if (page == 6)
         strActiveP7 = "class=active";
@@ -570,6 +573,9 @@ void setHTML(byte page) {
     webString += "<li role=\"presentation\"" + strActiveP6 +
                  ">\n<a href=\"/firmware\" "
                  "id=\"channel_link_firmware\">Firmware</a>\n</li>\n";
+    webString += "<li role=\"presentation\"" + strActiveP9 +
+                 ">\n<a href=\"/configuration\" "
+                 "id=\"channel_link_config\">Configuration</a>\n</li>\n";
     webString += "</ul>\n</div>";
 
     if (page == 0) {
@@ -967,7 +973,7 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval "
-        "(sec)<br>0 - SmartBeaconing</label>\n";
+        "(min)<br>0 - SmartBeaconing</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" "
         "id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" +
@@ -998,7 +1004,8 @@ void handle_setting() {
     webString += "</div>\n";  // div general
 
     webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
+
+    //webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" "
         "id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" "
@@ -1011,6 +1018,7 @@ void handle_setting() {
         "id=\"default_form_sumbit\" name=\"commit\" type=\"submit\" "
         "value=\"Default Config\" maxlength=\"80\"/></div>\n";
     webString += "</form>\n";
+
     webString += "</div>\n";
 
     webString += "</div>\n";
@@ -2286,29 +2294,24 @@ void handle_firmware() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Develop by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
+
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
-    webString +=
-        "<form method='POST' action='#' enctype='multipart/form-data' "
-        "id='upload_form' class=\"form-horizontal\">\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" "
-        "type=\"file\" onchange='sub(this)' /></div>\n";
+    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
     // webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input'
     // for='file'>   Choose file...</label></div>\n"; webString += "<div
     // class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\"
     // id=\"update_sumbit\" value='Firmware Update'></div>\n";
     webString += "</div>\n";
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn "
-        "btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
@@ -2318,6 +2321,7 @@ void handle_firmware() {
     webString += "</div>\n";
 
     webString += "</form></div>\n";
+
     webString +=
         "<script>"
         "function sub(obj){"
@@ -2356,8 +2360,7 @@ void handle_firmware() {
         "</script>";
 
     webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
+    server.send(200, "text/html", webString);
 
     delay(100);
     webString.clear();
@@ -2449,6 +2452,157 @@ void handle_upgrade() {
     webString += "</body></html>\n";
     server.send(200, "text/html",
                 webString);  // send to someones browser when asked
+
+    delay(100);
+    webString.clear();
+}
+
+//holds the current upload
+File fsUploadFile;
+
+void handle_configuration() {
+    // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
+    if (server.hasArg("backupConfig")) {
+        String path = "config.bin";
+        String dataType = "text/plain";
+
+        SPIFFS.begin(true);
+        File myFile = SPIFFS.open("/" + path, "r");
+        if (myFile) {
+            server.sendHeader("Content-Type", dataType);
+            server.sendHeader("Content-Disposition", "attachment; filename=" + path);
+            server.sendHeader("Connection", "close");
+            server.streamFile(myFile, "application/octet-stream");
+            myFile.close();
+        }
+        SPIFFS.end();
+    } else if (server.hasArg("restoreConfig")) {
+        HTTPUpload& upload = server.upload();
+        Serial.println(upload.filename);
+        Serial.println(upload.totalSize);
+        Serial.println(upload.status);
+        if (upload.totalSize != (sizeof(Configuration) + 1)) {
+            Serial.println("Upload file size error!");
+            server.send(500, "text/plain", "Upload file size error!");
+            return;
+        }
+        //if (upload.status == UPLOAD_FILE_START) {
+            String filename = upload.filename;
+            filename = "config.bin";    // override filename
+            if (!filename.startsWith("/")) filename = "/" + filename;
+            Serial.print("handleFileUpload Name: "); Serial.println(filename);
+            SPIFFS.begin(true);
+            // SPIFFS.remove(filename);
+            fsUploadFile = SPIFFS.open(filename, "w");
+            filename = String();
+        //} else if (upload.status == UPLOAD_FILE_WRITE) {
+            Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+            if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+        //} else if (upload.status == UPLOAD_FILE_END) {
+            if (fsUploadFile) fsUploadFile.close();
+            Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+            SPIFFS.end();
+        //}
+        LoadReConfig();
+    }
+
+    char strCID[50];
+    uint64_t chipid = ESP.getEfuseMac();
+    sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+    // webMessage = "";
+    setHTML(8);
+
+    webString +=
+        "<script "
+        "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
+        "jquery.min.js'></script>\n";
+    webString += "Current Hardware Version: <b>ESP32DR</b>";
+#ifdef USE_RF
+#if defined(USE_SR_FRS)
+    webString += " <b>(MODEL:SR_FRS_1W)</b>";
+#elif defined(USE_SA828)
+    webString += " <b>(MODEL:SA828_1.5W)</b>";
+#elif defined(USE_SA818)
+    webString += " <b>(MODEL:SA818)</b>";
+#elif defined(USE_SA868)
+    webString += " <b>(MODEL:SA868)</b>";
+#endif
+#else
+    webString += " <b>(MODEL: Simple)</b>";
+#endif
+    webString +=
+        "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
+    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
+
+    webString += "<hr>";
+
+    webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-primary\" id=\"backup_sumbit\" name=\"backupConfig\" value='Config Backup'></div>\n";
+    webString += "</div>\n";
+
+    webString += "</form></div>\n";
+
+    webString += "<hr>";
+
+    webString += "<div class = \"col-pad\">\n<h3>Configuration Restore</h3>\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">CFG FILE</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"restore_sumbit\" name=\"restoreConfig\" value='Config Restore'></div>\n";
+    webString += "</div>\n";
+
+    webString += "</form></div>\n";
+/*
+    webString +=
+        "<script>"
+        "function sub(obj){"
+        "var fileName = obj.value.split('\\\\');"
+        "document.getElementById('file-input').innerHTML = '   '+ "
+        "fileName[fileName.length-1];"
+        "};"
+        "$('form').submit(function(e){"
+        "e.preventDefault();"
+        "var form = $('#upload_form')[0];"
+        "var data = new FormData(form);"
+        "$.ajax({"
+        "url: '/update',"
+        "type: 'POST',"
+        "data: data,"
+        "contentType: false,"
+        "processData:false,"
+        "xhr: function() {"
+        "var xhr = new window.XMLHttpRequest();"
+        "xhr.upload.addEventListener('progress', function(evt) {"
+        "if (evt.lengthComputable) {"
+        "var per = evt.loaded / evt.total;"
+        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+        "$('#bar').css('width',Math.round(per*100) + '%');"
+        "}"
+        "}, false);"
+        "return xhr;"
+        "},"
+        "success:function(d, s) {"
+        "console.log('success!') "
+        "},"
+        "error: function (a, b, c) {"
+        "}"
+        "});"
+        "});"
+        "</script>";
+*/
+    webString += "</body></html>\n";
+    server.send(200, "text/html", webString);
 
     delay(100);
     webString.clear();
@@ -2620,6 +2774,7 @@ void webService() {
     server.on("/realtime", handle_realtime);
     server.on("/firmware", handle_firmware);
     server.on("/upgrade", handle_upgrade);
+    server.on("/configuration", handle_configuration);
     /*handling uploading firmware file */
     server.on(
         "/update", HTTP_POST,
@@ -2631,8 +2786,7 @@ void webService() {
         []() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
-                Serial.printf("Firmware Update FILE: %s\n",
-                              upload.filename.c_str());
+                Serial.printf("Firmware Update FILE: %s\r\n", upload.filename.c_str());
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
                                                            // available size
                     Update.printError(Serial);
@@ -2657,13 +2811,14 @@ void webService() {
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
-                /* flashing firmware to ESP*/
-                if (Update.write(upload.buf, upload.currentSize) !=
-                    upload.currentSize) {
+                /* flashing firmware to ESP*/                
+                // Serial.print("Firmware Update Data: "); Serial.println(upload.totalSize);
+                if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     Update.printError(Serial);
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_END) {
+                Serial.print("Firmware Update Size: "); Serial.println(upload.totalSize);
                 if (Update.end(true)) {  // true to set the size to the current
                                          // progress
                     delay(3);

@@ -35,6 +35,17 @@ void SaveConfig() {
     Serial.print("Save EEPROM ChkSUM=");
     Serial.println(chkSum, HEX);
 #endif
+    SPIFFS.begin(true);
+    File f = SPIFFS.open("/config.bin", "w");
+    if (!f) {
+        Serial.println("Failed to open config file for writing");
+        SPIFFS.end();
+        return;
+    }
+    f.write(chkSum);
+    f.write((byte *)&config, sizeof(Configuration));
+    f.close();
+    SPIFFS.end();
 }
 
 void DefaultConfig() {
@@ -47,23 +58,23 @@ void DefaultConfig() {
     sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall, config.aprs_ssid);
     sprintf(config.aprs_filter, "g/HS*/E2*");
     sprintf(config.wifi_ssid, "APRS-ESP32");
-    sprintf(config.wifi_pass, "aprs");
+    sprintf(config.wifi_pass, "aprs-esp32");
     sprintf(config.wifi_ap_ssid, "APRS-ESP32");
-    sprintf(config.wifi_ap_pass, "aprs");
+    sprintf(config.wifi_ap_pass, "aprs-esp32");
     config.wifi_client = true;
     config.synctime = true;
-    config.aprs_beacon = 600;
+    config.aprs_beacon = 10;    // minutes
     config.gps_lat = 54.6842;
     config.gps_lon = 25.2398;
     config.gps_alt = 10;
-    config.tnc = true;
-    config.inet2rf = true;
-    config.rf2inet = true;
+    config.tnc = false;
+    config.inet2rf = false;
+    config.rf2inet = false;
     config.aprs = false;
     config.wifi = true;
-    config.wifi_mode = WIFI_AP_STA_FIX;
-    config.tnc_digi = true;
-    config.tnc_telemetry = true;
+    config.wifi_mode = WIFI_AP_FIX;
+    config.tnc_digi = false;
+    config.tnc_telemetry = false;
     config.tnc_btext[0] = 0;
     config.tnc_beacon = 0;
     config.aprs_table = '/';
@@ -103,22 +114,66 @@ void LoadConfig() {
     }
 
     delay(3000);
-    if (digitalRead(BOOT_PIN) == LOW) {
+    
+    uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+    bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         DefaultConfig();
         Serial.println("Restoring Factory Default config");
-        while (digitalRead(BOOT_PIN) == LOW)
-            ;
+        while (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+#ifndef USE_ROTARY
+            bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+        };
     }
 
     // Check for configuration errors
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\n", EEPROM.read(0), chkSum,
+    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
                   sizeof(Configuration));
     if (EEPROM.read(0) != chkSum) {
         Serial.println("Config EEPROM Error!");
         DefaultConfig();
     }
     input_HPF = config.input_hpf;
+}
+
+void LoadReConfig() {
+    byte *ptr;
+
+    SPIFFS.begin(true);
+    File f = SPIFFS.open("/config.bin", "r");
+    if (!f) {
+        Serial.println("Failed to open config file for reading");
+        SPIFFS.end();
+        return;
+    }
+    
+    Configuration tmpConfig;
+
+    uint8_t chkSum = f.read();
+    size_t sz = f.read((byte *)&tmpConfig, sizeof(Configuration));
+    f.close();
+    SPIFFS.end();
+
+    if (sz != sizeof(Configuration)) {
+        Serial.println("Config File Error!");
+        return;
+    }
+
+    ptr = (byte *)&tmpConfig;
+
+    uint8_t chkSum2 = checkSum(ptr, sizeof(Configuration));
+    Serial.printf("SPIFFS Check %0Xh=%0Xh(%dByte)\r\n", chkSum, chkSum2, sizeof(Configuration));
+
+    if (chkSum == chkSum2) {
+        memcpy(&config, &tmpConfig, sizeof(Configuration));
+        input_HPF = config.input_hpf;
+        SaveConfig();
+    }
 }
