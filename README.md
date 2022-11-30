@@ -1,5 +1,5 @@
 # FW and HW is tested and stable. Rotary encoder/menu not implemented yet, but will be added later.
-# Use HW RevD !
+
 Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https://github.com/erstec/APRS-ESP/discussions/new), by e-mail or via Discord.
 
 # APRS-ESP32 Project
