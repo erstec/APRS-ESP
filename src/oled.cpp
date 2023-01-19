@@ -39,6 +39,7 @@ void OledStartup() {
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
 #endif
 
+#ifndef NEW_OLED
     display.clearDisplay();
     display.setTextColor(WHITE, BLACK);
     display.setTextSize(1);
@@ -55,6 +56,42 @@ void OledStartup() {
     display.print(buf);
 
     display.display();
+#else
+    // Initialising the UI will init the display too.
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(30, 5);
+    display.print("ESP32 IGATE");
+    display.setCursor(1, 17);
+    display.print("Firmware Version " + String(VERSION));
+    display.drawLine(10, 30, 110, 30, WHITE);
+    display.setCursor(1, 40);
+    display.print("Push B Factory reset");
+    // topBar(-100);
+    display.display();
+
+    delay(1000);
+    digitalWrite(LED_TX, HIGH);
+    display.setCursor(50, 50);
+    display.print("3 Sec");
+    display.display();
+    delay(1000);
+    digitalWrite(LED_RX, HIGH);
+    display.setCursor(40, 50);
+    display.print("        ");
+    display.display();
+    display.setCursor(50, 50);
+    display.print("2 Sec");
+    display.display();
+    delay(1000);
+    display.setCursor(40, 50);
+    display.print("        ");
+    display.display();
+    display.setCursor(50, 50);
+    display.print("1 Sec");
+    display.display();
+#endif
 #endif
 }
 

@@ -192,4 +192,10 @@ String send_gps_location();
 int digiProcess(AX25Msg &Packet);
 bool pkgTxUpdate(const char *info, int delay);
 
+void dispWindow(String line, uint8_t mode, bool filter);
+void systemDisp();
+void pkgCountDisp();
+void pkgLastDisp();
+void statisticsDisp();
+
 #endif

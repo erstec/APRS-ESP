@@ -9,8 +9,21 @@
 
 #include "config.h"
 
+#include "pinout.h"
+
+#if defined(USE_SCREEN_SSD1306)
+#include "Adafruit_SSD1306.h"
+#elif defined(USE_SCREEN_SH1106)
+#include "Adafruit_SH1106.h"
+#endif
+
 extern Configuration config;
 extern bool input_HPF;
+#if defined(USE_SCREEN_SSD1306)
+extern Adafruit_SSD1306 display;
+#elif defined(USE_SCREEN_SH1106)
+extern Adafruit_SH1106 display;
+#endif
 
 uint8_t checkSum(uint8_t *ptr, size_t count) {
     uint8_t lrc, tmp;
@@ -101,8 +114,22 @@ void DefaultConfig() {
     config.volume = 4;
     config.input_hpf = false;
 #endif
+#ifdef NEW_OLED
     input_HPF = config.input_hpf;
     config.timeZone = 0;
+    config.oled_enable = true;
+    config.oled_timeout = 60;
+    config.filterMessage = true;
+    config.filterStatus = false;
+    config.filterTelemetry = false;
+    config.filterWeather = true;
+    config.filterTracker = true;
+    config.filterMove = true;
+    config.filterPosition = true;
+    config.dispINET = true;
+    config.dispTNC = true;
+    config.dispDelay = 3; // Sec
+#endif
     SaveConfig();
 }
 
@@ -123,11 +150,26 @@ void LoadConfig() {
     if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         DefaultConfig();
         Serial.println("Restoring Factory Default config");
+#ifdef USE_SCREEN
+        display.clearDisplay();
+        display.setCursor(10, 22);
+        display.print("Factory Reset!");
+        display.display();
+#endif
         while (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
 #ifndef USE_ROTARY
             bootPin2 = digitalRead(PIN_ROT_BTN);
 #endif
-        };
+            delay(500);
+            digitalWrite(TX_LED_PIN, LOW);
+            digitalWrite(RX_LED_PIN, LOW);
+            delay(500);
+            digitalWrite(TX_LED_PIN, HIGH);
+            digitalWrite(RX_LED_PIN, HIGH);
+        }
+
+        digitalWrite(TX_LED_PIN, LOW);
+        digitalWrite(RX_LED_PIN, LOW);
     }
 
     // Check for configuration errors

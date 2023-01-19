@@ -67,6 +67,22 @@ typedef struct Config_Struct {
     uint8_t volume;
 #endif
     int8_t timeZone;
+#ifdef NEW_OLED
+    bool oled_enable;
+	int oled_timeout;
+	unsigned int dispDelay;
+	bool dispTNC;
+	bool dispINET;
+	bool filterMessage;
+	bool filterStatus;
+	bool filterTelemetry;
+	bool filterWeather;
+	bool filterTracker;
+	bool filterMove;
+	bool filterPosition;
+	unsigned int filterDistant;
+	bool mygps;
+#endif
 } Configuration;
 
 void DefaultConfig();
