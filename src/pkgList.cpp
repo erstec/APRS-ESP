@@ -8,6 +8,7 @@
 */
 
 #include "pkgList.h"
+#include "parse_aprs.h"
 #include "main.h"
 
 pkgListType pkgList[PKGLISTSIZE];
@@ -70,7 +71,70 @@ void sortPkgDesc(pkgListType a[], int size) {
     }
 }
 
-void pkgListUpdate(char *call, bool type) {
+uint8_t pkgType(const char *raw) {
+    uint8_t type = 0;
+    char packettype = 0;
+    const char *info_start, *body;
+    int paclen = strlen(raw);
+    // info_start = (char*)strchr(raw, ':');
+    // if (info_start == NULL) return 0;
+    // info_start=0;
+    packettype = (char)raw[0];
+    body = &raw[1];
+
+    switch (packettype) {
+    case '=':
+    case '/':
+    case '@':
+        if (strchr(body, 'r') != NULL) {
+            if (strchr(body, 'g') != NULL) {
+                if (strchr(body, 't') != NULL) {
+                    if (strchr(body, 'P') != NULL) {
+                        type = PKG_WX;
+                    }
+                }
+            }
+        }
+        break;
+    case ':':
+        type = PKG_MESSAGE;
+        if (body[9] == ':' &&
+            (memcmp(body + 9, ":PARM.", 6) == 0 ||
+             memcmp(body + 9, ":UNIT.", 6) == 0 ||
+             memcmp(body + 9, ":EQNS.", 6) == 0 ||
+             memcmp(body + 9, ":BITS.", 6) == 0))
+        {
+            type = PKG_TELEMETRY;
+        }
+        break;
+    case '>':
+        type = PKG_STATUS;
+        break;
+    case '?':
+        type = PKG_QUERY;
+        break;
+    case ';':
+        type = PKG_OBJECT;
+        break;
+    case ')':
+        type = PKG_ITEM;
+        break;
+    case 'T':
+        type = PKG_TELEMETRY;
+        break;
+    case '#': /* Peet Bros U-II Weather Station */
+    case '*': /* Peet Bros U-I  Weather Station */
+    case '_': /* Weather report without position */
+        type = PKG_WX;
+        break;
+    default:
+        type = 0;
+        break;
+    }
+    return type;
+}
+
+void pkgListUpdate(char *call, uint8_t type) {
     char i = pkgList_Find(call);
     time_t now;
     time(&now);
