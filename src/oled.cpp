@@ -87,6 +87,13 @@ void OledUpdate() {
         display.print("No IP - BLE Mode");
     }
 
+    // DateTime
+    struct tm tmstruct;
+    getLocalTime(&tmstruct, 5000);
+    sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
+    display.print(buf);
+
     // Main section
     // Top line
     display.setCursor(0, 0);
