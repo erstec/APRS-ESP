@@ -594,7 +594,11 @@ void setHTML(byte page) {
                      String(strTime) + "</b></div>\n";
 
         webString +=
+#if defined(CONFIG_IDF_TARGET_ESP32)
             "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) +
+#else
+            "<div>CPU Temp: " + String(temperatureRead() /* TBD */, 1) +
+#endif
             "&deg;C</div> \n";
         webString +=
             "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
@@ -2794,8 +2798,10 @@ void webService() {
                     disableCore1WDT();
                     disableLoopWDT();
 #ifdef I2S_INTERNAL
+#if defined(CONFIG_IDF_TARGET_ESP32)
                     i2s_adc_disable(I2S_NUM_0);
                     dac_i2s_disable();
+#endif /* CONFIG_IDF_TARGET_ESP32 */
 #endif
                     vTaskSuspend(taskAPRSHandle);
                     // vTaskSuspend(taskNetworkHandle);
