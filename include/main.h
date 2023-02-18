@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.7"
+#define VERSION "1.7b"
 
 #define DEBUG
 #define DEBUG_IS
@@ -40,7 +40,9 @@
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #elif defined(USE_SA868)
-#define APRS_PREAMBLE	(350UL * 3)
+// #define APRS_PREAMBLE	(350UL * 3)
+// #define APRS_TAIL       (250UL)
+#define APRS_PREAMBLE	(350UL * 2)
 #define APRS_TAIL       (250UL)
 #else
 #define APRS_PREAMBLE	(350UL)
@@ -148,6 +150,21 @@ typedef struct digiTLM_struct {
     unsigned char ErPkts;
 } digiTLMType;
 
+#define TLMLISTSIZE 20
+
+typedef struct Telemetry_struct {
+	time_t time;
+	char callsign[10];
+	char PARM[5][10];
+	char UNIT[5][10];
+	float VAL[5];
+	float RAW[5];
+	float EQNS[15];
+	uint8_t BITS;
+	uint8_t BITS_FLAG;
+	bool EQNS_FLAG;
+} TelemetryType;
+
 typedef struct txQueue_struct {
     bool Active;
     long timeStamp;
@@ -155,7 +172,7 @@ typedef struct txQueue_struct {
     char Info[300];
 } txQueueType;
 
-const char PARM[] = {"PARM.RF->INET,INET->RF,TxPkts,RxPkts,IGateDropRx"};
+const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};
 const char UNIT[] = {"UNIT.Pkts,Pkts,Pkts,Pkts,Pkts"};
 const char EQNS[] = {"EQNS.0,1,0,0,1,0,0,1,0,0,1,0,0,1,0"};
 

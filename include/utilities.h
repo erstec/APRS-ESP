@@ -11,6 +11,7 @@
 #define HELPERS_H
 
 #include <Arduino.h>
+#include <time.h>
 
 String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
