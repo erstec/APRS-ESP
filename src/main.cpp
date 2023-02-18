@@ -28,6 +28,8 @@
 #endif
 #include "digirepeater.h"
 #include "igate.h"
+#include <pbuf.h>
+#include <parse_aprs.h>
 #include <WiFiUdp.h>
 
 #ifdef USE_RF
@@ -101,6 +103,8 @@ Configuration config;
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
+TelemetryType Telemetry[TLMLISTSIZE];
+
 #if defined(USE_TNC)
 HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #endif
@@ -110,7 +114,7 @@ TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
-BluetoothSerial SerialBT;
+// BluetoothSerial SerialBT;
 
 #if defined(USE_SCREEN_SSD1306)
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
@@ -121,6 +125,9 @@ Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 #ifdef USE_ROTARY
 Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
 #endif
+
+struct pbuf_t aprs;
+ParseAPRS aprsParse;
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -136,6 +143,29 @@ static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
 
 const char *lastTitle = "LAST HERT";
+
+int tlmList_Find(char *call) {
+    int i;
+    for (i = 0; i < TLMLISTSIZE; i++) {
+        if (strstr(Telemetry[i].callsign, call) != NULL)
+            return i;
+    }
+    return -1;
+}
+
+int tlmListOld() {
+    int i, ret = 0;
+    time_t minimum = Telemetry[0].time;
+    for (i = 1; i < TLMLISTSIZE; i++) {
+        if (Telemetry[i].time < minimum) {
+            minimum = Telemetry[i].time;
+            ret = i;
+        }
+        if (Telemetry[i].time > now())
+            Telemetry[i].time = 0;
+    }
+    return ret;
+}
 
 bool pkgTxUpdate(const char *info, int delay) {
     char *ecs = strstr(info, ">");
@@ -177,6 +207,7 @@ bool pkgTxSend() {
                 APRS_setTail(APRS_TAIL);
                 APRS_sendTNC2Pkt(String(txQueue[i].Info));  // Send packet to RF
                 txQueue[i].Active = false;
+                igateTLM.TX++;
 #ifdef DEBUG_TNC
                 printTime();
                 Serial.println("TX->RF: " + String(txQueue[i].Info));
@@ -321,7 +352,7 @@ void setup()
     // Task 2
     xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
                             "taskNetwork", /* Name of the task */
-                            32768,         /* Stack size in words */
+                            16384,         /* Stack size in words */
                             NULL,          /* Task input parameter */
                             1,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
@@ -473,7 +504,7 @@ void loop()
     vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
     if (millis() > timeCheck) {
         timeCheck = millis() + 10000;
-        if (ESP.getFreeHeap() < 70000) esp_restart();
+        if (ESP.getFreeHeap() < 60000) esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
     }
 #ifdef USE_RF
@@ -508,6 +539,70 @@ void loop()
     // if (update_screen) OledUpdate();
 
     updateScreenAndGps(update_screen);
+
+    uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+    bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+        btn_count++;
+        if (btn_count > 1000)  // Push BOOT 10sec
+        {
+            digitalWrite(RX_LED_PIN, HIGH);
+            digitalWrite(TX_LED_PIN, HIGH);
+        }
+    } else {
+        if (btn_count > 0) {
+            // Serial.printf("btn_count=%dms\n", btn_count * 10);
+            if (btn_count > 1000)  // Push BOOT 10sec to Factory Default
+            {
+                DefaultConfig();
+                Serial.println("SYSTEM REBOOT NOW!");
+                esp_restart();
+            } 
+            else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
+            {
+                if (config.tnc) {
+                    String tnc2Raw = send_gps_location();
+                    pkgTxUpdate(tnc2Raw.c_str(), 0);
+                    // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
+#ifdef DEBUG_TNC
+                    Serial.println("Manual TX: " + tnc2Raw);
+#endif
+                }
+            }
+            btn_count = 0;
+        }
+    }
+}
+
+String sendIsAckMsg(String toCallSign, int msgId) {
+    char str[300];
+    char call[11];
+    int i;
+    memset(&call[0], 0, 11);
+    sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
+    strcpy(&call[0], toCallSign.c_str());
+    i = strlen(call);
+    for (; i < 9; i++)
+        call[i] = 0x20;
+    memset(&str[0], 0, 300);
+
+    sprintf(str, "%s-%d>APZ32E%s::%s:ack%d", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
+    //	client.println(str);
+    return String(str);
+}
+
+void sendIsPkg(char *raw) {
+    char str[300];
+    sprintf(str, "%s-%d>APZ32E%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
+    // client.println(str);
+    String tnc2Raw = String(str);
+    if (aprsClient.connected())
+        aprsClient.println(tnc2Raw); // Send packet to Inet
+    if (config.tnc && config.tnc_digi)
+        pkgTxUpdate(str, 0);
 }
 
 void sendIsPkgMsg(char *raw) {
@@ -587,41 +682,6 @@ void taskAPRS(void *pvParameters) {
             }
         }
 
-        uint8_t bootPin2 = HIGH;
-#ifndef USE_ROTARY
-        bootPin2 = digitalRead(PIN_ROT_BTN);
-#endif
-
-        if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
-            btn_count++;
-            if (btn_count > 1000)  // Push BOOT 10sec
-            {
-                digitalWrite(RX_LED_PIN, HIGH);
-                digitalWrite(TX_LED_PIN, HIGH);
-            }
-        } else {
-            if (btn_count > 0) {
-                // Serial.printf("btn_count=%dms\n", btn_count * 10);
-                if (btn_count > 1000)  // Push BOOT 10sec to Factory Default
-                {
-                    DefaultConfig();
-                    Serial.println("SYSTEM REBOOT NOW!");
-                    esp_restart();
-                } 
-                else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
-                {
-                    if (config.tnc) {
-                        String tnc2Raw = send_gps_location();
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
-                        // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
-#ifdef DEBUG_TNC
-                        Serial.println("Manual TX: " + tnc2Raw);
-#endif
-                    }
-                }
-                btn_count = 0;
-            }
-        }
 #ifdef USE_RF
 // if(digitalRead(SQL_PIN)==HIGH){
 // 	delay(10);
@@ -742,7 +802,7 @@ void taskAPRS(void *pvParameters) {
                     } else {
                         status.rf2inet++;
                         igateTLM.RF2INET++;
-                        igateTLM.TX++;
+                        // igateTLM.TX++;
 #ifdef DEBUG
                         printTime();
                         Serial.print("RF->INET: ");
@@ -754,7 +814,9 @@ void taskAPRS(void *pvParameters) {
                         } else {
                             sprintf(call, "%s", incomingPacket.src.call);
                         }
-                        pkgListUpdate(call, 1);
+                        
+                        uint8_t type = pkgType((char *)incomingPacket.info);
+                        pkgListUpdate(call, type);
                     }
                 }
 
@@ -763,6 +825,8 @@ void taskAPRS(void *pvParameters) {
                     int dlyFlag = digiProcess(incomingPacket);
                     if (dlyFlag > 0) {
                         int digiDelay;
+                        status.digiCount++;
+                        igateTLM.RX++;
                         if (dlyFlag == 1) {
                             digiDelay = 0;
                         } else {
@@ -782,6 +846,10 @@ void taskAPRS(void *pvParameters) {
                         String digiPkg;
                         packet2Raw(digiPkg, incomingPacket);
                         pkgTxUpdate(digiPkg.c_str(), digiDelay);
+                    }
+                    else
+                    {
+                        igateTLM.DROP++;
                     }
                 }
 
@@ -823,8 +891,9 @@ void taskNetwork(void *pvParameters) {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
-        Serial.println(F("WiFi OFF. BT only mode"));
-        SerialBT.begin("ESP32TNC");
+        // Serial.println(F("WiFi OFF. BT only mode"));
+        Serial.println(F("WiFi OFF All mode"));
+        // SerialBT.begin("ESP32TNC");
     }
 
     webService();
@@ -900,8 +969,7 @@ void taskNetwork(void *pvParameters) {
                         APRSConnect();
                     } else {
                         if (aprsClient.available()) {
-                            // pingTimeout = millis() + 300000; // Reset ping
-                            // timout
+                            pingTimeout = millis() + 300000; // Reset ping
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
@@ -926,7 +994,7 @@ void taskNetwork(void *pvParameters) {
                                 }
 #endif
                                 status.allCount++;
-                                igateTLM.RX++;
+                                // igateTLM.RX++;
 
                                 // Is it not Telemetry?
                                 if (line.indexOf(":T#") < 0
