@@ -4,6 +4,7 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <driver/adc.h>
+#include <driver/i2s.h>
 #include "esp_adc_cal.h"
 #include "cppQueue.h"
 #include "fir_filter.h"
@@ -44,6 +45,10 @@ uint8_t CountOnesFromInteger(uint8_t value)
 
 #ifndef I2S_INTERNAL
 cppQueue adcq(sizeof(int8_t), 19200, IMPLEMENTATION); // Instantiate queue
+#endif
+
+#ifndef RTC_MODULE_TAG
+#define RTC_MODULE_TAG "RTC_MODULE"
 #endif
 
 #ifdef I2S_INTERNAL
@@ -113,12 +118,20 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
       .sample_rate = SAMPLE_RATE,
       .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
       .channel_format = I2S_CHANNEL_FMT_ALL_LEFT,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
+      .communication_format = (i2s_comm_format_t)I2S_COMM_FORMAT_STAND_MSB,
+#else
       .communication_format = (i2s_comm_format_t)I2S_COMM_FORMAT_I2S_MSB,
+#endif
       .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1,
       .dma_buf_count = 5,
       .dma_buf_len = 768,
       //.tx_desc_auto_clear   = true,
       .use_apll = false // no Audio PLL ( I dont need the adc to be accurate )
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+//      .mclk_multiple = I2S_MCLK_MULTIPLE_256, // Unused
+//      .bits_per_chan = I2S_BITS_PER_CHAN_DEFAULT // Use bits per sample
+#endif
   };
 
   if (MODE == I2S_MODE_RX || MODE == I2S_MODE_TX)
@@ -127,6 +140,10 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
     i2s_pin_config_t pin_config;
     pin_config.bck_io_num = PIN_I2S_BCLK;
     pin_config.ws_io_num = PIN_I2S_LRC;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+//    pin_config.mck_io_num = PIN_I2S_MCLK;
+#endif
+
     if (MODE == I2S_MODE_RX)
     {
       pin_config.data_out_num = I2S_PIN_NO_CHANGE;
