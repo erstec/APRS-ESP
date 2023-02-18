@@ -40,10 +40,10 @@
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #elif defined(USE_SA868)
-// #define APRS_PREAMBLE	(350UL * 3)
-// #define APRS_TAIL       (250UL)
-#define APRS_PREAMBLE	(350UL * 2)
+#define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
+// #define APRS_PREAMBLE	(350UL * 2)
+// #define APRS_TAIL       (250UL)
 #else
 #define APRS_PREAMBLE	(350UL)
 #define APRS_TAIL       (0UL)
