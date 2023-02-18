@@ -64,6 +64,7 @@ cppQueue adcq(sizeof(int8_t), 19200, IMPLEMENTATION); // Instantiate queue
 i2s_event_t i2s_evt;
 static QueueHandle_t i2s_event_queue;
 
+#if defined(CONFIG_IDF_TARGET_ESP32)
 static esp_err_t adc_set_i2s_data_len(adc_unit_t adc_unit, int patt_len)
 {
   ADC_CHECK_UNIT(adc_unit);
@@ -110,11 +111,18 @@ static esp_err_t adc_set_i2s_data_pattern(adc_unit_t adc_unit, int seq_num, adc_
   // portEXIT_CRITICAL(&rtc_spinlock);
   return ESP_OK;
 }
+#endif /* CONFIG_IDF_TARGET_ESP32 */
 
 void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
 {
   i2s_config_t i2s_config = {
+#if defined(CONFIG_IDF_TARGET_ESP32)
       .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN),
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX ),
+#else
+#error "This ESP32 variant is not supported!"
+#endif
       .sample_rate = SAMPLE_RATE,
       .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
       .channel_format = I2S_CHANNEL_FMT_ALL_LEFT,
@@ -159,6 +167,7 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
     i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_set_clk(I2S_NUM_0, SAMPLE_RATE, BPS, I2S_CHANNEL_MONO);
   }
+#if defined(CONFIG_IDF_TARGET_ESP32)
   else if (MODE == I2S_MODE_DAC_BUILT_IN || MODE == I2S_MODE_ADC_BUILT_IN)
   {
     Serial.println("Using I2S DAC/ADC_builtin");
@@ -190,6 +199,7 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
     dac_output_enable(DAC_CHANNEL_2);
     dac_i2s_enable();
   }
+#endif /* CONFIG_IDF_TARGET_ESP32 */
 }
 
 #else
@@ -220,8 +230,12 @@ void AFSK_hw_init(void)
   digitalWrite(PTT_PIN, LOW);
 
 #ifdef I2S_INTERNAL
+#if defined(CONFIG_IDF_TARGET_ESP32)
   //  Initialize the I2S peripheral
   I2S_Init(I2S_MODE_DAC_BUILT_IN, I2S_BITS_PER_SAMPLE_16BIT);
+#else
+  /* TBD */
+#endif /* CONFIG_IDF_TARGET_ESP32 */
 #else
   pinMode(MIC_PIN, INPUT);
   // Init ADC and Characteristics
@@ -291,7 +305,7 @@ static void AFSK_txStart(Afsk *afsk)
     digitalWrite(PTT_PIN, HIGH);
     afsk->preambleLength = DIV_ROUND(custom_preamble * BITRATE, 9600);
     AFSK_DAC_IRQ_START();
-#ifdef I2S_INTERNAL
+#if defined(I2S_INTERNAL) && defined(CONFIG_IDF_TARGET_ESP32)
     i2s_zero_dma_buffer(I2S_NUM_0);
     // i2s_adc_disable(I2S_NUM_0);
     dac_i2s_enable();
@@ -858,7 +872,7 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
 
   if (hw_afsk_dac_isr)
   {
-#ifdef I2S_INTERNAL
+#if defined(I2S_INTERNAL) && defined(CONFIG_IDF_TARGET_ESP32)
     memset(pcm_out, 0, sizeof(pcm_out));
     for (x = 0; x < ADC_SAMPLES_COUNT; x++)
     {

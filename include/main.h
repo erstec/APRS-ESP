@@ -100,7 +100,9 @@
 #include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
 #include "soc/rtc_wdt.h"
+#endif
 #include <AX25.h>
 
 #include "HardwareSerial.h"
