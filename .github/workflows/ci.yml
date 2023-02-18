@@ -28,4 +28,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install --upgrade platformio
     - name: Run PlatformIO
-      run: pio run -e esp32dev-sa828 -e esp32dev-sa818 -e esp32dev-sa868 -e esp32dev-sr_frs
+      run: pio run -e esp32dev-sa828 -e esp32dev-sa818 -e esp32dev-sa868 -e esp32dev-sr_frs -e esp32s3dev-sa828 -e esp32s3dev-sa818 -e esp32s3dev-sa868 -e esp32s3dev-sr_frs
