@@ -1522,7 +1522,7 @@ void handle_radio() {
 #ifndef BAND_70CM
         "id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" "
 #else
-        "id=\"tx_freq\" name=\"tx_freq\" min=\"432.0000\" max=\"433.0000\" "
+        "id=\"tx_freq\" name=\"tx_freq\" min=\"430.0000\" max=\"440.0000\" "
 #endif /* BAND_70CM */
         "step=\"0.0001\" value=\"" +
         String(config.freq_tx, 4) + "\" /></div>\n";
