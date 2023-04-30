@@ -183,7 +183,9 @@ inline static uint8_t sinSample(uint16_t i)
 
 #ifdef I2S_INTERNAL
 #include "driver/i2s.h"
+#if defined(CONFIG_IDF_TARGET_ESP32)
 #include "driver/dac.h"
+#endif
 
 #define SAMPLE_RATE SAMPLERATE //9580 ปรับชดเชยแซมปลิงค์ของ I2S
 #define PIN_I2S_BCLK    26
