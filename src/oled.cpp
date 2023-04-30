@@ -89,7 +89,7 @@ void OledUpdate() {
 
     // DateTime
     struct tm tmstruct;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
