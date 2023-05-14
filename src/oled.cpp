@@ -30,6 +30,9 @@ extern WiFiClient aprsClient;
 void OledStartup() {
 #ifdef USE_SCREEN
 #if defined(USE_SCREEN_SSD1306)
+    // Explicit Wire pins assignment
+    Wire.setPins(OLED_SDA_PIN, OLED_SCL_PIN);
+
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 init failed");
     } else {

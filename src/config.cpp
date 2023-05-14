@@ -89,8 +89,13 @@ void DefaultConfig() {
     config.wifi_power = 44;
     config.input_hpf = true;
 #ifdef USE_RF
+#ifndef BAND_70CM
     config.freq_rx = 144.8000;
     config.freq_tx = 144.8000;
+#else
+    config.freq_rx = 432.5000;
+    config.freq_tx = 432.5000;
+#endif /* BAND_70CM */
     config.offset_rx = 0;
     config.offset_tx = 0;
     config.tone_rx = 0;
