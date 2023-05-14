@@ -338,6 +338,7 @@ void setup()
 
     // enableLoopWDT();
     // enableCore0WDT();
+
     enableCore1WDT();
 
     // Task 1
@@ -864,6 +865,8 @@ void taskAPRS(void *pvParameters) {
 
 long wifiTTL = 0;
 
+static bool wiFiActive = false;
+
 void taskNetwork(void *pvParameters) {
     int c = 0;
     Serial.println("Task <Network> started");
@@ -882,11 +885,13 @@ void taskNetwork(void *pvParameters) {
         Serial.print("Access point running. IP address: ");
         Serial.print(WiFi.softAPIP());
         Serial.println("");
+        wiFiActive = true;
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(100);
         Serial.println(F("WiFi Station Only mode"));
+        wiFiActive = true;
     } else {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
@@ -894,15 +899,22 @@ void taskNetwork(void *pvParameters) {
         // Serial.println(F("WiFi OFF. BT only mode"));
         Serial.println(F("WiFi OFF All mode"));
         // SerialBT.begin("ESP32TNC");
+        wiFiActive = false;
     }
 
-    webService();
+    if (wiFiActive) {
+        webService();
+    }
+
     pingTimeout = millis() + 10000;
 
     for (;;) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
-        serviceHandle();
+
+        if (wiFiActive) {
+            serviceHandle();
+        }
 
         if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
             if (WiFi.status() != WL_CONNECTED) {

@@ -583,7 +583,7 @@ void setHTML(byte page) {
         struct tm tmstruct;
         tmstruct.tm_year = 0;
         time_t tn = now() - systemUptime;
-        getLocalTime(&tmstruct, 5000);
+        getLocalTime(&tmstruct, 0);
         sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
                 (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
                 tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min,
@@ -1874,7 +1874,7 @@ void handle_system() {
     struct tm tmstruct;
     char strTime[20];
     tmstruct.tm_year = 0;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900,
             (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour,
             tmstruct.tm_min, tmstruct.tm_sec);
