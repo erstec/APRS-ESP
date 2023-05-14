@@ -1842,7 +1842,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			rest = tmp_str;
 			rest_len = tmp_us;
 		}else {
-			if (tmp_str = strchr(rest, 'c')) {
+			if (tmp_str = (strchr(rest, 'c'))) {
 				memcpy(wind_dir, tmp_str + 1, 3);
 				wind_dir[3] = 0;
 				tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1850,7 +1850,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 				rest_len = tmp_us;
 				flage++;
 			}
-			if (tmp_str = strchr(rest, 's')) {
+			if (tmp_str = (strchr(rest, 's'))) {
 				memcpy(wind_speed, tmp_str + 1, 3);
 				wind_speed[3] = 0;
 				tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1859,7 +1859,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			}
 		}
 
-		if (tmp_str = strchr(rest, 'g')) {
+		if (tmp_str = (strchr(rest, 'g'))) {
 			memcpy(wind_gust, tmp_str + 1, 3);
 			wind_gust[3] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1868,7 +1868,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			flage++;
 		}
 
-		if (tmp_str = strchr(rest, 't')) {
+		if (tmp_str = (strchr(rest, 't'))) {
 			memcpy(temperature, tmp_str + 1, 3);
 			temperature[3] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1877,7 +1877,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			flage++;
 		}
 
-		if (tmp_str = strchr(rest, 'r')) {
+		if (tmp_str = (strchr(rest, 'r'))) {
 			memcpy(rain, tmp_str + 1, 3);
 			rain[3] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1886,7 +1886,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			flage++;
 		}
 
-		if (tmp_str = strchr(rest, 'p')) {
+		if (tmp_str = (strchr(rest, 'p'))) {
 			memcpy(rain24, tmp_str + 1, 3);
 			rain24[3] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1894,7 +1894,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			rest_len = tmp_us;
 			flage++;
 		}
-		if (tmp_str = strchr(rest, 'P')) {
+		if (tmp_str = (strchr(rest, 'P'))) {
 			memcpy(rainMn, tmp_str + 1, 3);
 			rainMn[3] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 4, &tmp_us);
@@ -1903,7 +1903,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			flage++;
 		}
 
-		if (tmp_str = strchr(rest, 'h')) {
+		if (tmp_str = (strchr(rest, 'h'))) {
 			memcpy(humidity, tmp_str + 1, 2);
 			humidity[2] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 3, &tmp_us);
@@ -1911,7 +1911,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			rest_len = tmp_us;
 			flage++;
 		}
-		if (tmp_str = strchr(rest, 'b')) {
+		if (tmp_str = (strchr(rest, 'b'))) {
 			memcpy(barometric, tmp_str + 1,5);
 			barometric[5] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 6, &tmp_us);
@@ -1920,7 +1920,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			flage++;
 		}
 
-		if (tmp_str = strchr(rest, 'l')) {
+		if (tmp_str = (strchr(rest, 'l'))) {
 			memcpy(luminosity, tmp_str + 1, 3);
 			if (is_number(luminosity)) {
 				luminosityAbove = true;
@@ -1931,7 +1931,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 				flage++;
 			}
 		}
-		if (tmp_str = strchr(rest, 'L')) {
+		if (tmp_str = (strchr(rest, 'L'))) {
 			memcpy(luminosity, tmp_str + 1, 3);
 			if (is_number(luminosity)) {
 				luminosityAbove = false;
@@ -1943,7 +1943,7 @@ int ParseAPRS::parse_aprs_wx(struct pbuf_t* pb, char const* input, unsigned int 
 			}
 		}
 
-		if (tmp_str = strchr(rest, 'u')) {
+		if (tmp_str = (strchr(rest, 'u'))) {
 			memcpy(uv, tmp_str + 1, 2);
 			uv[2] = 0;
 			tmp_str = parse_remove_part(rest, rest_len, tmp_str - rest, tmp_str - rest + 3, &tmp_us);
