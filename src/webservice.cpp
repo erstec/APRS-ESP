@@ -583,7 +583,7 @@ void setHTML(byte page) {
         struct tm tmstruct;
         tmstruct.tm_year = 0;
         time_t tn = now() - systemUptime;
-        getLocalTime(&tmstruct, 5000);
+        getLocalTime(&tmstruct, 0);
         sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
                 (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
                 tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min,
@@ -597,7 +597,7 @@ void setHTML(byte page) {
 #if defined(CONFIG_IDF_TARGET_ESP32)
             "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) +
 #else
-            "<div>CPU Temp: " + String(temperatureRead() /* TBD */, 1) +
+            "<div>CPU Temp: " + String(temperatureRead(), 1) +
 #endif
             "&deg;C</div> \n";
         webString +=
@@ -1519,7 +1519,11 @@ void handle_radio() {
         "Frequency</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+#ifndef BAND_70CM
         "id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" "
+#else
+        "id=\"tx_freq\" name=\"tx_freq\" min=\"430.0000\" max=\"440.0000\" "
+#endif /* BAND_70CM */
         "step=\"0.0001\" value=\"" +
         String(config.freq_tx, 4) + "\" /></div>\n";
     webString += "</div>\n";
@@ -1530,7 +1534,11 @@ void handle_radio() {
         "Frequency</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+#ifndef BAND_70CM
         "id=\"rx_freq\" name=\"rx_freq\" min=\"144.0000\" max=\"148.0000\" "
+#else
+        "id=\"rx_freq\" name=\"rx_freq\" min=\"432.0000\" max=\"433.0000\" "
+#endif /* BAND_70CM */
         "step=\"0.0001\" value=\"" +
         String(config.freq_rx, 4) + "\" /></div>\n";
     webString += "</div>\n";
@@ -1866,7 +1874,7 @@ void handle_system() {
     struct tm tmstruct;
     char strTime[20];
     tmstruct.tm_year = 0;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900,
             (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour,
             tmstruct.tm_min, tmstruct.tm_sec);
@@ -2278,7 +2286,7 @@ void handle_firmware() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "Current Hardware Version: <b>ESP32DR</b>";
+    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
     webString += " <b>(MODEL:SR_FRS_1W)</b>";
@@ -2377,7 +2385,7 @@ void handle_upgrade() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "<b>Current Hardware Version:</b> ESP32DR Simple\n<br/>";
+    webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
     webString +=
         "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
     webString += "<b>Develop by:</b> HS5TQA\n<br />";
@@ -2516,7 +2524,7 @@ void handle_configuration() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "Current Hardware Version: <b>ESP32DR</b>";
+    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
     webString += " <b>(MODEL:SR_FRS_1W)</b>";

@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.8"
+#define VERSION "1.8a"
 
 #define DEBUG
 #define DEBUG_IS
@@ -40,10 +40,10 @@
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #elif defined(USE_SA868)
-// #define APRS_PREAMBLE	(350UL * 3)
-// #define APRS_TAIL       (250UL)
-#define APRS_PREAMBLE	(350UL * 2)
+#define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
+// #define APRS_PREAMBLE	(350UL * 2)
+// #define APRS_TAIL       (250UL)
 #else
 #define APRS_PREAMBLE	(350UL)
 #define APRS_TAIL       (0UL)

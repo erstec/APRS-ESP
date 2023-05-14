@@ -34,7 +34,7 @@ boolean isValidNumber(String str) {
 void printTime() {
     char buf[3];
     struct tm tmstruct;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     Serial.print("[");
     sprintf(buf, "%02d", tmstruct.tm_hour);
     Serial.print(buf);

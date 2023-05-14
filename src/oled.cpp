@@ -30,6 +30,9 @@ extern WiFiClient aprsClient;
 void OledStartup() {
 #ifdef USE_SCREEN
 #if defined(USE_SCREEN_SSD1306)
+    // Explicit Wire pins assignment
+    Wire.setPins(OLED_SDA_PIN, OLED_SCL_PIN);
+
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 init failed");
     } else {
@@ -89,7 +92,7 @@ void OledUpdate() {
 
     // DateTime
     struct tm tmstruct;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
