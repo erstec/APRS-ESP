@@ -394,9 +394,9 @@ String send_gps_location() {
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
 
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APZ32E", config.aprs_mycall);
+        sprintf(strtmp, "%s>APESP1", config.aprs_mycall);
     else
-        sprintf(strtmp, "%s-%d>APZ32E", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>APESP1", config.aprs_mycall, config.aprs_ssid);
 
     tnc2Raw = String(strtmp);
 
@@ -590,14 +590,14 @@ String sendIsAckMsg(String toCallSign, int msgId) {
         call[i] = 0x20;
     memset(&str[0], 0, 300);
 
-    sprintf(str, "%s-%d>APZ32E%s::%s:ack%d", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
+    sprintf(str, "%s-%d>APESP1%s::%s:ack%d", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
     //	client.println(str);
     return String(str);
 }
 
 void sendIsPkg(char *raw) {
     char str[300];
-    sprintf(str, "%s-%d>APZ32E%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
+    sprintf(str, "%s-%d>APESP1%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
     // client.println(str);
     String tnc2Raw = String(str);
     if (aprsClient.connected())
@@ -623,9 +623,9 @@ void sendIsPkgMsg(char *raw) {
     for (; i < 9; i++) call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APZ32E::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>APESP1::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APESP1::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
     
@@ -737,7 +737,7 @@ void taskAPRS(void *pvParameters) {
             //  	APRS_setPath1("WIDE1", 1);
             //  	APRS_setPreamble(APRS_PREAMBLE);
             //  	APRS_setTail(APRS_TAIL);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APZ32E,TRACE2-2:=1343.76N/10026.06E&ESP32
+            // APRS_sendTNC2Pkt("HS5TQA-6>APESP1,TRACE2-2:=1343.76N/10026.06E&ESP32
             // APRS Internet Gateway");
         }
 
@@ -752,13 +752,13 @@ void taskAPRS(void *pvParameters) {
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0) {
-                    sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                    sprintf(rawTlm, "%s>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
                             config.aprs_mycall, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
                 } else {
                     sprintf(
-                        rawTlm, "%s-%d>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                        rawTlm, "%s-%d>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
                         config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);
