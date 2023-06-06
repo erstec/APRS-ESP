@@ -2249,7 +2249,7 @@ void handle_test() {
         "<div style=\"margin-left: 20px;\">TNC2 RAW: <input id=\"raw\" "
         "name=\"raw\" type=\"text\" size=\"60\" value=\"" +
         String(config.aprs_mycall) + "-" + String(config.aprs_ssid) +
-        ">APZ32E,WIDE1-1:>Test Status\"/></div>\n";
+        ">APESP1,WIDE1-1:>Test Status\"/></div>\n";
     webString +=
         "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn "
         "btn-primary\" name=\"sendRaw\" value='SEND RAW'></div> <br />\n";
