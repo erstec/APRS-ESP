@@ -1661,13 +1661,6 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <label x="106.68" y="48.26" size="1.016" layer="95"/>
 </segment>
 </net>
-<net name="SCA" class="0">
-<segment>
-<pinref part="U1" gate="G$1" pin="IO13"/>
-<wire x1="10.16" y1="30.48" x2="2.54" y2="30.48" width="0.1524" layer="91"/>
-<label x="2.54" y="30.48" size="1.016" layer="95"/>
-</segment>
-</net>
 <net name="SCL" class="0">
 <segment>
 <pinref part="U1" gate="G$1" pin="IO14"/>
@@ -1827,6 +1820,11 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <pinref part="U2" gate="G$1" pin="IO21"/>
 <wire x1="104.14" y1="43.18" x2="111.76" y2="43.18" width="0.1524" layer="91"/>
 <label x="109.22" y="43.18" size="1.016" layer="95"/>
+</segment>
+<segment>
+<pinref part="U1" gate="G$1" pin="IO13"/>
+<wire x1="10.16" y1="30.48" x2="2.54" y2="30.48" width="0.1524" layer="91"/>
+<label x="2.54" y="30.48" size="1.016" layer="95"/>
 </segment>
 </net>
 <net name="AF_OUT" class="0">
