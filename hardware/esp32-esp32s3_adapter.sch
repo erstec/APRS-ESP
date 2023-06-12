@@ -1509,7 +1509,6 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <part name="U2" library="ESP32-WROOM-32E__16MB_" deviceset="ESP32-WROOM-32E_(16MB)" device=""/>
 <part name="TP1" library="testpad" library_urn="urn:adsk.eagle:library:385" deviceset="TP" device="B1,27" package3d_urn="urn:adsk.eagle:package:27944/2" value="TPB1,27"/>
 <part name="TP2" library="testpad" library_urn="urn:adsk.eagle:library:385" deviceset="TP" device="B1,27" package3d_urn="urn:adsk.eagle:package:27944/2" value="TPB1,27"/>
-<part name="TP3" library="testpad" library_urn="urn:adsk.eagle:library:385" deviceset="TP" device="B1,27" package3d_urn="urn:adsk.eagle:package:27944/2" value="TPB1,27"/>
 </parts>
 <sheets>
 <sheet>
@@ -1531,10 +1530,6 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <instance part="TP2" gate="G$1" x="53.34" y="71.12" smashed="yes">
 <attribute name="NAME" x="52.07" y="72.39" size="1.778" layer="95"/>
 <attribute name="TP_SIGNAL_NAME" x="54.61" y="69.85" size="1.778" layer="97"/>
-</instance>
-<instance part="TP3" gate="G$1" x="124.46" y="30.48" smashed="yes">
-<attribute name="NAME" x="123.19" y="31.75" size="1.778" layer="95"/>
-<attribute name="TP_SIGNAL_NAME" x="125.73" y="29.21" size="1.778" layer="97"/>
 </instance>
 </instances>
 <busses>
@@ -1871,9 +1866,12 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <segment>
 <pinref part="U2" gate="G$1" pin="IO33"/>
 <label x="109.22" y="25.4" size="1.016" layer="95"/>
-<wire x1="104.14" y1="25.4" x2="124.46" y2="25.4" width="0.1524" layer="91"/>
-<pinref part="TP3" gate="G$1" pin="TP"/>
-<wire x1="124.46" y1="25.4" x2="124.46" y2="27.94" width="0.1524" layer="91"/>
+<wire x1="104.14" y1="25.4" x2="119.38" y2="25.4" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="U1" gate="G$1" pin="IO11"/>
+<wire x1="10.16" y1="35.56" x2="2.54" y2="35.56" width="0.1524" layer="91"/>
+<label x="2.54" y="35.56" size="1.016" layer="95"/>
 </segment>
 </net>
 </nets>
