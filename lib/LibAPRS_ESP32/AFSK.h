@@ -255,19 +255,27 @@ typedef struct Afsk
 #define MARK_INC (uint16_t)(DIV_ROUND(SIN_LEN * (uint32_t)MARK_FREQ, CONFIG_AFSK_DAC_SAMPLERATE))
 #define SPACE_INC (uint16_t)(DIV_ROUND(SIN_LEN * (uint32_t)SPACE_FREQ, CONFIG_AFSK_DAC_SAMPLERATE))
 
+#if defined(INVERT_LEDS)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN,LOW)
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN,HIGH)
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN,HIGH)
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN,LOW)
+#endif
+
 #define AFSK_DAC_IRQ_START()         \
     do                               \
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = true;      \
-        digitalWrite(TX_LED_PIN,HIGH);\
+        TX_LED_ON();\
     } while (0)
 #define AFSK_DAC_IRQ_STOP()          \
     do                               \
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = false;     \
-        digitalWrite(TX_LED_PIN,LOW);\
+        TX_LED_OFF();\
     } while (0)
 //#define AFSK_DAC_INIT()        do { DAC_DDR |= (DAC_PINS) ; PTT_DDR = 0b01000000;} while (0)
 
