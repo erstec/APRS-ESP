@@ -65,9 +65,9 @@
 
 #endif /* BOARD_ESP32DR */
 
-#if defined(BOARD_ESP32DR_MOD_V14)
+#if defined(BOARD_TTWR_MOD)
 
-#define BOARD_NAME          "T-TWR-V14-MOD"
+#define BOARD_NAME          "T-TWR-MOD"
 
 // SA8x8 radio module
 #define POWER_PIN           25
@@ -120,7 +120,7 @@
 #define PIN_ROT_DT          19
 #define PIN_ROT_BTN         5   // IO0 may be handled too?
 
-#endif /* BOARD_ESP32DR_MOD_V14 */
+#endif /* BOARD_TTWR_MOD */
 
 #if defined(BOARD_TTWR)
 

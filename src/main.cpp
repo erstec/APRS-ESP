@@ -327,7 +327,7 @@ void setup()
     Serial.println("Start APRS-ESP V" + String(VERSION));
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
 
-#if defined(BOARD_ESP32DR_MOD_V14)
+#if defined(BOARD_TTWR_MOD)
     // +4.2V EN
     pinMode(16, OUTPUT);
     digitalWrite(16, HIGH);
