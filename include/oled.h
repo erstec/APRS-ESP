@@ -13,4 +13,4 @@
 #define CHAR_HEIGHT 8
 
 void OledStartup();
-void OledUpdate();
+void OledUpdate(int batData, bool usbPlugged);

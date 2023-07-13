@@ -126,6 +126,9 @@
 
 #define BOARD_NAME          "T-TWR-MOD"
 
+#define I2C_SDA             21
+#define I2C_SCL             22
+
 // SA8x8 radio module
 #define POWER_PIN           25
 #define POWERDOWN_PIN       27
@@ -161,8 +164,8 @@
 // GPS UART
 #define SERIAL_GPS_UART     2
 #define SERIAL_GPS_BAUD     9600
-#define SERIAL_GPS_RXPIN    15//16
-#define SERIAL_GPS_TXPIN    17
+#define SERIAL_GPS_RXPIN    17
+#define SERIAL_GPS_TXPIN    15
 
 // TNC UART
 #define SERIAL_TNC_UART     2
@@ -173,8 +176,8 @@
 // I2C OLED
 #define OLED_WIDTH          128
 #define OLED_HEIGHT         64
-#define OLED_SDA_PIN        21
-#define OLED_SCL_PIN        22
+#define OLED_SDA_PIN        I2C_SDA
+#define OLED_SCL_PIN        I2C_SCL
 #define OLED_RST_PIN        -1
 
 // ROTARY ENCODER

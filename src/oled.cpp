@@ -61,7 +61,7 @@ void OledStartup() {
 #endif
 }
 
-void OledUpdate() {
+void OledUpdate(int batData, bool usbPlugged) {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
 
@@ -90,12 +90,32 @@ void OledUpdate() {
         display.print("No IP - BLE Mode");
     }
 
-    // DateTime
+    // DateTime / Battey
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
     sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
+
+    display.setCursor(0, CHAR_HEIGHT * 2);
+    display.print("B:");
+    if (batData >= 0) {
+        display.print(batData);
+        display.print("%");
+    } else {
+        display.print("NA");
+    }
+
+    display.setCursor(display.width() - CHAR_WIDTH * 3, CHAR_HEIGHT * 2);
+    if (usbPlugged) {
+        display.print("USB");
+    } else {
+#if defined(USE_PMU)
+        display.print("BAT");
+#else
+        display.print("   ");
+#endif
+    }
 
     // Main section
     // Top line
