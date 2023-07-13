@@ -19478,7 +19478,7 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <part name="C10" library="resistor" deviceset="C-EU" device="C0805" value="1u"/>
 <part name="R6" library="resistor" deviceset="R-US_" device="R0805" value="10k"/>
 <part name="R7" library="resistor" deviceset="R-US_" device="R0805" value="10k"/>
-<part name="R8" library="resistor" deviceset="R-US_" device="R0805" value="4k7"/>
+<part name="R8" library="resistor" deviceset="R-US_" device="R0805" value="4k7 / 33k"/>
 <part name="C11" library="resistor" deviceset="C-EU" device="C0805" value="100n"/>
 <part name="D1" library="_hhn_diodes_smd" deviceset="LL4148" device=""/>
 <part name="D2" library="_hhn_diodes_smd" deviceset="LL4148" device=""/>

@@ -220,11 +220,14 @@ void AFSK_hw_init(void)
 {
   // Set up ADC
   pinMode(PTT_PIN, OUTPUT);
+
+#if defined(TX_LED_PIN)
   pinMode(TX_LED_PIN, OUTPUT);
   TX_LED_OFF();
+#endif
 
   pinMode(RX_LED_PIN, OUTPUT);
-  digitalWrite(RX_LED_PIN, LOW);
+  RX_LED_OFF();
 
 #if defined(INVERT_PTT)
   digitalWrite(PTT_PIN, HIGH);
@@ -360,7 +363,7 @@ uint8_t AFSK_dac_isr(Afsk *afsk)
 {
   if (afsk->sampleIndex == 0)
   {
-    // LED_RX_ON();
+    // RX_LED_ON();
     // digitalWrite(RX_LED_PIN), LOW);
     if (afsk->txBit == 0)
     {
@@ -488,7 +491,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
       hdlc->receiving = true;
       if (++hdlc_flag_count >= 3)
       {
-        LED_RX_ON();
+        RX_LED_ON();
       }
     }
     else
@@ -499,7 +502,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
 
       ret = false;
       hdlc->receiving = false;
-      LED_RX_OFF();
+      RX_LED_OFF();
       hdlc_flag_count = 0;
       hdlc_flage_end = false;
     }
@@ -526,7 +529,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
     // If we have, something probably went wrong at the
     // transmitting end, and we abort the reception.
     hdlc->receiving = false;
-    LED_RX_OFF();
+    RX_LED_OFF();
     hdlc_flag_count = 0;
     hdlc_flage_end = false;
     return ret;
@@ -591,7 +594,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
       {
         // If it is, abort and return false
         hdlc->receiving = false;
-        LED_RX_OFF();
+        RX_LED_OFF();
         hdlc_flag_count = 0;
         ret = false;
 #ifdef DEBUG_TNC
@@ -610,7 +613,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
     {
       // If it is, well, you know by now!
       hdlc->receiving = false;
-      LED_RX_OFF();
+      RX_LED_OFF();
       hdlc_flag_count = 0;
       ret = false;
 #ifdef DEBUG_TNC
@@ -894,7 +897,7 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
     memset(pcm_out, 0, sizeof(pcm_out));
     for (x = 0; x < ADC_SAMPLES_COUNT; x++)
     {
-      // LED_RX_ON();
+      // RX_LED_ON();
       adcVal = (int)AFSK_dac_isr(AFSK_modem);
       //  Serial.print(adcVal,HEX);
       //  Serial.print(",");
@@ -1093,7 +1096,7 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
       // }
       hdlc_flag_count = 0;
       hdlc_flage_end = false;
-      LED_RX_OFF();
+      RX_LED_OFF();
       sqlActive = false;
     }
 #endif

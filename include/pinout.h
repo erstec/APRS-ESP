@@ -139,9 +139,10 @@
 #define MIC_PIN             26              // Out wave to PIN 26
 #define PTT_PIN             32
 #define INVERT_PTT
-#define RX_LED_PIN          4//2 // IO4 - NC
-#define TX_LED_PIN          2//4
+#define RX_LED_PIN          2
+//#define TX_LED_PIN          4
 #define INVERT_LEDS
+#define PIXELS_PIN          4
 
 // Control pins
 #define MIC_CH_SEL          23

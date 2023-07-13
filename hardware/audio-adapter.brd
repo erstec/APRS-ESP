@@ -2699,7 +2699,7 @@ Please make sure your boards conform to these design rules.
 <attribute name="NAME" x="13.335" y="22.86" size="1.27" layer="25"/>
 <attribute name="VALUE" x="13.335" y="19.05" size="1.27" layer="27"/>
 </element>
-<element name="R8" library="resistor" package="R0805" value="4k7" x="9.525" y="6.35" smashed="yes" rot="R270">
+<element name="R8" library="resistor" package="R0805" value="4k7 / 33k" x="9.525" y="6.35" smashed="yes" rot="R270">
 <attribute name="NAME" x="10.795" y="6.985" size="1.27" layer="25" rot="R270"/>
 <attribute name="VALUE" x="6.985" y="6.985" size="1.27" layer="27" rot="R270"/>
 </element>

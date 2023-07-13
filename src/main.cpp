@@ -81,12 +81,33 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #define SDCARD_MISO 2
 #endif
 
+#if defined(TX_LED_PIN)
+
 #if defined(INVERT_LEDS)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,LOW)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,HIGH)
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
 #else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,HIGH)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,LOW)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
+#endif
+#else
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
+#endif
+#endif
+
+#else
+
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
+#endif
+
 #endif
 
 #ifdef USE_RF
@@ -582,6 +603,11 @@ void setup()
     digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
 
     // NeoPixel
+    strip.setBrightness(100);
+    strip.begin();
+
+    strip.setPixelColor(0, 0, 0, 255);  // Blue
+    strip.show();
 #endif
 
 #if defined(ADC_BATTERY)
@@ -951,7 +977,7 @@ void loop()
         btn_count++;
         if (btn_count > 1000)  // Push BOOT 10sec
         {
-            digitalWrite(RX_LED_PIN, HIGH);
+            RX_LED_ON();
             TX_LED_ON();
         }
     } else {
