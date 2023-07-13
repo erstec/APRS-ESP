@@ -67,6 +67,8 @@
 
 #if defined(BOARD_ESP32DR_MOD_V14)
 
+#define BOARD_NAME          "T-TWR-V14-MOD"
+
 // SA8x8 radio module
 #define POWER_PIN           25
 #define POWERDOWN_PIN       27
