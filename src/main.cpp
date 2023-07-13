@@ -337,6 +337,14 @@ void setup()
     digitalWrite(23, HIGH);
 #endif
 
+#if defined(BOARD_TTWR_PLUS_MOD)
+    // PMU
+//TODO!!!
+    // MIC Select
+    pinMode(MIC_CH_SEL, OUTPUT);
+    digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
+#endif
+
 #if defined(ADC_BATTERY)
     // Battery Voltage
     pinMode(ADC_BATTERY, INPUT);
@@ -563,10 +571,10 @@ void loop()
         AFSK_Poll(false, LOW);
 #endif
 #ifdef USE_GPS
-        // if (SerialGPS.available()) {
-        //     String gpsData = SerialGPS.readStringUntil('\n');
-        //     Serial.print(gpsData);
-        // }
+        if (SerialGPS.available()) {
+            String gpsData = SerialGPS.readStringUntil('\n');
+            Serial.print(gpsData);
+        }
 #endif
     }
 
