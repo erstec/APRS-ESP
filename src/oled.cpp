@@ -87,7 +87,7 @@ void OledUpdate(int batData, bool usbPlugged) {
             display.print(WiFi.softAPIP());
         }
     } else {
-        display.print("No IP - BLE Mode");
+        display.print("No IP - WiFi OFF");
     }
 
     // DateTime / Battey
@@ -143,8 +143,10 @@ void OledUpdate(int batData, bool usbPlugged) {
         display.print(aprsClient.connected() ? "A+" : "A-");
     }
 
-    display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
-    display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+    if (config.wifi_mode != WIFI_OFF) {
+        display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
+        display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+    }
 
     // Configuration Section
     // Tx interval or SB - SmartBeaconing

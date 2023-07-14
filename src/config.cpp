@@ -146,7 +146,7 @@ void LoadConfig() {
     Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
                   sizeof(Configuration));
     if (EEPROM.read(0) != chkSum) {
-        Serial.println("Config EEPROM Error! Trying restore from backup...");
+        Serial.println("Config EEPROM CRC Error! Trying restore from backup...");
         LoadReConfig();
         // DefaultConfig();
     }

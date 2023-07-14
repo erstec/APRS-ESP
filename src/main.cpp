@@ -795,17 +795,35 @@ static uint16_t batteryVoltage = 0;
 static uint8_t batteryPercentage = 0;
 #endif
 
+#if defined(ADC_BATTERY)
+#include <esp_adc_cal.h>
+uint8_t getBatteryPercentage() {
+    esp_adc_cal_characteristics_t adc_chars;
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(ADC_BATTERY), &adc_chars);
+    float battery_voltage = ((float)v / 1000) * 2;
+    // Serial.print("ADC RAW: ");
+    // Serial.println(v);
+    // Serial.print("Battery voltage: ");
+    // Serial.println(battery_voltage);
+    batteryVoltage = battery_voltage * 1000;
+    if (battery_voltage > 4.2) {
+        return 100;
+    } else if (battery_voltage < 3.0) {
+        return 0;
+    } else {
+        return (uint8_t)(((battery_voltage - 3.0) / (4.2 - 3.0)) * 100);
+    }
+}
+#endif
+
 void printPeriodicDebug() {
 #if defined(ADC_BATTERY)
     if (config.wifi_mode == WIFI_OFF) {
-        batteryVoltage = (analogRead(ADC_BATTERY) * 2);
-        batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
+        // batteryVoltage = (analogRead(ADC_BATTERY) * 2);
+        // batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
 
-        if (batteryVoltage > 4200) {
-            batteryVoltage = 4200;
-        } else {
-            batteryPercentage = (uint8_t)(((batteryVoltage - 3000) / (4200 - 3000)) * 100);
-        }
+        batteryPercentage = getBatteryPercentage();
     } else {
         batteryPercentage = digitalRead(ADC_BATTERY);
     }
@@ -995,20 +1013,39 @@ void loop()
 
     if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         btn_count++;
-        if (btn_count > 1000)  // Push BOOT 10sec
+        if (btn_count > 1000 && btn_count < 2000)  // Push BOOT 10sec
         {
             RX_LED_ON();
             TX_LED_ON();
         }
+        if (btn_count > 2000)  // Push BOOT 20sec
+        {
+            RX_LED_OFF();
+            TX_LED_OFF();
+        }
     } else {
         if (btn_count > 0) {
             // Serial.printf("btn_count=%dms\n", btn_count * 10);
-            if (btn_count > 1000)  // Push BOOT 10sec to Factory Default
+            if (btn_count > 1000)  // Push BOOT 10sec to Disable/Enable WiFi
             {
-                DefaultConfig();
-                Serial.println("SYSTEM REBOOT NOW!");
+                if (config.wifi_mode == WIFI_OFF) {
+                    config.wifi_mode = WIFI_AP_STA_FIX;
+                    Serial.println("WiFi ON");
+                } else {
+                    config.wifi_mode = WIFI_OFF;
+                    Serial.println("WiFi OFF");
+                }
+                btn_count = 0;
+                SaveConfig();
                 esp_restart();
-            } 
+            }
+            else if (btn_count > 2000) {    // Config Default
+                Serial.println("Factory Default");
+                btn_count = 0;
+                DefaultConfig();
+                SaveConfig();
+                esp_restart();
+            }
             else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
             {
                 if (config.tnc) {

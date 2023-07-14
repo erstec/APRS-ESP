@@ -88,8 +88,9 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - Make all required configuration
 
 ## NOTE
-* Short Press of BOOT button ()>100 ms) - TX Position
-* Long press of BOOT button (10 sec) - Reset Configuration to Factory Default
+* Short Press of BOOT button >100 ms) - TX Position
+* Long press of BOOT button (10 sec) - Turn WiFi ON/OFF
+* Very Long press of BOOT button (20 sec) - Reset Configuration to Factory Default
 
 ## NOTE
 (REMOVE)---This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
