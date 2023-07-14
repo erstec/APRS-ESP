@@ -764,6 +764,7 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     return tnc2.length();
 }
 
+#if defined(USE_PMU)
 uint8_t getBatteryPercentage() {
 // #if BATTERY_ADC_PIN != -1
 //     esp_adc_cal_characteristics_t adc_chars;
@@ -783,6 +784,7 @@ uint8_t getBatteryPercentage() {
     return PMU.isBatteryConnect() ? PMU.getBatteryPercent() : 0;
 // #endif
 }
+#endif
 
 #if defined(ADC_BATTERY)
 static uint16_t batteryVoltage = 0;
