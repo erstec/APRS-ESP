@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.9"
+#define VERSION "1.9d"
 
 #define DEBUG
 #define DEBUG_IS
@@ -171,6 +171,8 @@ typedef struct txQueue_struct {
     int Delay;
     char Info[300];
 } txQueueType;
+
+extern bool fwUpdateProcess;
 
 const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};
 const char UNIT[] = {"UNIT.Pkts,Pkts,Pkts,Pkts,Pkts"};

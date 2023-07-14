@@ -117,6 +117,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
 
+bool fwUpdateProcess = false;
+
 time_t systemUptime = 0;
 time_t wifiUptime = 0;
 
@@ -789,7 +791,7 @@ uint8_t getBatteryPercentage() {
 #if defined(ADC_BATTERY)
 static uint16_t batteryVoltage = 0;
 #endif
-#if defined(USE_PMU)
+#if defined(ADC_BATTERY) || defined(USE_PMU)
 static uint8_t batteryPercentage = 0;
 #endif
 
@@ -798,9 +800,16 @@ void printPeriodicDebug() {
     if (config.wifi_mode == WIFI_OFF) {
         batteryVoltage = (analogRead(ADC_BATTERY) * 2);
         batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
+
+        if (batteryVoltage > 4200) {
+            batteryVoltage = 4200;
+        } else {
+            batteryPercentage = (uint8_t)(((batteryVoltage - 3000) / (4200 - 3000)) * 100);
+        }
     } else {
-        batteryVoltage = digitalRead(ADC_BATTERY);
+        batteryPercentage = digitalRead(ADC_BATTERY);
     }
+
 #endif
 #if defined(USE_PMU)
     batteryPercentage = getBatteryPercentage();
@@ -809,9 +818,9 @@ void printPeriodicDebug() {
     Serial.print("Bat: ");
 #if defined(ADC_BATTERY)
     Serial.print(batteryVoltage);
-    Serial.print("mV");
+    Serial.print("mV ");
 #endif
-#if defined(USE_PMU)
+#if defined(ADC_BATTERY) || defined(USE_PMU)
     Serial.print(batteryPercentage);
     Serial.print("%");
 #endif
@@ -834,15 +843,21 @@ void updateScreenAndGps(bool force) {
 
     // 1/sec
     if ((millis() - scrUpdTMO > 1000) || force) {
+        scrUpdTMO = millis();
+
+        if (fwUpdateProcess) {
+            OledUpdateFWU();
+            return;
+        }
+
 #if defined(ADC_BATTERY)
-        OledUpdate(batteryVoltage, false);
+        OledUpdate(batteryPercentage, false);
 #elif defined(USE_PMU)
         OledUpdate(batteryPercentage, vbusIn);
 #else
         OledUpdate(-1, false);
 #endif
         printPeriodicDebug();
-        scrUpdTMO = millis();
     }
 
     // If startup dealy not expired

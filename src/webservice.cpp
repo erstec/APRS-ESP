@@ -2818,6 +2818,8 @@ void webService() {
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(false);
 #endif
+                    fwUpdateProcess = true;
+
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
