@@ -23,7 +23,7 @@ uint8_t checkSum(uint8_t *ptr, size_t count) {
     return lrc;
 }
 
-void SaveConfig() {
+void SaveConfig(bool storeBackup) {
     uint8_t chkSum = 0;
     byte *ptr;
     ptr = (byte *)&config;
@@ -35,6 +35,9 @@ void SaveConfig() {
     Serial.print("Save EEPROM ChkSUM=");
     Serial.println(chkSum, HEX);
 #endif
+    
+    if (!storeBackup) return;
+
     SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
@@ -116,6 +119,7 @@ void LoadConfig() {
 
     if (!EEPROM.begin(EEPROM_SIZE)) {
         Serial.println(F("failed to initialise EEPROM"));  // delay(100000);
+        ESP.restart();
     }
 
     delay(3000);
@@ -142,8 +146,9 @@ void LoadConfig() {
     Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
                   sizeof(Configuration));
     if (EEPROM.read(0) != chkSum) {
-        Serial.println("Config EEPROM Error!");
-        DefaultConfig();
+        Serial.println("Config EEPROM Error! Trying restore from backup...");
+        LoadReConfig();
+        // DefaultConfig();
     }
     input_HPF = config.input_hpf;
 }
@@ -179,6 +184,6 @@ void LoadReConfig() {
     if (chkSum == chkSum2) {
         memcpy(&config, &tmpConfig, sizeof(Configuration));
         input_HPF = config.input_hpf;
-        SaveConfig();
+        SaveConfig(false);
     }
 }
