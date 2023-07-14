@@ -143,12 +143,59 @@ void LoadConfig() {
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
-                  sizeof(Configuration));
+    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum, sizeof(Configuration));
+
+    // If EEPROM is corrupted, then restore from backup
     if (EEPROM.read(0) != chkSum) {
+        // Restore from backup
         Serial.println("Config EEPROM CRC Error! Trying restore from backup...");
         LoadReConfig();
-        // DefaultConfig();
+    } else {
+        // If EEPORM is OK, then check Backup
+        SPIFFS.begin(true);
+        File f = SPIFFS.open("/config.bin", "r");
+        if (!f) {
+            Serial.println("Failed to open config file for reading");
+            SPIFFS.end();
+            esp_restart();
+        }
+    
+        Configuration tmpConfig;
+
+        uint8_t chkSum2 = f.read();
+        size_t sz = f.read((byte *)&tmpConfig, sizeof(Configuration));
+        f.close();
+        SPIFFS.end();
+
+        bool validSPIFFScfg = true;
+
+        if (sz != sizeof(Configuration)) {
+            validSPIFFScfg = false;
+        }
+
+        ptr = (byte *)&tmpConfig;
+
+        uint8_t chkSum3 = checkSum(ptr, sizeof(Configuration));
+        Serial.printf("SPIFFS Check %0Xh=%0Xh(%dByte)\r\n", chkSum2, chkSum3, sizeof(Configuration));
+
+        if (chkSum2 != chkSum3) {
+            validSPIFFScfg = false;
+        }
+
+        if (!validSPIFFScfg) {
+            Serial.println("SPIFFS Config File Error! Reparing...");
+            SPIFFS.begin(true);
+            File f = SPIFFS.open("/config.bin", "w");
+            if (!f) {
+                Serial.println("Failed to open SPIFFS config file for writing");
+                SPIFFS.end();
+                esp_restart();
+            }
+            f.write(chkSum);
+            f.write((byte *)&config, sizeof(Configuration));
+            f.close();
+            SPIFFS.end();
+        }
     }
     input_HPF = config.input_hpf;
 }
