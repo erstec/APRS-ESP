@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the Web Service functionality.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -2302,7 +2302,7 @@ void handle_firmware() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
@@ -2388,7 +2388,7 @@ void handle_upgrade() {
     webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
     webString +=
         "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
-    webString += "<b>Develop by:</b> HS5TQA\n<br />";
+    webString += "<b>Develop by:</b> LY3PH\n<br />";
     webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
     webString +=
@@ -2540,7 +2540,7 @@ void handle_configuration() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
     webString += "<hr>";
