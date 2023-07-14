@@ -9,7 +9,7 @@
 
 #include "oled.h"
 #include "AFSK.h"
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #include "WiFi.h"
 #include "config.h"
 #include "gps.h"

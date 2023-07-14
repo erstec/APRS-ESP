@@ -37,7 +37,7 @@
 #endif
 
 #ifdef USE_GPS
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #endif
 
 #ifdef USE_ROTARY
@@ -59,6 +59,9 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #ifdef USE_SCREEN
 #include "Wire.h"
 #include "Adafruit_GFX.h"
+#include <Fonts/FreeSansBold9pt7b.h>
+#include <Fonts/FreeSerifItalic9pt7b.h>
+#include <Fonts/Seven_Segment24pt7b.h>
 #if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
 #elif defined(USE_SCREEN_SH1106)

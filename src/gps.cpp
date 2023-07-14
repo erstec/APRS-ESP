@@ -9,7 +9,7 @@
 
 #include "gps.h"
 #include "smartBeaconing.h"
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 
 // #define DEBUG_GPS
 
