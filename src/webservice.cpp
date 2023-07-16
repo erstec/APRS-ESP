@@ -541,7 +541,7 @@ void setHTML(byte page) {
         myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
     webString +=
         "<div class='w3-card-2 topnav notranslate' id='topnav'><b>APRS-ESP32 "
-        "Internet Gateway by " +
+        "Internet Gateway - " +
         myStation + "</div>\n";
     webString += "<div class=\"row\">\n";
     webString += "<ul class=\"nav nav-tabs\" style=\"margin: 25px;\">\n";
@@ -862,6 +862,12 @@ void handle_setting() {
                         config.gps_alt = server.arg(i).toFloat();
                     }
                 }
+                if (server.argName(i) == "gps_mode") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.gps_mode = server.arg(i).toInt();
+                    }
+                }
                 if (server.argName(i) == "moniCall") {
                     if (server.arg(i) != "") {
                         strcpy(config.aprs_moniCall, server.arg(i).c_str());
@@ -945,6 +951,23 @@ void handle_setting() {
         "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" "
         "id=\"gpsAlt\" name=\"gpsAlt\" type=\"text\" value=\"" +
         String(config.gps_alt) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString +=
+        "<label class=\"col-sm-4 col-xs-12 control-label\">GPS Mode</label>\n";
+    webString +=
+        "<div class=\"col-sm-3 col-xs-6\"><select name=\"gps_mode\" "
+        "id=\"gps_mode\">\n";
+    for (int i = 0; i < 3; i++) {
+        if (config.gps_mode == i)
+            webString += "<option value=\"" + String(i) + "\" selected>" +
+                         gpsMode[i] + "</option>\n";
+        else
+            webString += "<option value=\"" + String(i) + "\" >" +
+                         gpsMode[i] + "</option>\n";
+    }
+    webString += "</select></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
@@ -1829,6 +1852,12 @@ void handle_system() {
                     config.gps_alt = server.arg(i).toFloat();
                 }
             }
+
+            // if (server.argName(i) == "gpsMode") {
+            //     if (server.arg(i) != "") {
+            //         config.gps_mode = server.arg(i).toInt();
+            //     }
+            // }
 
             if (server.argName(i) == "wifi_ssidAP") {
                 if (server.arg(i) != "") {

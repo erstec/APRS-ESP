@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.9f"
+#define VERSION "1.9g"
 
 #define DEBUG
 #define DEBUG_IS
@@ -190,6 +190,13 @@ const float ctcss[] = {0,     67,    71.9,  74.4,  77,    79.7,  82.5,  85.4,
 const float wifiPwr[12][2] = {{-4, -1},  {8, 2},     {20, 5},  {28, 7},
                               {34, 8.5}, {44, 11},   {52, 13}, {60, 15},
                               {68, 17},  {74, 18.5}, {76, 19}, {78, 19.5}};
+const String gpsMode[3] = {"Auto", "GPS Only", "Fixed Only"};
+
+enum gpsMode_enum { 
+    GPS_MODE_AUTO = 0,
+    GPS_MODE_GPS = 1,
+    GPS_MODE_FIXED = 2
+};
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);

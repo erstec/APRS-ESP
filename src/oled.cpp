@@ -137,6 +137,19 @@ void OledUpdate(int batData, bool usbPlugged) {
         display.print(" ");
     }
 
+    display.setCursor(display.width() - CHAR_WIDTH * 1, 0);
+    switch (config.gps_mode) {
+        case GPS_MODE_AUTO:
+            display.print("A");
+            break;
+        case GPS_MODE_GPS:
+            display.print("G");
+            break;
+        case GPS_MODE_FIXED:
+            display.print("F");
+            break;
+    }
+
     // Second line
     if (config.aprs) {
         display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);

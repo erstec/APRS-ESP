@@ -129,14 +129,14 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Remove Speaker to AMP resistor RF1 (marked)
 - Very firmly remove OLED display with plastic frame, it's glued to the board, so you need to apply some force to remove it, but be careful not to damage the ribbon cable.
 - Disconnect ribbon cable from the main board and store OLED display with plastic frame in a safe place.
-- Take 1kOhm resistor, cut it to required length to be able bridge pad IO11 and SA686 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
+- Take 1kOhm resistor, cut it to required length to be able bridge pad IO11 and SA868 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
 - Apply copper foil tape or captone tape around ESP32-S3 MCU to protect components around from heat.
 - Desolder ESP32-S3 MCU from the board. Use hot air station, set temperature to 400C, use mid flow. Be careful not to damage the pads.
 - Clean pads from solder using solder wick and isopropyl alcohol or flux cleaner.
 - Apply fresh solder to the pads, fresh flux and solder ESP32-S3 to ESP32-WROOM-32E Adapter Board to the pads. Be careful not to short any pads. Use hot air station to solder the module. Make sure adapter board is aligned properly. Make sure all pads are soldered properly. Use some force from top to press adapter board to the main board. Use multimeter to check for shorts between pads.
 - Remove copper foil tape or captone tape.
 - Clean all around with isopropyl alcohol or flux cleaner.
-- Apply fresh flux to the pads of upper adapter side.
+- Apply fresh flux to the pads of top adapter side.
 - Align ESP32-WROOM-32E MCU to the adapter board, make sure all pads are aligned properly.
 - Solder ESP32-WROOM-32E MCU to the adapter board. use soldering iron with fine tip. Make sure all pads are soldered properly.
 - Clean all around with isopropyl alcohol or flux cleaner.
@@ -193,14 +193,14 @@ For me it took about 1 hour to make all modifications, but I have all required t
 - Power off the board, remove battery, unplug USB cable
 - Unscrew and very firmly remove OLED display with plastic frame, it's glued to the board, so you need to apply some force to remove it, but be careful not to damage the ribbon cable.
 - Disconnect ribbon cable from the main board and store OLED display with plastic frame in a safe place.
-- Take 1kOhm resistor, cut it to required length to be able bridge pad IO14 and SA686 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
+- Take 1kOhm resistor, cut it to required length to be able bridge pad IO14 and SA868 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
 - Apply copper foil tape or captone tape around ESP32-S3 MCU to protect components around from heat.
 - Desolder ESP32-S3 MCU from the board. Use hot air station, set temperature to 400C, use mid flow. Be careful not to damage the pads.
 - Clean pads from solder using solder wick and isopropyl alcohol or flux cleaner.
 - Apply fresh solder to the pads, fresh flux and solder ESP32-S3 to ESP32-WROOM-32E Adapter Board to the pads. Be careful not to short any pads. Use hot air station to solder the module. Make sure adapter board is aligned properly. Make sure all pads are soldered properly. Use some force from top to press adapter board to the main board. Use multimeter to check for shorts between pads.
 - Remove copper foil tape or captone tape.
 - Clean all around with isopropyl alcohol or flux cleaner.
-- Apply fresh flux to the pads of upper adapter side.
+- Apply fresh flux to the pads of top adapter side.
 - Align ESP32-WROOM-32E MCU to the adapter board, make sure all pads are aligned properly.
 - Solder ESP32-WROOM-32E MCU to the adapter board. use soldering iron with fine tip. Make sure all pads are soldered properly.
 - Clean all around with isopropyl alcohol or flux cleaner.

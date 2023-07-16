@@ -27,6 +27,7 @@ void SaveConfig(bool storeBackup) {
     uint8_t chkSum = 0;
     byte *ptr;
     ptr = (byte *)&config;
+    Serial.println("Saving config to EEPROM...");
     EEPROM.writeBytes(1, ptr, sizeof(Configuration));
     chkSum = checkSum(ptr, sizeof(Configuration));
     EEPROM.write(0, chkSum);
@@ -38,6 +39,7 @@ void SaveConfig(bool storeBackup) {
     
     if (!storeBackup) return;
 
+    Serial.println("Saving config Backup to SPIFFS...");
     SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
@@ -111,6 +113,7 @@ void DefaultConfig() {
 #endif
     input_HPF = config.input_hpf;
     config.timeZone = 0;
+    config.gps_mode = GPS_MODE_FIXED;    // 0 - Auto, 1 - GPS only, 2 - Fixed only
     SaveConfig();
 }
 
@@ -149,7 +152,11 @@ void LoadConfig() {
     if (EEPROM.read(0) != chkSum) {
         // Restore from backup
         Serial.println("Config EEPROM CRC Error! Trying restore from backup...");
-        LoadReConfig();
+        if (!LoadReConfig()) {
+            // If backup is corrupted, then restore factory defaults
+            DefaultConfig();
+            Serial.println("Config EEPROM CRC Error! Restoring Factory Default config");
+        }
     } else {
         // If EEPORM is OK, then check Backup
         SPIFFS.begin(true);
@@ -200,7 +207,7 @@ void LoadConfig() {
     input_HPF = config.input_hpf;
 }
 
-void LoadReConfig() {
+bool LoadReConfig() {
     byte *ptr;
 
     SPIFFS.begin(true);
@@ -208,7 +215,7 @@ void LoadReConfig() {
     if (!f) {
         Serial.println("Failed to open config file for reading");
         SPIFFS.end();
-        return;
+        return false;
     }
     
     Configuration tmpConfig;
@@ -220,7 +227,7 @@ void LoadReConfig() {
 
     if (sz != sizeof(Configuration)) {
         Serial.println("Config File Error!");
-        return;
+        return false;
     }
 
     ptr = (byte *)&tmpConfig;
@@ -233,4 +240,6 @@ void LoadReConfig() {
         input_HPF = config.input_hpf;
         SaveConfig(false);
     }
+
+    return true;
 }

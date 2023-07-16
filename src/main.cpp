@@ -682,19 +682,36 @@ String send_gps_location() {
     float _lat;
     float _lon;
 
-    //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
-    if (gps.location.isValid()) {
-        _lat = lat / 1000000.0;
-        _lon = lon / 1000000.0;
-        distance = 0;   // Reset counted distance
-        Serial.println("GPS Fix");
-    } else {
+    if (config.gps_mode == GPS_MODE_AUTO) {
+        Serial.println("GPS Mode: Auto");
+        //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
+        if (gps.location.isValid()) {
+            _lat = lat / 1000000.0;
+            _lon = lon / 1000000.0;
+            distance = 0;   // Reset counted distance
+            Serial.println("GPS Fix, using current location");
+        } else {
+            _lat = config.gps_lat;
+            _lon = config.gps_lon;
+            Serial.println("No GPS Fix, using fixed location");
+
+            // Reset counted distance
+            distance = 0;
+        }
+    } else if (config.gps_mode == GPS_MODE_FIXED) {
+        Serial.println("GPS Mode: Fixed Only");
         _lat = config.gps_lat;
         _lon = config.gps_lon;
-        Serial.println("No GPS Fix");
-
-        // Reset counted distance
-        distance = 0;
+    } else if (config.gps_mode == GPS_MODE_GPS) {
+        Serial.println("GPS Mode: GPS Only");
+        if (gps.location.isValid()) {
+            _lat = lat / 1000000.0;
+            _lon = lon / 1000000.0;
+            distance = 0;   // Reset counted distance
+            Serial.println("GPS Fix, using current location");
+        } else {
+            Serial.println("No GPS Fix, skipped");
+        }
     }
 
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
