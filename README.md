@@ -95,7 +95,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 ## NOTE
 (REMOVE)---This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
 
-## USING LILYGO T-TWR V1.4 BOARD
+## USING LILYGO T-TWR V1.4 BOARD - MODIFICATIONS REQUIRED
 ### Introduction
 LilyGo T-TWR V1.4 is a compact board with ESP32-S3 MCU, SA868 2W RF Module, OLED display, USB-C connector, 18650 battery holder, and integrated LiPo charger.
 This board is suitable for APRS-ESP32 project, but it uses ESP32-S3 MCU, which don't have DAC and I2S ADC functionality, so existing code, written for ESP32 MCU can't be used straight way. This board also have some hardware limitations, that need to be addressed, like abscence of audio routing between SA686 RF modem and ESP32 MCU, as well as audio level and filtering circuits.
@@ -117,7 +117,7 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - 1x Audio Adapter Board (link here), order PCB and assemble yourself, BOM (here (link here))
 - Few wires, I'm using silicone coated, 1mm diameter, 0.5mm core
 - 1x 1kOhm resistor, 0.125W, tru-hole type
-- 3 mm heat shrink tube, approx. 20 mm long
+- 2 mm heat shrink tube, approx. 20 mm long
 - Copper foil tape or captone tape
 - Soldering wire, flux, iron, hot air station, tweezers, isopropyl alcohol, soldering wick, double sided tape, etc.
 
@@ -143,12 +143,11 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Clean all around with isopropyl alcohol or flux cleaner.
 - At this moment you can upload firmware to the board and test it. You can use side UART connector or RT/TX pads on the header for programming. Board should start, OLED shoulg show status screen, and you should be able to connect to the board via WiFi. If not - check your soldering. Don't forget to attach antenna or dummy load to the board! Otherwise you will damage RF module!
 
-### Assembling / Audio Adapter Board
-- Take prepared and assembled Audio Adapter Board, apply double sided tape to the bottom side of the board, align it and stick to the top of ESP32-WROOM-32E MCU shield.
-
 ### Wiring / Audio Adapter Board
 - Prepare six wires, approx 10 cm long, strip and tin one side of each wire.
 - Solder one side of each wire to the pads of the Audio Adapter Board, as shown on the picture.
+- Optional: you can cover Audio Adapter PCB with heatshrink tube to protect it from touching with fingers, as it will temporary breaks audio routing.
+- Take prepared and assembled Audio Adapter Board, apply double sided tape to the bottom side of the board, align it and stick to the top of ESP32-WROOM-32E MCU shield.
 - Mesure and cut each wire to required length. Solder other side of each wire to the pads, as shown on the picture. Black - to GND. Red - to 3V3. Yellow and Blue to pads on ESP32 Adapter Board. White - to Mic + pad and Orange to SA868 module pad 3 (marked).
 
 ### Programming
@@ -166,7 +165,14 @@ For me it took about 2 hours to make all modifications, but I have all required 
 
 ## USING LILYGO T-TWR PLUS V2.0 BOARD
 ### Introduction
-LilyGo T-TWR V2.0 is a compact board with ESP32-S3 MCU, SA868 2W RF Module, OLED display, USB-C connector, 18650 battery holder, GPS receiver and integrated LiPo charger/PMU.
+LilyGo T-TWR Plus V2.0 is a compact board with ESP32-S3 MCU, SA868 2W RF Module, OLED display, USB-C connector, 21700/18650 battery holder, GPS receiver and integrated LiPo charger/PMU.
+
+### NO MODIFICATIONS REQUIRED
+In theory ESP32-S3 can be used with PDM mode for AFSK transmitting and some (maybe) method for receiving.
+Currently I don't have so much time to implement ESP32-S3 support, as there is a lot what to do in current hardware implementation, like adding features and fixing bugs.
+*Contributions of using PDM mode for AFSK transmitting and any other methods for receiving are highly appreciated!*
+
+### MODIFICATIONS REQUIRED
 This board is suitable for APRS-ESP32 project, but it uses ESP32-S3 MCU, which don't have DAC and I2S ADC functionality, so existing code, written for ESP32 MCU can't be used straight way. This board also have some hardware limitations, that need to be addressed.
 I've own few of these boards and made some modifications to make it work with APRS-ESP32 project.
 
