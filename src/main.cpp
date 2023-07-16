@@ -700,9 +700,6 @@ String send_gps_location() {
             _lat = config.gps_lat;
             _lon = config.gps_lon;
             Serial.println("No GPS Fix, using fixed location");
-
-            // Reset counted distance
-            distance = 0;
         }
     } else if (config.gps_mode == GPS_MODE_FIXED) {
         Serial.println("GPS Mode: Fixed Only");
@@ -717,8 +714,12 @@ String send_gps_location() {
             Serial.println("GPS Fix, using current location");
         } else {
             Serial.println("No GPS Fix, skipped");
+            return "";
         }
     }
+
+    // Reset counted distance
+    distance = 0;
 
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
@@ -1074,10 +1075,12 @@ void loop()
             {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    pkgTxUpdate(tnc2Raw.c_str(), 0);
-                    // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
+                    if (tnc2Raw.length() > 0) {
+                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
-                    Serial.println("Manual TX: " + tnc2Raw);
+                        Serial.println("Manual TX: " + tnc2Raw);
+                    }
 #endif
                 }
             }
@@ -1234,14 +1237,16 @@ void taskAPRS(void *pvParameters) {
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    if (aprsClient.connected()) {
-                        aprsClient.println(tnc2Raw);  // Send packet to Inet
-                    }
-                    pkgTxUpdate(tnc2Raw.c_str(), 0);
-                    // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
+                    if (tnc2Raw.length() > 0) {
+                        if (aprsClient.connected()) {
+                            aprsClient.println(tnc2Raw);  // Send packet to Inet
+                        }
+                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
 #ifdef DEBUG_TNC
-                    // Serial.println("TX: " + tnc2Raw);
+                        // Serial.println("TX: " + tnc2Raw);
 #endif
+                    }
                 }
             }
             // send_gps_location();
