@@ -108,15 +108,17 @@ bool RF_Init(bool boot) {
     Serial.println(str);
     delay(500);
     if (!rfAnswerCheck()) return false;
-    // SerialRF.println("AT+SETTAIL=0");
-    // Serial.println("AT+SETTAIL=0");
-    // delay(500);
+    SerialRF.println("AT+SETTAIL=0");
+    Serial.println("AT+SETTAIL=0");
+    delay(500);
+    if (!rfAnswerCheck()) return false;
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
 #elif defined(USE_SA868)
-    //sprintf(str, "\r\n\r\n\r\nAT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
-            config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
+    // sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
+            // config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
+            config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
             config.freq_rx + ((float)config.offset_rx / 1000000),
             config.tone_tx, config.sql_level, config.tone_rx);

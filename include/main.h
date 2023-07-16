@@ -11,7 +11,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.9g"
+#define VERSION "1.9h"
 
 #define DEBUG
 #define DEBUG_IS
