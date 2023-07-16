@@ -245,7 +245,13 @@ bool pkgTxSend() {
             int decTime = millis() - txQueue[i].timeStamp;
             if (decTime > txQueue[i].Delay) {
 #ifdef USE_RF
-                digitalWrite(POWER_PIN, config.rf_power);  // RF Power LOW
+                if (config.rf_power) {
+                    pinMode(POWER_PIN, OPEN_DRAIN);
+                } else {
+                    pinMode(POWER_PIN, OUTPUT);
+                    digitalWrite(POWER_PIN, LOW);  // RF Power
+                }
+
 #endif
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_setTail(APRS_TAIL);
@@ -1002,7 +1008,7 @@ void loop()
 #endif
     if (AFSKInitAct == true) {
 #ifdef USE_RF
-        AFSK_Poll(true, config.rf_power, POWER_PIN);
+        AFSK_Poll(true);
 #else
         AFSK_Poll(false, LOW);
 #endif

@@ -328,7 +328,7 @@ void AFSK_poll(Afsk *afsk);
 
 void afsk_putchar(char c);
 int afsk_getchar(void);
-void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin);
+void AFSK_Poll(bool SA818);
 void AFSK_TimerEnable(bool sts);
 
 #endif

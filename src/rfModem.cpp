@@ -51,15 +51,16 @@ bool RF_Init(bool boot) {
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
-        pinMode(POWER_PIN, OUTPUT_OPEN_DRAIN);
+        pinMode(POWER_PIN, OUTPUT);
+        digitalWrite(POWER_PIN, LOW);
+        
         pinMode(POWERDOWN_PIN, OUTPUT);
         pinMode(SQL_PIN, INPUT_PULLUP);
 
-        digitalWrite(POWER_PIN, LOW);
-        digitalWrite(POWERDOWN_PIN, LOW);
-        delay(500);
         digitalWrite(POWERDOWN_PIN, HIGH);
-        delay(1500);
+        delay(1000);
+        // digitalWrite(POWERDOWN_PIN, HIGH);
+        // delay(1500);
         Serial.println("RF Modem powered up");
 #if !defined(USE_SA828)
         SerialRF.println();
@@ -106,9 +107,10 @@ bool RF_Init(bool boot) {
     SerialRF.println(str);
     Serial.println(str);
     delay(500);
-    SerialRF.println("AT+SETTAIL=0");
-    Serial.println("AT+SETTAIL=0");
-    delay(500);
+    if (!rfAnswerCheck()) return false;
+    // SerialRF.println("AT+SETTAIL=0");
+    // Serial.println("AT+SETTAIL=0");
+    // delay(500);
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
 #elif defined(USE_SA868)
@@ -166,10 +168,12 @@ bool RF_Init(bool boot) {
     delay(500);
     if (!rfAnswerCheck()) return false;
 #endif
+
     return true;
 }
 
 void RF_Sleep() {
+    pinMode(POWER_PIN, OUTPUT);
     digitalWrite(POWER_PIN, LOW);
     digitalWrite(POWERDOWN_PIN, LOW);
     // SerialGPS.print("$PMTK161,0*28\r\n");
@@ -187,6 +191,7 @@ void RF_Check() {
     if (rfAnswerCheck()) {
         SA818_Timeout = millis();
     } else {
+        pinMode(POWER_PIN, OUTPUT);
         digitalWrite(POWER_PIN, LOW);
         digitalWrite(POWERDOWN_PIN, LOW);
         delay(500);

@@ -127,6 +127,7 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Remove Mic pull-ip Resistor R2 (marked)
 - Detach and remove (unsolder) Speaker
 - Remove Speaker to AMP resistor RF1 (marked)
+- If you want to use HIGH RF power remove battery protection cirquit (marked) and pshort two marked pats with piece of wire.
 - Very firmly remove OLED display with plastic frame, it's glued to the board, so you need to apply some force to remove it, but be careful not to damage the ribbon cable.
 - Disconnect ribbon cable from the main board and store OLED display with plastic frame in a safe place.
 - Take 1kOhm resistor, cut it to required length to be able bridge pad IO11 and SA868 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
