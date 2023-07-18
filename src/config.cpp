@@ -105,7 +105,7 @@ void DefaultConfig() {
     config.offset_tx = 0;
     config.tone_rx = 0;
     config.tone_tx = 0;
-    config.band = 0;
+    config.band = 1;
     config.sql_level = 1;
     config.rf_power = LOW;
     config.volume = 4;

@@ -246,7 +246,12 @@ bool pkgTxSend() {
             if (decTime > txQueue[i].Delay) {
 #ifdef USE_RF
                 if (config.rf_power) {
+#if defined(BOARD_TTWR_PLUS_MOD)
+                    pinMode(POWER_PIN, OUTPUT);
+                    digitalWrite(POWER_PIN, HIGH);
+#else
                     pinMode(POWER_PIN, OPEN_DRAIN);
+#endif
                 } else {
                     pinMode(POWER_PIN, OUTPUT);
                     digitalWrite(POWER_PIN, LOW);  // RF Power
@@ -567,11 +572,17 @@ void setupPower()
     val = PMU.getChargeTargetVoltage();
     Serial.print("Setting Charge Target Voltage : ");
     Serial.println(tableVoltage[val]);
+
 }
 #endif
 
+// #include "soc/soc.h"
+// #include "soc/rtc_cntl_reg.h"
+
 void setup()
 {
+    // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
@@ -608,19 +619,6 @@ void setup()
     digitalWrite(23, HIGH);
 #endif
 
-#if defined(BOARD_TTWR_PLUS_MOD)
-    // MIC Select
-    pinMode(MIC_CH_SEL, OUTPUT);
-    digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
-
-    // NeoPixel
-    strip.setBrightness(100);
-    strip.begin();
-
-    strip.setPixelColor(0, 0, 0, 255);  // Blue
-    strip.show();
-#endif
-
 #if defined(ADC_BATTERY)
     // Battery Voltage
     pinMode(ADC_BATTERY, INPUT);
@@ -633,6 +631,19 @@ void setup()
 #if defined(USE_PMU)
     // PMU
     setupPower();
+#endif
+
+#if defined(BOARD_TTWR_PLUS_MOD)
+    // MIC Select
+    pinMode(MIC_CH_SEL, OUTPUT);
+    digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
+
+    // NeoPixel
+    strip.setBrightness(100);
+    strip.begin();
+
+    strip.setPixelColor(0, 0, 0, 255);  // Blue
+    strip.show();
 #endif
 
     LoadConfig();
@@ -685,8 +696,8 @@ int pkgCount = 0;
 String send_gps_location() {
     String tnc2Raw = "";
     
-    float _lat;
-    float _lon;
+    float _lat = 0.0;
+    float _lon = 0.0;
 
     if (config.gps_mode == GPS_MODE_AUTO) {
         Serial.println("GPS Mode: Auto");
@@ -963,7 +974,7 @@ void loopPMU()
         vbusIn = false;
     }
 
-    // if (PMU.isPekeyLongPressIrq()) {
+    if (PMU.isPekeyLongPressIrq()) {
     //     vTaskDelete(dataTaskHandler);
     //     vTaskDelete(clearvolumeSliderTaskHandler);
     //     vTaskDelete(gnssTaskHandler);
@@ -977,8 +988,8 @@ void loopPMU()
     //     u8g2.drawStr(20, height, "Power OFF");
     //     u8g2.sendBuffer();
     //     delay(3000);
-    //     PMU.shutdown();
-    // }
+        PMU.shutdown();
+    }
 
     // Clear PMU Interrupt Status Register
     PMU.clearIrqStatus();
