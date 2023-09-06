@@ -47,8 +47,10 @@
 // #define APRS_PREAMBLE	(300UL) // stock
 // #define APRS_TAIL       (0UL)
 #else
-#define APRS_PREAMBLE	(350UL)
-#define APRS_TAIL       (0UL)
+// #define APRS_PREAMBLE	(350UL)
+// #define APRS_TAIL       (0UL)
+#define APRS_PREAMBLE	(500UL)
+#define APRS_TAIL       (100UL)
 #endif
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
