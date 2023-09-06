@@ -123,14 +123,14 @@ For me it took about 2 hours to make all modifications, but I have all required 
 
 ### Soldering / MCU Replacement
 - Power off the board, remove battery, unplug USB cable
-- Remove Microphone
-- Remove Mic pull-ip Resistor R2 (marked)
-- Detach and remove (unsolder) Speaker
-- Remove Speaker to AMP resistor RF1 (marked)
-- If you want to use HIGH RF power remove battery protection cirquit (marked) and pshort two marked pats with piece of wire.
+- Remove Microphone (Pic. 1, marked)
+- Remove Mic pull-ip Resistor R2 (Pic. 1, marked)
+- Detach and remove (unsolder) Speaker (Pic. 2, marked)
+- Remove Speaker to AMP resistor RF1 (Pic. 2, marked)
+- If you want to use HIGH RF power remove battery protection cirquit (Pic. 3, marked) and short two marked pads with piece of wire.
 - Very firmly remove OLED display with plastic frame, it's glued to the board, so you need to apply some force to remove it, but be careful not to damage the ribbon cable.
 - Disconnect ribbon cable from the main board and store OLED display with plastic frame in a safe place.
-- Take 1kOhm resistor, cut it to required length to be able bridge pad IO11 and SA868 module pad 1 (marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
+- Take 1kOhm resistor, cut it to required length to be able bridge pad IO11 and SA868 module pad 1 (Pic. 4, marked), put heat shrink tube on it, solder it to the pads, use hot air to shrink the tube. This is SQL line, it allow MCU do decoding job more properly. It is highly recommended, otherwise you will have to modify code to disable SQL.
 - Apply copper foil tape or captone tape around ESP32-S3 MCU to protect components around from heat.
 - Desolder ESP32-S3 MCU from the board. Use hot air station, set temperature to 400C, use mid flow. Be careful not to damage the pads.
 - Clean pads from solder using solder wick and isopropyl alcohol or flux cleaner.
