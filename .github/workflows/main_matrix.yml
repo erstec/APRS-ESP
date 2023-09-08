@@ -75,7 +75,7 @@ jobs:
         id: version
 
       - name: Move files up
-        run: mv -b -t ./ ./**/firmware*.bin ./**/*.elf ./*native*/*device-*.sh ./*native*/*device-*.bat
+        run: mv -b -t ./ ./**/firmware*.bin ./*native*/*device-*.sh ./*native*/*device-*.bat
 
       - name: Repackage in single firmware zip
         uses: actions/upload-artifact@v3
@@ -103,13 +103,6 @@ jobs:
 
       - name: Zip firmware
         run: zip -j -9 -r ./firmware-${{ steps.version.outputs.version }}.zip ./output
-
-      - name: Repackage in single elfs zip
-        uses: actions/upload-artifact@v3
-        with:
-          name: debug-elfs-${{ steps.version.outputs.version }}.zip
-          path: ./*.elf
-          retention-days: 1
 
       - name: Create request artifacts
         if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'pull_request' }}
@@ -153,14 +146,6 @@ jobs:
       - name: Zip firmware
         run: zip -j -9 -r ./firmware-${{ steps.version.outputs.version }}.zip ./output
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: debug-elfs-${{ steps.version.outputs.version }}.zip
-          path: ./elfs
-
-      - name: Zip Elfs
-        run: zip -j -9 -r ./debug-elfs-${{ steps.version.outputs.version }}.zip ./elfs
-
       # For diagnostics
       - name: Show artifacts
         run: ls -lR
@@ -186,16 +171,6 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./firmware-${{ steps.version.outputs.version }}.zip
           asset_name: firmware-${{ steps.version.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      - name: Add debug elfs to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./debug-elfs-${{ steps.version.outputs.version }}.zip
-          asset_name: debug-elfs-${{ steps.version.outputs.version }}.zip
           asset_content_type: application/zip
 
       # - name: Bump version.properties

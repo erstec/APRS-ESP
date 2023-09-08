@@ -22,8 +22,6 @@ export APP_VERSION=$VERSION
 basename=firmware-$1-$VERSION
 
 pio run --environment $1 # -v
-SRCELF=.pio/build/$1/firmware.elf
-cp $SRCELF $OUTDIR/$basename.elf
 
 echo "Copying ESP32 bin file"
 SRCBIN=.pio/build/$1/firmware.factory.bin

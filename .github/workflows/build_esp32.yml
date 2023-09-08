@@ -32,4 +32,3 @@ jobs:
           name: firmware-${{ inputs.board }}-${{ steps.version.outputs.version }}.zip
           path: |
             release/*.bin
-            release/*.elf
