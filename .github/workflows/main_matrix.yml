@@ -1,20 +1,15 @@
 name: CI
 on:
-  # # Triggers the workflow on push but only for the master branch
+  # # Triggers the workflow on push for all branches
   push:
-    branches: [master, ci-changes]
+    # branches: [master, ci-changes]
+    branches:
+      - "**"
     paths-ignore:
       - "**.md"
       - "version.properties"
     tags:
       - v*
-
-  # Note: This is different from "pull_request". Need to specify ref when doing checkouts.
-  pull_request_target:
-    branches: [ci-changes]
-    paths-ignore:
-      - "**.md"
-      #- "**.yml"
 
   workflow_dispatch:
 
