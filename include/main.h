@@ -1,7 +1,7 @@
 /*
     Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
     Created:    2022-10-10
-    Author:     Ernest (ErNis) / LY3PH
+    Author:     Ernest / LY3PH
     License:    GNU General Public License v3.0
     Includes code from:
                 https://github.com/nakhonthai/ESP32IGate
@@ -29,8 +29,6 @@
 //#define SDCARD
 //#define USE_TNC
 #define USE_GPS
-#define USE_SCREEN_SSD1306
-//#define USE_SCREEN_SH1106
 //#define USE_BLE
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY

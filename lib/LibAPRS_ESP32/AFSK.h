@@ -255,12 +255,36 @@ typedef struct Afsk
 #define MARK_INC (uint16_t)(DIV_ROUND(SIN_LEN * (uint32_t)MARK_FREQ, CONFIG_AFSK_DAC_SAMPLERATE))
 #define SPACE_INC (uint16_t)(DIV_ROUND(SIN_LEN * (uint32_t)SPACE_FREQ, CONFIG_AFSK_DAC_SAMPLERATE))
 
+#include <Adafruit_NeoPixel.h>
+extern Adafruit_NeoPixel strip;
+
+#if defined(TX_LED_PIN)
+
 #if defined(INVERT_LEDS)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,LOW)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,HIGH)
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
 #else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,HIGH)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,LOW)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
+#endif
+#else
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
+#endif
+#endif
+
+#else
+
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
+#endif
+
 #endif
 
 #define AFSK_DAC_IRQ_START()         \
@@ -285,12 +309,18 @@ typedef struct Afsk
 // and _OFF() functions writes to the PORT registers
 // to turn the pins on or off.
 
-#define LED_RX_ON() digitalWrite(RX_LED_PIN, HIGH);
-#define LED_RX_OFF() digitalWrite(RX_LED_PIN, LOW);
+#if defined(USE_NEOPIXEL)
+#define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 255, 0); strip.show();    // Green
+#define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#else
+#define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH);
+#define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW);
+#endif
 
 extern bool input_HPF;
 
 extern Afsk *AFSK_modem;
+
 
 void AFSK_init(Afsk *afsk);
 void AFSK_transmit(char *buffer, size_t size);

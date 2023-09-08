@@ -675,13 +675,6 @@
 <wire x1="63.5" y1="63.5" x2="55.88" y2="63.5" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="TXLED(NC)" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="IO4"/>
-<wire x1="104.14" y1="68.58" x2="111.76" y2="68.58" width="0.1524" layer="91"/>
-<label x="106.68" y="68.58" size="1.016" layer="95"/>
-</segment>
-</net>
 <net name="GPS_RXD" class="0">
 <segment>
 <pinref part="U2" gate="G$1" pin="IO15"/>
@@ -811,6 +804,11 @@
 <pinref part="U1" gate="G$1" pin="IO42"/>
 <wire x1="40.64" y1="33.02" x2="48.26" y2="33.02" width="0.1524" layer="91"/>
 <label x="45.72" y="33.02" size="1.016" layer="95"/>
+</segment>
+<segment>
+<pinref part="U2" gate="G$1" pin="IO4"/>
+<wire x1="104.14" y1="68.58" x2="111.76" y2="68.58" width="0.1524" layer="91"/>
+<label x="106.68" y="68.58" size="1.016" layer="95"/>
 </segment>
 </net>
 <net name="FREE_RX1" class="0">

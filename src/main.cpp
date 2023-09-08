@@ -1,7 +1,7 @@
 /*
     Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
     Created:    2022-10-10
-    Author:     Ernest (ErNis) / LY3PH
+    Author:     Ernest / LY3PH
     License:    GNU General Public License v3.0
     Includes code from:
                 https://github.com/nakhonthai/ESP32IGate
@@ -44,6 +44,16 @@
 #include <Rotary.h>
 #endif
 
+#ifdef USE_PMU
+#include <XPowersLib.h>
+XPowersPMU PMU;
+#endif
+
+#if defined(USE_NEOPIXEL)
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800);
+#endif
+
 #include "rotaryProc.h"
 
 #ifdef USE_SCREEN
@@ -71,12 +81,33 @@
 #define SDCARD_MISO 2
 #endif
 
+#if defined(TX_LED_PIN)
+
 #if defined(INVERT_LEDS)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,LOW)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,HIGH)
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
 #else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN,HIGH)
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN,LOW)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
+#endif
+#else
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
+#endif
+#endif
+
+#else
+
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
+#endif
+
 #endif
 
 #ifdef USE_RF
@@ -299,6 +330,235 @@ boolean APRSConnect() {
     return true;
 }
 
+#if defined(USE_PMU)
+bool vbusIn = false;
+bool pmu_flag = false;
+
+void setFlag(void)
+{
+    pmu_flag = true;
+}
+
+void setupPower()
+{
+    bool result = PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
+    if (result == false) {
+        while (1) {
+            Serial.println("PMU is not online...");
+            delay(500);
+        }
+    }
+
+    // Set the minimum common working voltage of the PMU VBUS input,
+    // below this value will turn off the PMU
+    PMU.setVbusVoltageLimit(XPOWERS_AXP2101_VBUS_VOL_LIM_3V88);
+
+    // Set the maximum current of the PMU VBUS input,
+    // higher than this value will turn off the PMU
+    PMU.setVbusCurrentLimit(XPOWERS_AXP2101_VBUS_CUR_LIM_2000MA);
+
+
+    // Get the VSYS shutdown voltage
+    uint16_t vol = PMU.getSysPowerDownVoltage();
+    Serial.printf("->  getSysPowerDownVoltage:%u\n", vol);
+
+    // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
+    PMU.setSysPowerDownVoltage(2600);
+
+
+    //! DC1 ESP32S3 Core VDD , Don't change
+    // PMU.setDC1Voltage(3300);
+
+    //! DC3 Radio & Pixels VDD , Don't change
+    PMU.setDC3Voltage(3400);
+
+    //! ALDO2 MICRO TF Card VDD, Don't change
+    PMU.setALDO2Voltage(3300);
+
+    //! ALDO4 GNSS VDD, Don't change
+    PMU.setALDO4Voltage(3300);
+
+    //! BLDO1 MIC VDD, Don't change
+    PMU.setBLDO1Voltage(3300);
+
+
+    //! The following supply voltages can be controlled by the user
+    // DC5 IMAX=2A
+    // 1200mV
+    // 1400~3700mV,100mV/step,24steps
+    PMU.setDC5Voltage(3300);
+
+    //ALDO1 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setALDO1Voltage(3300);
+
+    //ALDO3 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setALDO3Voltage(3300);
+
+    //BLDO2 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setBLDO2Voltage(3300);
+
+    //! END
+
+
+    // Turn on the power that needs to be used
+    //! DC1 ESP32S3 Core VDD , Don't change
+    // PMU.enableDC3();
+
+    //! External pin power supply
+    PMU.enableDC5();
+    PMU.enableALDO1();
+    PMU.enableALDO3();
+    PMU.enableBLDO2();
+
+    //! ALDO2 MICRO TF Card VDD
+    PMU.enableALDO2();
+
+    //! ALDO4 GNSS VDD
+    PMU.enableALDO4();
+
+    //! BLDO1 MIC VDD
+    PMU.enableBLDO1();
+
+    //! DC3 Radio & Pixels VDD
+    PMU.enableDC3();
+
+    // power off when not in use
+    PMU.disableDC2();
+    PMU.disableDC4();
+    PMU.disableCPUSLDO();
+    PMU.disableDLDO1();
+    PMU.disableDLDO2();
+
+
+
+    Serial.println("DCDC=======================================================================");
+    Serial.printf("DC1  : %s   Voltage:%u mV \n",  PMU.isEnableDC1()  ? "+" : "-", PMU.getDC1Voltage());
+    Serial.printf("DC2  : %s   Voltage:%u mV \n",  PMU.isEnableDC2()  ? "+" : "-", PMU.getDC2Voltage());
+    Serial.printf("DC3  : %s   Voltage:%u mV \n",  PMU.isEnableDC3()  ? "+" : "-", PMU.getDC3Voltage());
+    Serial.printf("DC4  : %s   Voltage:%u mV \n",  PMU.isEnableDC4()  ? "+" : "-", PMU.getDC4Voltage());
+    Serial.printf("DC5  : %s   Voltage:%u mV \n",  PMU.isEnableDC5()  ? "+" : "-", PMU.getDC5Voltage());
+    Serial.println("ALDO=======================================================================");
+    Serial.printf("ALDO1: %s   Voltage:%u mV\n",  PMU.isEnableALDO1()  ? "+" : "-", PMU.getALDO1Voltage());
+    Serial.printf("ALDO2: %s   Voltage:%u mV\n",  PMU.isEnableALDO2()  ? "+" : "-", PMU.getALDO2Voltage());
+    Serial.printf("ALDO3: %s   Voltage:%u mV\n",  PMU.isEnableALDO3()  ? "+" : "-", PMU.getALDO3Voltage());
+    Serial.printf("ALDO4: %s   Voltage:%u mV\n",  PMU.isEnableALDO4()  ? "+" : "-", PMU.getALDO4Voltage());
+    Serial.println("BLDO=======================================================================");
+    Serial.printf("BLDO1: %s   Voltage:%u mV\n",  PMU.isEnableBLDO1()  ? "+" : "-", PMU.getBLDO1Voltage());
+    Serial.printf("BLDO2: %s   Voltage:%u mV\n",  PMU.isEnableBLDO2()  ? "+" : "-", PMU.getBLDO2Voltage());
+    Serial.println("===========================================================================");
+
+    // Set the time of pressing the button to turn off
+    PMU.setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
+    uint8_t opt = PMU.getPowerKeyPressOffTime();
+    Serial.print("PowerKeyPressOffTime:");
+    switch (opt) {
+    case XPOWERS_POWEROFF_4S: Serial.println("4 Second");
+        break;
+    case XPOWERS_POWEROFF_6S: Serial.println("6 Second");
+        break;
+    case XPOWERS_POWEROFF_8S: Serial.println("8 Second");
+        break;
+    case XPOWERS_POWEROFF_10S: Serial.println("10 Second");
+        break;
+    default:
+        break;
+    }
+    // Set the button power-on press time
+    PMU.setPowerKeyPressOnTime(XPOWERS_POWERON_128MS);
+    opt = PMU.getPowerKeyPressOnTime();
+    Serial.print("PowerKeyPressOnTime:");
+    switch (opt) {
+    case XPOWERS_POWERON_128MS: Serial.println("128 Ms");
+        break;
+    case XPOWERS_POWERON_512MS: Serial.println("512 Ms");
+        break;
+    case XPOWERS_POWERON_1S: Serial.println("1 Second");
+        break;
+    case XPOWERS_POWERON_2S: Serial.println("2 Second");
+        break;
+    default:
+        break;
+    }
+
+    Serial.println("===========================================================================");
+    // It is necessary to disable the detection function of the TS pin on the board
+    // without the battery temperature detection function, otherwise it will cause abnormal charging
+    PMU.disableTSPinMeasure();
+
+
+    // Enable internal ADC detection
+    PMU.enableBattDetection();
+    PMU.enableVbusVoltageMeasure();
+    PMU.enableBattVoltageMeasure();
+    PMU.enableSystemVoltageMeasure();
+
+
+    /*
+      The default setting is CHGLED is automatically controlled by the PMU.
+    - XPOWERS_CHG_LED_OFF,
+    - XPOWERS_CHG_LED_BLINK_1HZ,
+    - XPOWERS_CHG_LED_BLINK_4HZ,
+    - XPOWERS_CHG_LED_ON,
+    - XPOWERS_CHG_LED_CTRL_CHG,
+    * */
+    PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+
+    // Force add pull-up
+    pinMode(PMU_IRQ, INPUT_PULLUP);
+    attachInterrupt(PMU_IRQ, setFlag, FALLING);
+
+    // Disable all interrupts
+    PMU.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+    // Clear all interrupt flags
+    PMU.clearIrqStatus();
+    // Enable the required interrupt function
+    PMU.enableIRQ(
+        XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+        XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+        XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
+        XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
+    );
+
+    // Set the precharge charging current
+    PMU.setPrechargeCurr(XPOWERS_AXP2101_PRECHARGE_150MA);
+
+    // Set constant current charge current limit
+    //! Using inferior USB cables and adapters will not reach the maximum charging current.
+    //! Please pay attention to add a suitable heat sink above the PMU when setting the charging current to 1A
+    PMU.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_1000MA);
+
+    // Set stop charging termination current
+    PMU.setChargerTerminationCurr(XPOWERS_AXP2101_CHG_ITERM_150MA);
+
+    // Set charge cut-off voltage
+    PMU.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
+
+    // Disable the PMU long press shutdown function
+    PMU.disableLongPressShutdown();
+
+
+    // Get charging target current
+    const uint16_t currTable[] = {
+        0, 0, 0, 0, 100, 125, 150, 175, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+    };
+    uint8_t val = PMU.getChargerConstantCurr();
+    Serial.print("Val = "); Serial.println(val);
+    Serial.print("Setting Charge Target Current : ");
+    Serial.println(currTable[val]);
+
+    // Get charging target voltage
+    const uint16_t tableVoltage[] = {
+        0, 4000, 4100, 4200, 4350, 4400, 255
+    };
+    val = PMU.getChargeTargetVoltage();
+    Serial.print("Setting Charge Target Voltage : ");
+    Serial.println(tableVoltage[val]);
+}
+#endif
+
 void setup()
 {
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
@@ -337,6 +597,19 @@ void setup()
     digitalWrite(23, HIGH);
 #endif
 
+#if defined(BOARD_TTWR_PLUS_MOD)
+    // MIC Select
+    pinMode(MIC_CH_SEL, OUTPUT);
+    digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
+
+    // NeoPixel
+    strip.setBrightness(100);
+    strip.begin();
+
+    strip.setPixelColor(0, 0, 0, 255);  // Blue
+    strip.show();
+#endif
+
 #if defined(ADC_BATTERY)
     // Battery Voltage
     pinMode(ADC_BATTERY, INPUT);
@@ -346,11 +619,24 @@ void setup()
     OledStartup();
 #endif
 
+#if defined(USE_PMU)
+    // PMU
+    setupPower();
+#endif
+
     LoadConfig();
 
 #ifdef USE_RF
     // RF SHOULD BE Initialized or there is no reason to startup at all
     while (!RF_Init(true)) {};
+#endif
+
+#if defined(USE_PMU)
+    if (PMU.isVbusIn()) {
+        vbusIn = true;
+        Serial.println("Vbus In");
+        // PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+    }
 #endif
 
     // if SmartBeaconing - delay processing GPS data
@@ -475,8 +761,33 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     return tnc2.length();
 }
 
+#if defined(USE_PMU)
+uint8_t getBatteryPercentage() {
+// #if BATTERY_ADC_PIN != -1
+//     esp_adc_cal_characteristics_t adc_chars;
+//     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+//     uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(BATTERY_ADC_PIN), &adc_chars);
+//     float battery_voltage = ((float)v / 1000) * 2;
+//     Serial.print("ADC RAW: ");
+//     Serial.println(v);
+//     Serial.print("Battery voltage: ");
+//     Serial.println(battery_voltage);
+//     if (battery_voltage > 4.2) {
+//         return 100;
+//     } else {
+//         return (uint8_t)(((battery_voltage - 3.0) / (4.2 - 3.0)) * 100);
+//     }
+// #else
+    return PMU.isBatteryConnect() ? PMU.getBatteryPercent() : 0;
+// #endif
+}
+#endif
+
 #if defined(ADC_BATTERY)
 static uint16_t batteryVoltage = 0;
+#endif
+#if defined(USE_PMU)
+static uint8_t batteryPercentage = 0;
 #endif
 
 void printPeriodicDebug() {
@@ -488,10 +799,18 @@ void printPeriodicDebug() {
         batteryVoltage = digitalRead(ADC_BATTERY);
     }
 #endif
+#if defined(USE_PMU)
+    batteryPercentage = getBatteryPercentage();
+#endif
     printTime();
     Serial.print("Bat: ");
 #if defined(ADC_BATTERY)
     Serial.print(batteryVoltage);
+    Serial.print("mV");
+#endif
+#if defined(USE_PMU)
+    Serial.print(batteryPercentage);
+    Serial.print("%");
 #endif
     Serial.print(", lat: ");
     Serial.print(lat);
@@ -512,7 +831,13 @@ void updateScreenAndGps(bool force) {
 
     // 1/sec
     if ((millis() - scrUpdTMO > 1000) || force) {
-        OledUpdate();
+#if defined(ADC_BATTERY)
+        OledUpdate(batteryVoltage, false);
+#elif defined(USE_PMU)
+        OledUpdate(batteryPercentage, vbusIn);
+#else
+        OledUpdate(-1, false);
+#endif
         printPeriodicDebug();
         scrUpdTMO = millis();
     }
@@ -533,6 +858,71 @@ void updateScreenAndGps(bool force) {
         gpsUpdTMO = millis();
     }
 }
+
+#if defined(USE_PMU)
+void loopPMU()
+{
+    if (!pmu_flag) {
+        return;
+    }
+
+    pmu_flag = false;
+    // Get PMU Interrupt Status Register
+    uint32_t status = PMU.getIrqStatus();
+    Serial.print("STATUS => HEX:");
+    Serial.print(status, HEX);
+    Serial.print(" BIN:");
+    Serial.println(status, BIN);
+
+    // if (PMU.isPekeyShortPressIrq()) {
+    //     volumeUp();
+    // }
+
+    if (PMU.isBatChagerStartIrq() || PMU.isBatteryConnect()) {
+        Serial.println("Battery Charging");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+    }
+
+    if (PMU.isBatChagerDoneIrq()) {
+        Serial.println("Battery Charging Done");
+    }
+
+    if (PMU.isBatRemoveIrq()) {
+        Serial.println("Battery Removed");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+    }
+
+    if (PMU.isVbusInsertIrq()) {
+        Serial.println("USB Detected");
+        vbusIn = true;
+    }
+
+    if (PMU.isVbusRemoveIrq()) {
+        Serial.println("USB Removed");
+        vbusIn = false;
+    }
+
+    // if (PMU.isPekeyLongPressIrq()) {
+    //     vTaskDelete(dataTaskHandler);
+    //     vTaskDelete(clearvolumeSliderTaskHandler);
+    //     vTaskDelete(gnssTaskHandler);
+    //     vTaskDelete(encoderTaskHandler);
+    //     vTaskDelete(updateTaskHandler);
+    //     vTaskDelete(pielxTaskHandler);
+
+    //     u8g2.setFont(u8g2_font_timR14_tf);
+    //     u8g2.clearBuffer();
+    //     int8_t height = 30 + u8g2.getAscent();
+    //     u8g2.drawStr(20, height, "Power OFF");
+    //     u8g2.sendBuffer();
+    //     delay(3000);
+    //     PMU.shutdown();
+    // }
+
+    // Clear PMU Interrupt Status Register
+    PMU.clearIrqStatus();
+}
+#endif
 
 long sendTimer = 0;
 bool AFSKInitAct = false;
@@ -589,7 +979,7 @@ void loop()
         btn_count++;
         if (btn_count > 1000)  // Push BOOT 10sec
         {
-            digitalWrite(RX_LED_PIN, HIGH);
+            RX_LED_ON();
             TX_LED_ON();
         }
     } else {
@@ -615,6 +1005,10 @@ void loop()
             btn_count = 0;
         }
     }
+
+#if defined(USE_PMU)
+    loopPMU();
+#endif
 }
 
 String sendIsAckMsg(String toCallSign, int msgId) {

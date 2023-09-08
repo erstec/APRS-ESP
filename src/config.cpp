@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for work with Configuration, stored in EEPROM.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -56,7 +56,7 @@ void DefaultConfig() {
     config.aprs_port = 14580;
     sprintf(config.aprs_passcode, "00000");
     sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall, config.aprs_ssid);
-    sprintf(config.aprs_filter, "g/HS*/E2*");
+    sprintf(config.aprs_filter, "m/150"); // g/LY*/SP*
     sprintf(config.wifi_ssid, "APRS-ESP32");
     sprintf(config.wifi_pass, "aprs-esp32");
     sprintf(config.wifi_ap_ssid, "APRS-ESP32");
