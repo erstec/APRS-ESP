@@ -13,7 +13,6 @@
 #include <Arduino.h>
 
 bool RF_Init(bool boot);
-void RF_Sleep();
 void RF_Check();
 
 #endif // RF_MODEM_H

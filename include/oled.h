@@ -14,3 +14,4 @@
 
 void OledStartup();
 void OledUpdate(int batData, bool usbPlugged);
+void OledUpdateFWU();

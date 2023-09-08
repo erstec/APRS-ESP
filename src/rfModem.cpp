@@ -51,15 +51,15 @@ bool RF_Init(bool boot) {
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
-        pinMode(POWER_PIN, OUTPUT_OPEN_DRAIN);
         pinMode(POWERDOWN_PIN, OUTPUT);
+        digitalWrite(POWERDOWN_PIN, HIGH);
+        delay(1000);
+        
+        pinMode(POWER_PIN, OUTPUT);
+        digitalWrite(POWER_PIN, LOW);
+        
         pinMode(SQL_PIN, INPUT_PULLUP);
 
-        digitalWrite(POWER_PIN, LOW);
-        digitalWrite(POWERDOWN_PIN, LOW);
-        delay(500);
-        digitalWrite(POWERDOWN_PIN, HIGH);
-        delay(1500);
         Serial.println("RF Modem powered up");
 #if !defined(USE_SA828)
         SerialRF.println();
@@ -106,15 +106,18 @@ bool RF_Init(bool boot) {
     SerialRF.println(str);
     Serial.println(str);
     delay(500);
+    if (!rfAnswerCheck()) return false;
     SerialRF.println("AT+SETTAIL=0");
     Serial.println("AT+SETTAIL=0");
     delay(500);
+    if (!rfAnswerCheck()) return false;
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
 #elif defined(USE_SA868)
-    //sprintf(str, "\r\n\r\n\r\nAT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
-            config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
+    // sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
+            // config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
+            config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
             config.freq_rx + ((float)config.offset_rx / 1000000),
             config.tone_tx, config.sql_level, config.tone_rx);
@@ -166,14 +169,8 @@ bool RF_Init(bool boot) {
     delay(500);
     if (!rfAnswerCheck()) return false;
 #endif
-    return true;
-}
 
-void RF_Sleep() {
-    digitalWrite(POWER_PIN, LOW);
-    digitalWrite(POWERDOWN_PIN, LOW);
-    // SerialGPS.print("$PMTK161,0*28\r\n");
-    // AFSK_TimerEnable(false);
+    return true;
 }
 
 void RF_Check() {
@@ -187,6 +184,7 @@ void RF_Check() {
     if (rfAnswerCheck()) {
         SA818_Timeout = millis();
     } else {
+        pinMode(POWER_PIN, OUTPUT);
         digitalWrite(POWER_PIN, LOW);
         digitalWrite(POWERDOWN_PIN, LOW);
         delay(500);
@@ -196,70 +194,3 @@ void RF_Check() {
     // AFSK_TimerEnable(false);
 #endif
 }
-
-// unsigned long SA818_Timeout = 0;
-// void RF_Init(uint8_t HL)
-// {
-
-//     pinMode(0, INPUT);
-//     pinMode(POWER_PIN, OUTPUT);
-//     pinMode(POWERDOWN_PIN, OUTPUT);
-//     pinMode(SQL_PIN, INPUT_PULLUP);
-
-//     SerialRF.begin(9600, SERIAL_8N1, 14, 13);
-
-//     digitalWrite(POWERDOWN_PIN, HIGH);
-//     digitalWrite(POWER_PIN, LOW);
-//     delay(500);
-//     // AT+DMOSETGROUP=1,144.3900,144.3900,0,1,0,0
-//     SerialRF.println("AT+DMOSETGROUP=0,144.3900,144.3900,0,1,0,0");
-//     delay(10);
-//     SerialRF.println("AT+DMOAUTOPOWCONTR=1");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETVOLUME=9");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETVOX=0");
-//     delay(10);
-//     SerialRF.println("AT+DMOSETMIC=8,0,0");
-//     delay(100);
-//     // AFSK_TimerEnable(true);
-//     digitalWrite(POWER_PIN, HL);
-// }
-
-// void RF_Sleep()
-// {
-//     digitalWrite(POWER_PIN, LOW);
-//     digitalWrite(POWERDOWN_PIN, LOW);
-//     // SerialGPS.print("$PMTK161,0*28\r\n");
-//     // AFSK_TimerEnable(false);
-// }
-
-// void RF_Check()
-// {
-//     while (SerialRF.available() > 0)
-//         SerialRF.read();
-//     SerialRF.println("AT+DMOCONNECT");
-//     delay(100);
-//     if (SerialRF.available() > 0)
-//     {
-//         String ret = SerialRF.readString();
-//         if (ret.indexOf("DMOCONNECT") > 0)
-//         {
-//             SA818_Timeout = millis();
-// #ifdef DEBUG
-//             // Serial.println(SerialRF.readString());
-//             Serial.println("SA818 Activated");
-// #endif
-//         }
-//     }
-//     else
-//     {
-//         Serial.println("SA818 deActive");
-//         digitalWrite(POWER_PIN, LOW);
-//         digitalWrite(POWERDOWN_PIN, LOW);
-//         delay(500);
-//         SA818_INIT(LOW);
-//     }
-//     // SerialGPS.print("$PMTK161,0*28\r\n");
-//     // AFSK_TimerEnable(false);
-// }

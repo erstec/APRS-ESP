@@ -85,7 +85,7 @@
 
 // ADC
 #define ADC_BATTERY         12  // Read ADC2_5 From PIN IO12, but only if wifi is turned off
-#define BATT_OFFSET         (-600) // mV
+#define BATT_OFFSET         (-120) // mV
 
 // DEBUG UART
 #define SERIAL_DEBUG_BAUD   115200

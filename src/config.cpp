@@ -23,10 +23,11 @@ uint8_t checkSum(uint8_t *ptr, size_t count) {
     return lrc;
 }
 
-void SaveConfig() {
+void SaveConfig(bool storeBackup) {
     uint8_t chkSum = 0;
     byte *ptr;
     ptr = (byte *)&config;
+    Serial.println("Saving config to EEPROM...");
     EEPROM.writeBytes(1, ptr, sizeof(Configuration));
     chkSum = checkSum(ptr, sizeof(Configuration));
     EEPROM.write(0, chkSum);
@@ -35,6 +36,10 @@ void SaveConfig() {
     Serial.print("Save EEPROM ChkSUM=");
     Serial.println(chkSum, HEX);
 #endif
+    
+    if (!storeBackup) return;
+
+    Serial.println("Saving config Backup to SPIFFS...");
     SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
@@ -100,7 +105,7 @@ void DefaultConfig() {
     config.offset_tx = 0;
     config.tone_rx = 0;
     config.tone_tx = 0;
-    config.band = 0;
+    config.band = 1;
     config.sql_level = 1;
     config.rf_power = LOW;
     config.volume = 4;
@@ -108,6 +113,7 @@ void DefaultConfig() {
 #endif
     input_HPF = config.input_hpf;
     config.timeZone = 0;
+    config.gps_mode = GPS_MODE_FIXED;    // 0 - Auto, 1 - GPS only, 2 - Fixed only
     SaveConfig();
 }
 
@@ -116,6 +122,7 @@ void LoadConfig() {
 
     if (!EEPROM.begin(EEPROM_SIZE)) {
         Serial.println(F("failed to initialise EEPROM"));  // delay(100000);
+        ESP.restart();
     }
 
     delay(3000);
@@ -139,16 +146,68 @@ void LoadConfig() {
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum,
-                  sizeof(Configuration));
+    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum, sizeof(Configuration));
+
+    // If EEPROM is corrupted, then restore from backup
     if (EEPROM.read(0) != chkSum) {
-        Serial.println("Config EEPROM Error!");
-        DefaultConfig();
+        // Restore from backup
+        Serial.println("Config EEPROM CRC Error! Trying restore from backup...");
+        if (!LoadReConfig()) {
+            // If backup is corrupted, then restore factory defaults
+            DefaultConfig();
+            Serial.println("Config EEPROM CRC Error! Restoring Factory Default config");
+        }
+    } else {
+        // If EEPORM is OK, then check Backup
+        SPIFFS.begin(true);
+        File f = SPIFFS.open("/config.bin", "r");
+        if (!f) {
+            Serial.println("Failed to open config file for reading");
+            SPIFFS.end();
+            esp_restart();
+        }
+    
+        Configuration tmpConfig;
+
+        uint8_t chkSum2 = f.read();
+        size_t sz = f.read((byte *)&tmpConfig, sizeof(Configuration));
+        f.close();
+        SPIFFS.end();
+
+        bool validSPIFFScfg = true;
+
+        if (sz != sizeof(Configuration)) {
+            validSPIFFScfg = false;
+        }
+
+        ptr = (byte *)&tmpConfig;
+
+        uint8_t chkSum3 = checkSum(ptr, sizeof(Configuration));
+        Serial.printf("SPIFFS Check %0Xh=%0Xh(%dByte)\r\n", chkSum2, chkSum3, sizeof(Configuration));
+
+        if (chkSum2 != chkSum3) {
+            validSPIFFScfg = false;
+        }
+
+        if (!validSPIFFScfg) {
+            Serial.println("SPIFFS Config File Error! Reparing...");
+            SPIFFS.begin(true);
+            File f = SPIFFS.open("/config.bin", "w");
+            if (!f) {
+                Serial.println("Failed to open SPIFFS config file for writing");
+                SPIFFS.end();
+                esp_restart();
+            }
+            f.write(chkSum);
+            f.write((byte *)&config, sizeof(Configuration));
+            f.close();
+            SPIFFS.end();
+        }
     }
     input_HPF = config.input_hpf;
 }
 
-void LoadReConfig() {
+bool LoadReConfig() {
     byte *ptr;
 
     SPIFFS.begin(true);
@@ -156,7 +215,7 @@ void LoadReConfig() {
     if (!f) {
         Serial.println("Failed to open config file for reading");
         SPIFFS.end();
-        return;
+        return false;
     }
     
     Configuration tmpConfig;
@@ -168,7 +227,7 @@ void LoadReConfig() {
 
     if (sz != sizeof(Configuration)) {
         Serial.println("Config File Error!");
-        return;
+        return false;
     }
 
     ptr = (byte *)&tmpConfig;
@@ -179,6 +238,8 @@ void LoadReConfig() {
     if (chkSum == chkSum2) {
         memcpy(&config, &tmpConfig, sizeof(Configuration));
         input_HPF = config.input_hpf;
-        SaveConfig();
+        SaveConfig(false);
     }
+
+    return true;
 }

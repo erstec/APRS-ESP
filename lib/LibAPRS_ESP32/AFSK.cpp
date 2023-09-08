@@ -878,7 +878,7 @@ long lastVrms = 0;
 bool VrmsFlag = false;
 bool sqlActive = false;
 
-void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
+void AFSK_Poll(bool SA818)
 {
   int mV;
   int x = 0;
@@ -986,7 +986,8 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
       digitalWrite(PTT_PIN, LOW);
 #endif
       if (SA818) {
-        digitalWrite(powerPin, RFPower ? HIGH : LOW); //RF Power LOW
+        // pinMode(POWER_PIN, OUTPUT);
+        // digitalWrite(POWER_PIN, LOW);  // RF Power LOW
       }
     }
 #endif

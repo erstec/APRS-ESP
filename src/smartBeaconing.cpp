@@ -10,7 +10,7 @@
 */
 
 #include "smartBeaconing.h"
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #include "config.h"
 #include "main.h"
 
