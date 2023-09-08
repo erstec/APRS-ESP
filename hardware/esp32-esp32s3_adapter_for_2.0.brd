@@ -61,11 +61,9 @@
 <plain>
 <wire x1="3.683" y1="53.34" x2="23.165" y2="53.34" width="0" layer="20"/>
 <wire x1="23.165" y1="53.34" x2="23.165" y2="79.746" width="0" layer="20"/>
-<wire x1="23.165" y1="79.746" x2="1.651" y2="79.746" width="0" layer="20"/>
-<wire x1="1.651" y1="79.746" x2="1.651" y2="77.851" width="0" layer="20"/>
-<wire x1="1.651" y1="77.851" x2="3.683" y2="77.851" width="0" layer="20"/>
-<wire x1="3.683" y1="77.851" x2="3.683" y2="53.34" width="0" layer="20"/>
-<text x="7.493" y="75.565" size="1.778" layer="25">V2.0-RevA</text>
+<wire x1="23.165" y1="79.746" x2="3.683" y2="79.746" width="0" layer="20"/>
+<wire x1="3.683" y1="79.746" x2="3.683" y2="53.34" width="0" layer="20"/>
+<text x="7.493" y="75.565" size="1.778" layer="25">V2.0-RevB</text>
 </plain>
 <libraries>
 <library name="ESP32-S3-WROOM-1-N16R2">
@@ -220,31 +218,6 @@
 <smd name="39_9" x="-0.1" y="-3.86" dx="0.9" dy="0.9" layer="1"/>
 </package>
 </packages>
-</library>
-<library name="testpad" urn="urn:adsk.eagle:library:385">
-<description>&lt;b&gt;Test Pins/Pads&lt;/b&gt;&lt;p&gt;
-Cream on SMD OFF.&lt;br&gt;
-new: Attribute TP_SIGNAL_NAME&lt;br&gt;
-&lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
-<packages>
-<package name="B1,27" urn="urn:adsk.eagle:footprint:27900/1" library_version="3">
-<description>&lt;b&gt;TEST PAD&lt;/b&gt;</description>
-<wire x1="-0.635" y1="0" x2="0.635" y2="0" width="0.0024" layer="37"/>
-<wire x1="0" y1="0.635" x2="0" y2="-0.635" width="0.0024" layer="37"/>
-<smd name="TP" x="0" y="0" dx="1.27" dy="1.27" layer="1" roundness="100" cream="no"/>
-<text x="-0.635" y="1.016" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="-0.635" y="-0.762" size="0.0254" layer="27">&gt;VALUE</text>
-<text x="-0.635" y="-1.905" size="1" layer="37">&gt;TP_SIGNAL_NAME</text>
-</package>
-</packages>
-<packages3d>
-<package3d name="B1,27" urn="urn:adsk.eagle:package:27944/2" type="box" library_version="3">
-<description>TEST PAD</description>
-<packageinstances>
-<packageinstance name="B1,27"/>
-</packageinstances>
-</package3d>
-</packages3d>
 </library>
 </libraries>
 <attributes>
@@ -446,11 +419,6 @@ Please make sure your boards conform to these design rules.
 <attribute name="PACKAGE" value="SMD-44 Espressif Systems" x="41.402" y="18.542" size="1.778" layer="27" display="off"/>
 <attribute name="PRICE" value="None" x="41.402" y="18.542" size="1.778" layer="27" display="off"/>
 </element>
-<element name="TP1" library="testpad" library_urn="urn:adsk.eagle:library:385" package="B1,27" package3d_urn="urn:adsk.eagle:package:27944/2" value="TPB1,27" x="2.54" y="78.74" smashed="yes">
-<attribute name="POPULARITY" value="19" x="2.54" y="78.74" size="1.778" layer="27" display="off"/>
-<attribute name="TP_SIGNAL_NAME" value="" x="2.54" y="78.74" size="1.778" layer="27" display="off"/>
-<attribute name="VALUE" x="1.905" y="77.978" size="0.0254" layer="27"/>
-</element>
 </elements>
 <signals>
 <signal name="TXD0">
@@ -537,7 +505,6 @@ Please make sure your boards conform to these design rules.
 <via x="16.256" y="66.421" extent="1-16" drill="0.3048"/>
 <via x="16.256" y="65.151" extent="1-16" drill="0.3048"/>
 <via x="16.383" y="63.754" extent="1-16" drill="0.3048"/>
-<via x="16.383" y="61.976" extent="1-16" drill="0.3048"/>
 <via x="19.812" y="66.421" extent="1-16" drill="0.3048"/>
 <via x="19.812" y="67.564" extent="1-16" drill="0.3048"/>
 <via x="17.907" y="67.691" extent="1-16" drill="0.3048"/>
@@ -839,23 +806,15 @@ Please make sure your boards conform to these design rules.
 </signal>
 <signal name="SQL">
 <contactref element="U2" pad="9"/>
-<contactref element="TP1" pad="TP"/>
-<wire x1="4.712" y1="61.902" x2="7.546" y2="61.902" width="0.1524" layer="1"/>
-<wire x1="7.546" y1="61.902" x2="7.62" y2="61.976" width="0.1524" layer="1"/>
-<wire x1="7.62" y1="61.976" x2="7.6962" y2="61.976" width="0.1524" layer="1"/>
-<via x="7.6962" y="61.976" extent="1-16" drill="0.3048"/>
-<wire x1="7.6962" y1="61.976" x2="7.6962" y2="72.8472" width="0.1524" layer="16"/>
-<wire x1="7.6962" y1="72.8472" x2="7.747" y2="72.898" width="0.1524" layer="16"/>
-<via x="7.747" y="72.898" extent="1-16" drill="0.3048"/>
-<wire x1="7.747" y1="72.898" x2="4.953" y2="72.898" width="0.1524" layer="1"/>
-<via x="4.953" y="72.898" extent="1-16" drill="0.3048"/>
-<wire x1="4.953" y1="72.898" x2="4.953" y2="79.121" width="0.1524" layer="16"/>
-<via x="4.953" y="79.121" extent="1-16" drill="0.3048"/>
-<wire x1="4.953" y1="79.121" x2="4.572" y2="78.74" width="0.1524" layer="1"/>
-<wire x1="4.572" y1="78.74" x2="2.54" y2="78.74" width="0.1524" layer="1"/>
-</signal>
-<signal name="FREE_SPI_CS1">
 <contactref element="U1" pad="22"/>
+<wire x1="4.712" y1="61.902" x2="16.076" y2="61.902" width="0.1524" layer="1"/>
+<wire x1="16.076" y1="61.902" x2="16.129" y2="61.849" width="0.1524" layer="1"/>
+<via x="16.129" y="61.849" extent="1-16" drill="0.35"/>
+<wire x1="16.129" y1="61.849" x2="16.129" y2="60.8086625" width="0.1524" layer="16"/>
+<wire x1="16.129" y1="60.8086625" x2="16.0782" y2="60.7578625" width="0.1524" layer="16"/>
+<wire x1="16.0782" y1="55.9562" x2="15.367" y2="55.245" width="0.1524" layer="16"/>
+<wire x1="16.0782" y1="60.7578625" x2="16.0782" y2="55.9562" width="0.1524" layer="16"/>
+<wire x1="15.367" y1="55.245" x2="15.367" y2="54.302" width="0.1524" layer="16"/>
 </signal>
 <signal name="MIC_CH_SEL">
 <contactref element="U1" pad="10"/>
@@ -917,21 +876,4 @@ Please make sure your boards conform to these design rules.
 </mfgpreviewcolors>
 </board>
 </drawing>
-<compatibility>
-<note version="8.2" severity="warning">
-Since Version 8.2, EAGLE supports online libraries. The ids
-of those online libraries will not be understood (or retained)
-with this version.
-</note>
-<note version="8.3" severity="warning">
-Since Version 8.3, EAGLE supports URNs for individual library
-assets (packages, symbols, and devices). The URNs of those assets
-will not be understood (or retained) with this version.
-</note>
-<note version="8.3" severity="warning">
-Since Version 8.3, EAGLE supports the association of 3D packages
-with devices in libraries, schematics, and board files. Those 3D
-packages will not be understood (or retained) with this version.
-</note>
-</compatibility>
 </eagle>
