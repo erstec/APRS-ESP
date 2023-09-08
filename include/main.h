@@ -19,7 +19,8 @@
 #define optstr(s) (xstr(s)[0] ? xstr(s) : "unset")
 
 // #define VERSION "1.10"
-#define VERSION     xstr(APP_VERSION_SHORT)
+#define VERSION         xstr(APP_VERSION_SHORT)
+#define VERSION_FULL    xstr(APP_VERSION)
 
 #define DEBUG
 #define DEBUG_IS

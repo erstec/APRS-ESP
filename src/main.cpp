@@ -606,7 +606,7 @@ void setup()
 #endif
 
     Serial.println();
-    Serial.println("Start APRS-ESP V" + String(VERSION));
+    Serial.println("Start APRS-ESP V" + String(VERSION_FULL));
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
 
 #if defined(BOARD_TTWR_MOD)

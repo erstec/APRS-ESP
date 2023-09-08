@@ -2330,7 +2330,7 @@ void handle_firmware() {
     webString += " <b>(MODEL: Simple)</b>";
 #endif
     webString +=
-        "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
+        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
 
@@ -2416,7 +2416,7 @@ void handle_upgrade() {
         "jquery.min.js'></script>\n";
     webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
     webString +=
-        "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
+        "<b>Current Firmware Version:</b> V" + String(VERSION_FULL) + "\n<br/>";
     webString += "<b>Develop by:</b> LY3PH\n<br />";
     webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
@@ -2568,7 +2568,7 @@ void handle_configuration() {
     webString += " <b>(MODEL: Simple)</b>";
 #endif
     webString +=
-        "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
+        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
