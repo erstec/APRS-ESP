@@ -89,7 +89,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - Firmware can be updated via **Web interface** or using **USB cable**
 - For Web interface option use Firmware tab
 - For USB option use script device-update.bat (Windows) or device-update.sh (Linux). Script is self explanatory if you run it without arguments. Also it requires Python 3 and esp-tool library, you can install it using `pip install esptool`
-- **DO NOT use device-install scripts for update or firmware binary files withoyt -update suffix as you can LOST ALL CONFIGURATION!**
+- **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
 
 
 ## NOTE
@@ -104,7 +104,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 Firmware part uses ideas and code snippets from:
 - https://github.com/nakhonthai/ESP32IGate
 - https://github.com/sh123/aprs_tracker
-- https://github.com/meshtastic/firmware / build system, scripts and workflows implementation ideas
+- https://github.com/meshtastic/firmware / build system, scripts and workflows implementation
 
 Hardware part uses ideas, libraries and designs from:
 - https://github.com/nakhonthai/ESP32IGate / schematics base
