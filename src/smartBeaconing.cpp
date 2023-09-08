@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the SmartBeaconing.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/sh123/aprs_tracker
@@ -10,7 +10,7 @@
 */
 
 #include "smartBeaconing.h"
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #include "config.h"
 #include "main.h"
 

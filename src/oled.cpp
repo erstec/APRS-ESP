@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for work with OLED Display.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -9,7 +9,7 @@
 
 #include "oled.h"
 #include "AFSK.h"
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #include "WiFi.h"
 #include "config.h"
 #include "gps.h"
@@ -61,7 +61,7 @@ void OledStartup() {
 #endif
 }
 
-void OledUpdate() {
+void OledUpdate(int batData, bool usbPlugged) {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
 
@@ -87,15 +87,47 @@ void OledUpdate() {
             display.print(WiFi.softAPIP());
         }
     } else {
-        display.print("No IP - BLE Mode");
+        display.print("No IP - WiFi OFF");
     }
 
-    // DateTime
+    // DateTime / Battey
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
     sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
+
+    display.setCursor(0, CHAR_HEIGHT * 2);
+    display.print("B:");
+#if defined(ADC_BATTERY)
+    if (config.wifi_mode == WIFI_OFF) {
+#endif
+        if (batData >= 0) {
+            display.print(batData);
+            display.print("%");
+        } else {
+            display.print("NA");
+        }
+#if defined(ADC_BATTERY)
+    } else {
+        if (batData == 1) {
+            display.print("YES");
+        } else {
+            display.print("NO");
+        }
+    }
+#endif
+
+    display.setCursor(display.width() - CHAR_WIDTH * 3, CHAR_HEIGHT * 2);
+    if (usbPlugged) {
+        display.print("USB");
+    } else {
+#if defined(USE_PMU)
+        display.print("BAT");
+#else
+        display.print("   ");
+#endif
+    }
 
     // Main section
     // Top line
@@ -105,14 +137,29 @@ void OledUpdate() {
         display.print(" ");
     }
 
+    display.setCursor(display.width() - CHAR_WIDTH * 1, 0);
+    switch (config.gps_mode) {
+        case GPS_MODE_AUTO:
+            display.print("A");
+            break;
+        case GPS_MODE_GPS:
+            display.print("G");
+            break;
+        case GPS_MODE_FIXED:
+            display.print("F");
+            break;
+    }
+
     // Second line
     if (config.aprs) {
         display.setCursor(display.width() - CHAR_WIDTH * 5, CHAR_HEIGHT * 1);
         display.print(aprsClient.connected() ? "A+" : "A-");
     }
 
-    display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
-    display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+    if (config.wifi_mode != WIFI_OFF) {
+        display.setCursor(display.width() - CHAR_WIDTH * 2, CHAR_HEIGHT * 1);
+        display.print(WiFi.status() == WL_CONNECTED ? "W+" : "W-");
+    }
 
     // Configuration Section
     // Tx interval or SB - SmartBeaconing
@@ -212,4 +259,28 @@ void OledUpdate() {
 //     display.display();
 // #endif
 //     // cnt++;
+}
+
+void OledUpdateFWU() {
+#ifdef USE_SCREEN
+    if (AFSK_modem->sending) return;
+
+    char buf[24];
+
+    display.clearDisplay();
+
+    // DateTime
+    struct tm tmstruct;
+    getLocalTime(&tmstruct, 0);
+    sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
+    display.print(buf);
+
+    // Message
+    sprintf(buf, "FW Update...");
+    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), display.height() - CHAR_HEIGHT * 3);
+    display.print(buf);
+
+    display.display();
+#endif
 }

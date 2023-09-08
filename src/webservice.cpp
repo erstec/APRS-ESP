@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the Web Service functionality.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -541,7 +541,7 @@ void setHTML(byte page) {
         myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
     webString +=
         "<div class='w3-card-2 topnav notranslate' id='topnav'><b>APRS-ESP32 "
-        "Internet Gateway by " +
+        "Internet Gateway - " +
         myStation + "</div>\n";
     webString += "<div class=\"row\">\n";
     webString += "<ul class=\"nav nav-tabs\" style=\"margin: 25px;\">\n";
@@ -862,6 +862,12 @@ void handle_setting() {
                         config.gps_alt = server.arg(i).toFloat();
                     }
                 }
+                if (server.argName(i) == "gps_mode") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.gps_mode = server.arg(i).toInt();
+                    }
+                }
                 if (server.argName(i) == "moniCall") {
                     if (server.arg(i) != "") {
                         strcpy(config.aprs_moniCall, server.arg(i).c_str());
@@ -945,6 +951,23 @@ void handle_setting() {
         "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" "
         "id=\"gpsAlt\" name=\"gpsAlt\" type=\"text\" value=\"" +
         String(config.gps_alt) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString +=
+        "<label class=\"col-sm-4 col-xs-12 control-label\">GPS Mode</label>\n";
+    webString +=
+        "<div class=\"col-sm-3 col-xs-6\"><select name=\"gps_mode\" "
+        "id=\"gps_mode\">\n";
+    for (int i = 0; i < 3; i++) {
+        if (config.gps_mode == i)
+            webString += "<option value=\"" + String(i) + "\" selected>" +
+                         gpsMode[i] + "</option>\n";
+        else
+            webString += "<option value=\"" + String(i) + "\" >" +
+                         gpsMode[i] + "</option>\n";
+    }
+    webString += "</select></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
@@ -1830,6 +1853,12 @@ void handle_system() {
                 }
             }
 
+            // if (server.argName(i) == "gpsMode") {
+            //     if (server.arg(i) != "") {
+            //         config.gps_mode = server.arg(i).toInt();
+            //     }
+            // }
+
             if (server.argName(i) == "wifi_ssidAP") {
                 if (server.arg(i) != "") {
                     strcpy(config.wifi_ap_ssid, server.arg(i).c_str());
@@ -2219,7 +2248,7 @@ void handle_test() {
     }
     if (server.hasArg("sendBeacon")) {
         String tnc2Raw = send_gps_location();
-        if (config.tnc) pkgTxUpdate(tnc2Raw.c_str(), 0);
+        if (config.tnc && tnc2Raw.length() > 0) pkgTxUpdate(tnc2Raw.c_str(), 0);
         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
     } else if (server.hasArg("sendRaw")) {
         for (uint8_t i = 0; i < server.args(); i++) {
@@ -2302,7 +2331,7 @@ void handle_firmware() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
@@ -2388,7 +2417,7 @@ void handle_upgrade() {
     webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
     webString +=
         "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
-    webString += "<b>Develop by:</b> HS5TQA\n<br />";
+    webString += "<b>Develop by:</b> LY3PH\n<br />";
     webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
     webString +=
@@ -2540,7 +2569,7 @@ void handle_configuration() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Developed by: <b>HS5TQA LY3PH</b>\n<br />";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
     webString += "<hr>";
@@ -2818,6 +2847,8 @@ void webService() {
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(false);
 #endif
+                    fwUpdateProcess = true;
+
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {

@@ -1,0 +1,14 @@
+Partlist exported from C:/_repo/_fw/APRS-ESP/hardware/audio-adapter.sch at 2023-06-12 12:55
+
+Qty Value   Device       Package                Parts                        Description                          POPULARITY SPICEPREFIX TP_SIGNAL_NAME
+1   0       R-US_R0805   R0805                  R3                           RESISTOR, American symbol                                                 
+2   100n    C-EUC0805    C0805                  C11, C13                     CAPACITOR, European symbol                                                
+1   100u    CPOL-EUSMCD  SMC_D                  C15                          POLARIZED CAPACITOR, European symbol 0          C                         
+3   10k     R-US_R0805   R0805                  R1, R6, R7                   RESISTOR, American symbol                                                 
+2   10k     TRIM_EU-CA6H CA6H                   R4, R9                       POTENTIOMETER                        0                                    
+1   10n     C-EUC0805    C0805                  C9                           CAPACITOR, European symbol                                                
+1   1k5     R-US_R0805   R0805                  R2                           RESISTOR, American symbol                                                 
+1   1u      C-EUC0805    C0805                  C10                          CAPACITOR, European symbol                                                
+1   4k7     R-US_R0805   R0805                  R8                           RESISTOR, American symbol                                                 
+2   LL4148  LL4148       SOD80_DO213AA_MINIMELF D1, D2                       1N4148 General Purpose Rectifie                                           
+6   TPB1,27 TPB1,27      B1,27                  TP1, TP2, TP3, TP4, TP5, TP6 Test pad                             19                                   
