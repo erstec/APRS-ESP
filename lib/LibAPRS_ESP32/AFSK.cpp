@@ -119,7 +119,7 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
 #if defined(CONFIG_IDF_TARGET_ESP32)
       .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN),
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
-      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX ),
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX),
 #else
 #error "This ESP32 variant is not supported!"
 #endif
@@ -219,15 +219,18 @@ void AFSK_TimerEnable(bool sts)
 void AFSK_hw_init(void)
 {
   // Set up ADC
-  pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
   pinMode(TX_LED_PIN, OUTPUT);
-  digitalWrite(TX_LED_PIN, LOW);
+  TX_LED_OFF();
 
   pinMode(RX_LED_PIN, OUTPUT);
   digitalWrite(RX_LED_PIN, LOW);
 
+#if defined(INVERT_PTT)
+  digitalWrite(PTT_PIN, HIGH);
+#else
   digitalWrite(PTT_PIN, LOW);
+#endif
 
 #ifdef I2S_INTERNAL
 #if defined(CONFIG_IDF_TARGET_ESP32)
@@ -300,9 +303,12 @@ static void AFSK_txStart(Afsk *afsk)
     afsk->phaseInc = MARK_INC;
     afsk->phaseAcc = 0;
     afsk->bitstuffCount = 0;
-    // LED_TX_ON();
-    digitalWrite(TX_LED_PIN, HIGH);
+    TX_LED_ON();
+#if defined(INVERT_PTT)
+    digitalWrite(PTT_PIN, LOW);
+#else
     digitalWrite(PTT_PIN, HIGH);
+#endif
     afsk->preambleLength = DIV_ROUND(custom_preamble * BITRATE, 9600);
     AFSK_DAC_IRQ_START();
 #if defined(I2S_INTERNAL) && defined(CONFIG_IDF_TARGET_ESP32)
@@ -363,7 +369,11 @@ uint8_t AFSK_dac_isr(Afsk *afsk)
         AFSK_DAC_IRQ_STOP();
         afsk->sending = false;
         // LED_TX_OFF();
+#if defined(INVERT_PTT)
+        // digitalWrite(PTT_PIN, HIGH);
+#else
         // digitalWrite(PTT_PIN, LOW);
+#endif
         return 0;
       }
       else
@@ -395,7 +405,11 @@ uint8_t AFSK_dac_isr(Afsk *afsk)
             AFSK_DAC_IRQ_STOP();
             afsk->sending = false;
             // LED_TX_OFF();
+#if defined(INVERT_PTT)
+            // digitalWrite(PTT_PIN, HIGH);
+#else
             // digitalWrite(PTT_PIN, LOW);
+#endif
             return 0;
           }
           else
@@ -796,12 +810,16 @@ void IRAM_ATTR sample_isr()
     // if(x++<16) Serial.printf("%d,",sinwave);
     dacWrite(MIC_PIN, sinwave);
     if (AFSK_modem->sending == false)
+#if defined(INVERT_PTT)
+      digitalWrite(PTT_PIN, HIGH);
+#else
       digitalWrite(PTT_PIN, LOW);
+#endif
   }
   else
   {
 #ifdef SQL
-    if (digitalRead(34) == LOW)
+    if (digitalRead(SQL_PIN) == LOW)
     {
       if (sqlActive == false)
       { // Falling Edge SQL
@@ -959,7 +977,11 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
       dac_i2s_disable();
       i2s_zero_dma_buffer(I2S_NUM_0);
       // i2s_adc_enable(I2S_NUM_0);
+#if defined(INVERT_PTT)
+      digitalWrite(PTT_PIN, HIGH);
+#else
       digitalWrite(PTT_PIN, LOW);
+#endif
       if (SA818) {
         digitalWrite(powerPin, RFPower ? HIGH : LOW); //RF Power LOW
       }
@@ -970,11 +992,11 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
   {
 #ifdef I2S_INTERNAL
 #ifdef SQL
-    if (digitalRead(33) == LOW)
+    if (digitalRead(SQL_PIN) == LOW)
     {
       if (sqlActive == false)
       { // Falling Edge SQL
-        log_d("RX Signal");
+        // Serial.println("RX Signal");
         sqlActive = true;
         mVsum = 0;
         mVsumCount = 0;
@@ -983,7 +1005,7 @@ void AFSK_Poll(bool SA818, bool RFPower, uint8_t powerPin)
       // if (i2s_read(I2S_NUM_0, (char *)&pcm_in, (ADC_SAMPLES_COUNT * sizeof(uint16_t)), &bytesRead, portMAX_DELAY) == ESP_OK)
       if (i2s_read(I2S_NUM_0, (char *)&pcm_in, (ADC_SAMPLES_COUNT * sizeof(uint16_t)), &bytesRead, portMAX_DELAY) == ESP_OK)
       {
-        // log_d("%i,%i,%i,%i", pcm_in[0], pcm_in[1], pcm_in[2], pcm_in[3]);
+        // Serial.printf("%i,%i,%i,%i\r\n", pcm_in[0], pcm_in[1], pcm_in[2], pcm_in[3]);
         for (int i = 0; i < (bytesRead / sizeof(uint16_t)); i += 2)
         {
           adcVal = (int)pcm_in[i];

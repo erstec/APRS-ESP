@@ -71,6 +71,14 @@
 #define SDCARD_MISO 2
 #endif
 
+#if defined(INVERT_LEDS)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN,LOW)
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN,HIGH)
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN,HIGH)
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN,LOW)
+#endif
+
 #ifdef USE_RF
 HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
@@ -319,6 +327,21 @@ void setup()
     Serial.println("Start APRS-ESP V" + String(VERSION));
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
 
+#if defined(BOARD_TTWR_MOD)
+    // +4.2V EN
+    pinMode(16, OUTPUT);
+    digitalWrite(16, HIGH);
+
+    // OLED EN
+    pinMode(23, OUTPUT);
+    digitalWrite(23, HIGH);
+#endif
+
+#if defined(ADC_BATTERY)
+    // Battery Voltage
+    pinMode(ADC_BATTERY, INPUT);
+#endif
+
 #ifdef USE_SCREEN
     OledStartup();
 #endif
@@ -452,9 +475,25 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     return tnc2.length();
 }
 
+#if defined(ADC_BATTERY)
+static uint16_t batteryVoltage = 0;
+#endif
+
 void printPeriodicDebug() {
+#if defined(ADC_BATTERY)
+    if (config.wifi_mode == WIFI_OFF) {
+        batteryVoltage = (analogRead(ADC_BATTERY) * 2);
+        batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
+    } else {
+        batteryVoltage = digitalRead(ADC_BATTERY);
+    }
+#endif
     printTime();
-    Serial.print("lat: ");
+    Serial.print("Bat: ");
+#if defined(ADC_BATTERY)
+    Serial.print(batteryVoltage);
+#endif
+    Serial.print(", lat: ");
     Serial.print(lat);
     Serial.print(" lon: ");
     Serial.print(lon);
@@ -526,7 +565,7 @@ void loop()
 #ifdef USE_GPS
         // if (SerialGPS.available()) {
         //     String gpsData = SerialGPS.readStringUntil('\n');
-        //     Serial.println(gpsData);
+        //     Serial.print(gpsData);
         // }
 #endif
     }
@@ -551,7 +590,7 @@ void loop()
         if (btn_count > 1000)  // Push BOOT 10sec
         {
             digitalWrite(RX_LED_PIN, HIGH);
-            digitalWrite(TX_LED_PIN, HIGH);
+            TX_LED_ON();
         }
     } else {
         if (btn_count > 0) {
