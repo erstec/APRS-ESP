@@ -11,7 +11,15 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.9"
+/// Convert a preprocessor name into a quoted string
+#define xstr(s) str(s)
+#define str(s) #s
+
+/// Convert a preprocessor name into a quoted string and if that string is empty use "unset"
+#define optstr(s) (xstr(s)[0] ? xstr(s) : "unset")
+
+// #define VERSION "1.10"
+#define VERSION     xstr(APP_VERSION_SHORT)
 
 #define DEBUG
 #define DEBUG_IS
