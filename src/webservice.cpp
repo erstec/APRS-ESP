@@ -1739,7 +1739,7 @@ void handle_system() {
                 if (server.arg(i) != "") {
                     config.timeZone = server.arg(i).toInt();
                     // Serial.println("WEB Config Time Zone);
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1754,8 +1754,8 @@ void handle_system() {
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
                     Serial.println("WEB Config NTP");
-                    configTime(3600 * config.timeZone, 0,
-                               server.arg(i).c_str());
+                    strcpy(config.ntpServer, server.arg(i).c_str());
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1973,7 +1973,7 @@ void handle_system() {
     webString +=
         "<td><div class=\"input-group\" id='ntp_update'><input "
         "class=\"form-control\" name=\"SetTimeNtp\" type=\"text\" "
-        "value=\"203.150.19.26\" />\n";
+        "value=\"pool.ntp.org\" />\n";
     webString += "</div></td>\n";
     webString +=
         "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "

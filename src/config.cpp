@@ -113,6 +113,7 @@ void DefaultConfig() {
 #endif
     input_HPF = config.input_hpf;
     config.timeZone = 0;
+    sprintf(config.ntpServer, "pool.ntp.org");
     config.gps_mode = GPS_MODE_FIXED;    // 0 - Auto, 1 - GPS only, 2 - Fixed only
     SaveConfig();
 }

@@ -23,6 +23,7 @@ jobs:
           - board: esp32dev-sa828
           - board: esp32dev-sa868
           - board: esp32dev-sr_frs
+          - board: esp32dev-t-twr-mod
     uses: ./.github/workflows/build_esp32.yml
     with:
       board: ${{ matrix.board }}
