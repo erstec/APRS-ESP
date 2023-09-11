@@ -1969,11 +1969,11 @@ void handle_system() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">NTP_Host</label></td>\n";
+        "control-label\">NTP Host</label></td>\n";
     webString +=
         "<td><div class=\"input-group\" id='ntp_update'><input "
         "class=\"form-control\" name=\"SetTimeNtp\" type=\"text\" "
-        "value=\"pool.ntp.org\" />\n";
+        "value=\"" + String(config.ntpServer) + "\" />\n";
     webString += "</div></td>\n";
     webString +=
         "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
