@@ -81,7 +81,7 @@ jobs:
             ./*.bin
             ./device-*.sh
             ./device-*.bat
-          retention-days: 1
+          retention-days: 5
 
       - uses: actions/download-artifact@v3
         with:
