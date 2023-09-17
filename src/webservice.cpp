@@ -2500,14 +2500,26 @@ File fsUploadFile;
 void handle_configuration() {
     // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
     if (server.hasArg("backupConfig")) {
+        char strCID[50];
+        uint64_t chipid = ESP.getEfuseMac();
+        sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+
+        String myStation;
+        if (config.aprs_ssid == 0) {
+            myStation = String(config.aprs_mycall);
+        } else {
+            myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
+        }
+
         String path = "config.bin";
+        String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID);
         String dataType = "text/plain";
 
         SPIFFS.begin(true);
         File myFile = SPIFFS.open("/" + path, "r");
         if (myFile) {
             server.sendHeader("Content-Type", dataType);
-            server.sendHeader("Content-Disposition", "attachment; filename=" + path);
+            server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
             server.sendHeader("Connection", "close");
             server.streamFile(myFile, "application/octet-stream");
             myFile.close();
