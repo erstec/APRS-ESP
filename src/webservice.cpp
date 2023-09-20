@@ -1739,7 +1739,7 @@ void handle_system() {
                 if (server.arg(i) != "") {
                     config.timeZone = server.arg(i).toInt();
                     // Serial.println("WEB Config Time Zone);
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1754,8 +1754,8 @@ void handle_system() {
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
                     Serial.println("WEB Config NTP");
-                    configTime(3600 * config.timeZone, 0,
-                               server.arg(i).c_str());
+                    strcpy(config.ntpServer, server.arg(i).c_str());
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1969,11 +1969,11 @@ void handle_system() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">NTP_Host</label></td>\n";
+        "control-label\">NTP Host</label></td>\n";
     webString +=
         "<td><div class=\"input-group\" id='ntp_update'><input "
         "class=\"form-control\" name=\"SetTimeNtp\" type=\"text\" "
-        "value=\"203.150.19.26\" />\n";
+        "value=\"" + String(config.ntpServer) + "\" />\n";
     webString += "</div></td>\n";
     webString +=
         "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
@@ -2500,14 +2500,26 @@ File fsUploadFile;
 void handle_configuration() {
     // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
     if (server.hasArg("backupConfig")) {
+        char strCID[50];
+        uint64_t chipid = ESP.getEfuseMac();
+        sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+
+        String myStation;
+        if (config.aprs_ssid == 0) {
+            myStation = String(config.aprs_mycall);
+        } else {
+            myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
+        }
+
         String path = "config.bin";
+        String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID);
         String dataType = "text/plain";
 
         SPIFFS.begin(true);
         File myFile = SPIFFS.open("/" + path, "r");
         if (myFile) {
             server.sendHeader("Content-Type", dataType);
-            server.sendHeader("Content-Disposition", "attachment; filename=" + path);
+            server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
             server.sendHeader("Connection", "close");
             server.streamFile(myFile, "application/octet-stream");
             myFile.close();

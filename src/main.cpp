@@ -1480,9 +1480,6 @@ void taskNetwork(void *pvParameters) {
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
-// Serial.println("Contacting Time Server");
-// configTime(3600 * timeZone, 0, "aprs.dprns.com", "1.pool.ntp.org");
-// vTaskDelay(3000 / portTICK_PERIOD_MS);
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(true);
 #endif
@@ -1493,7 +1490,7 @@ void taskNetwork(void *pvParameters) {
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
                     Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
                     time(&systemTime);
