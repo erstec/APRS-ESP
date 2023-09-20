@@ -1,5 +1,10 @@
 # ONLY FOR DEVELOPMENT / INCOMPLETE
 
+## 3D Print Cases for T-TWL PLUS
+https://github.com/OpenRTX/ttwrplus-case
+
+https://github.com/k5jae/LILYGO-T-TWR-Plus-case
+
 ## USING LILYGO T-TWR V1.4 BOARD - MODIFICATIONS REQUIRED
 ### Introduction
 LilyGo T-TWR V1.4 is a compact board with ESP32-S3 MCU, SA868 2W RF Module, OLED display, USB-C connector, 18650 battery holder, and integrated LiPo charger.
