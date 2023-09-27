@@ -1,8 +1,8 @@
 name: Delete old workflow runs
 on:
   schedule:
-    - cron: '0 0 * * 1'
-# Run every Monday, at 00:00
+    - cron: '0 12 * * 3'
+# Run every Wed, at 12:00
 
 jobs:
   del_runs:
