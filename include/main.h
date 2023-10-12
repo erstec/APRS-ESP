@@ -1,7 +1,7 @@
 /*
     Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
     Created:    2022-10-10
-    Author:     Ernest (ErNis) / LY3PH
+    Author:     Ernest / LY3PH
     License:    GNU General Public License v3.0
     Includes code from:
                 https://github.com/nakhonthai/ESP32IGate
@@ -11,18 +11,25 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define VERSION "1.0a"
+/// Convert a preprocessor name into a quoted string
+#define xstr(s) str(s)
+#define str(s) #s
+
+/// Convert a preprocessor name into a quoted string and if that string is empty use "unset"
+#define optstr(s) (xstr(s)[0] ? xstr(s) : "unset")
+
+// #define VERSION "1.10"
+#define VERSION         xstr(APP_VERSION_SHORT)
+#define VERSION_FULL    xstr(APP_VERSION)
 
 #define DEBUG
-//#define DEBUG_IS
+#define DEBUG_IS
 #define DEBUG_TNC
 #define DEBUG_RF
 
 //#define SDCARD
 //#define USE_TNC
 #define USE_GPS
-#define USE_SCREEN_SSD1306
-//#define USE_SCREEN_SH1106
 //#define USE_BLE
 //#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
@@ -40,11 +47,19 @@
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #elif defined(USE_SA868)
-#define APRS_PREAMBLE	(350UL * 3)
-#define APRS_TAIL       (250UL)
+// #define APRS_PREAMBLE	(350UL * 3) // My
+// #define APRS_TAIL       (250UL)
+// #define APRS_PREAMBLE	(350UL) // Stock2
+// #define APRS_TAIL       (50UL)
+#define APRS_PREAMBLE	(500UL) // Stock2 Adjusted
+#define APRS_TAIL       (100UL)
+// #define APRS_PREAMBLE	(300UL) // stock
+// #define APRS_TAIL       (0UL)
 #else
-#define APRS_PREAMBLE	(350UL)
-#define APRS_TAIL       (0UL)
+// #define APRS_PREAMBLE	(350UL)
+// #define APRS_TAIL       (0UL)
+#define APRS_PREAMBLE	(500UL)
+#define APRS_TAIL       (100UL)
 #endif
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
@@ -98,7 +113,9 @@
 #include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
 #include "soc/rtc_wdt.h"
+#endif
 #include <AX25.h>
 
 #include "HardwareSerial.h"
@@ -148,6 +165,21 @@ typedef struct digiTLM_struct {
     unsigned char ErPkts;
 } digiTLMType;
 
+#define TLMLISTSIZE 20
+
+typedef struct Telemetry_struct {
+	time_t time;
+	char callsign[10];
+	char PARM[5][10];
+	char UNIT[5][10];
+	float VAL[5];
+	float RAW[5];
+	float EQNS[15];
+	uint8_t BITS;
+	uint8_t BITS_FLAG;
+	bool EQNS_FLAG;
+} TelemetryType;
+
 typedef struct txQueue_struct {
     bool Active;
     long timeStamp;
@@ -155,7 +187,9 @@ typedef struct txQueue_struct {
     char Info[300];
 } txQueueType;
 
-const char PARM[] = {"PARM.RF->INET,INET->RF,TxPkts,RxPkts,IGateDropRx"};
+extern bool fwUpdateProcess;
+
+const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};
 const char UNIT[] = {"UNIT.Pkts,Pkts,Pkts,Pkts,Pkts"};
 const char EQNS[] = {"EQNS.0,1,0,0,1,0,0,1,0,0,1,0,0,1,0"};
 
@@ -167,6 +201,13 @@ const float ctcss[] = {0,     67,    71.9,  74.4,  77,    79.7,  82.5,  85.4,
 const float wifiPwr[12][2] = {{-4, -1},  {8, 2},     {20, 5},  {28, 7},
                               {34, 8.5}, {44, 11},   {52, 13}, {60, 15},
                               {68, 17},  {74, 18.5}, {76, 19}, {78, 19.5}};
+const String gpsMode[3] = {"Auto", "GPS Only", "Fixed Only"};
+
+enum gpsMode_enum { 
+    GPS_MODE_AUTO = 0,
+    GPS_MODE_GPS = 1,
+    GPS_MODE_FIXED = 2
+};
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);

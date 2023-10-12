@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the rotary encoder processing.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/sh123/aprs_tracker
@@ -174,7 +174,9 @@ bool RotaryProcess() {
     }
 #else
     if (digitalRead(PIN_ROT_BTN) == LOW) {
+#ifdef USE_ROTARY
         update_screen = true;
+#endif
     }
 #endif
 

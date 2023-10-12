@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for various common functions.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -34,7 +34,7 @@ boolean isValidNumber(String str) {
 void printTime() {
     char buf[3];
     struct tm tmstruct;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     Serial.print("[");
     sprintf(buf, "%02d", tmstruct.tm_hour);
     Serial.print(buf);

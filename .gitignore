@@ -10,3 +10,4 @@
 *.l#*
 *.job
 /hardware/GERBER/CAMOutputs/*
+/bin/__pycache__/*

@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for various common functions.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -17,12 +17,13 @@ typedef struct pkgListStruct {
     char calsign[11];
     char ssid[5];
     unsigned int pkg;
-    bool type;
+    uint8_t type;
     uint8_t symbol;
 } pkgListType;
 
 void sort(pkgListType a[], int size);
 void sortPkgDesc(pkgListType a[], int size);
-void pkgListUpdate(char *call, bool type);
+void pkgListUpdate(char *call, uint8_t type);
+uint8_t pkgType(const char *raw);
 
 #endif // PKGLIST_H

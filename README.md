@@ -1,5 +1,5 @@
 # FW and HW is tested and stable. Rotary encoder/menu not implemented yet, but will be added later.
-# Use HW RevD !
+
 Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https://github.com/erstec/APRS-ESP/discussions/new), by e-mail or via Discord.
 
 # APRS-ESP32 Project
@@ -62,18 +62,15 @@ Schematic PDF is [here](hardware/APRS-ESP32_SA8x8_Rev_D_Schematics.pdf)
 Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 
 ## FLASHING FIRMWARE
-### First time only. Later update via Web Interface
+### First time only. Later update via Web Interface or via USB using device-update script in Release .zip archive
 
 ### Using Pecompiled Binaries
-- Connect the USB cable to the ESP32 Module while BOOT button pressed
-- [Download](https://github.com/erstec/releases) required firmware file
-- [Download](https://www.espressif.com/en/support/download/other-tools) Espressif Flash Download Tool and start it
-- Select SPISownload tab
-- Open file downloaded in ESP32 DOWNLOAD TOOL
-- Set location to 0x10000(0xe000?)
-- Press START button ans wait till FINISH appears
-- Restart ESP32 Module (replug USB or press Reset button)
-- Search WiFi for AP SSID APRS-ESP32, Password: aprs
+- Connect the USB cable to the ESP32 Module while BOOT button pressed (development boards don't need Boot button to be pressed)
+- [Download](https://github.com/erstec/releases) required firmware archive file
+- Extract it to folder
+- For initial upload use device-install.bat (Windows) or device-install.sh (Linux) script. Script is self explanatory if you run it without arguments. Also it requires Python 3 and esp-tool library, you can install it using `pip install esptool`. Use your hardware compatible .bin file **without -update** suffix from Relase archive
+- Restart ESP32 Module (replug USB or press Reset button), OLED should light up and show status as well as IP address of device
+- Search WiFi for AP SSID APRS-ESP32, Password: aprs-esp32
 - Open a browser and go to address http://192.168.4.1
 - Make all required configuration
 
@@ -83,13 +80,22 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - Select correct Target
 - Connect USB cable to the ESP32 module
 - Build and Upload using PlatforIO buttons
-- Search WiFi for AP SSID APRS-ESP32, Password: aprs
+- Search WiFi for AP SSID APRS-ESP32, Password: aprs-esp32
 - Open a browser and go to address http://192.168.4.1
 - Make all required configuration
 
+## UPDATING FIRMWARE
+- For update device already running APRS-ESP firmware use .bin file suitable for your hardware **with -update suffix**
+- Firmware can be updated via **Web interface** or using **USB cable**
+- For Web interface option use Firmware tab
+- For USB option use script device-update.bat (Windows) or device-update.sh (Linux). Script is self explanatory if you run it without arguments. Also it requires Python 3 and esp-tool library, you can install it using `pip install esptool`
+- **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
+
+
 ## NOTE
-* Short Press of BOOT button ()>100 ms) - TX Position
-* Long press of BOOT button (10 sec) - Reset Configuration to Factory Default
+* Short Press of BOOT button >100 ms) - TX Position
+* Long press of BOOT button (10 sec) - Turn WiFi ON/OFF
+* Very Long press of BOOT button (20 sec) - Reset Configuration to Factory Default
 
 ## NOTE
 (REMOVE)---This project implement by APRS text (TNC2 Raw) only,It not support null string(0x00) in the package.
@@ -98,6 +104,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 Firmware part uses ideas and code snippets from:
 - https://github.com/nakhonthai/ESP32IGate
 - https://github.com/sh123/aprs_tracker
+- https://github.com/meshtastic/firmware / build system, scripts and workflows implementation
 
 Hardware part uses ideas, libraries and designs from:
 - https://github.com/nakhonthai/ESP32IGate / schematics base

@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the Web Service functionality.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -513,8 +513,11 @@ void setHTML(byte page) {
     String strActiveP6 = "";
     String strActiveP7 = "";
     String strActiveP8 = "";
+    String strActiveP9 = "";
 
-    if (page == 7)
+    if (page == 8)
+        strActiveP9 = "class=active";
+    else if (page == 7)
         strActiveP8 = "class=active";
     else if (page == 6)
         strActiveP7 = "class=active";
@@ -538,7 +541,7 @@ void setHTML(byte page) {
         myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
     webString +=
         "<div class='w3-card-2 topnav notranslate' id='topnav'><b>APRS-ESP32 "
-        "Internet Gateway by " +
+        "Internet Gateway - " +
         myStation + "</div>\n";
     webString += "<div class=\"row\">\n";
     webString += "<ul class=\"nav nav-tabs\" style=\"margin: 25px;\">\n";
@@ -570,6 +573,9 @@ void setHTML(byte page) {
     webString += "<li role=\"presentation\"" + strActiveP6 +
                  ">\n<a href=\"/firmware\" "
                  "id=\"channel_link_firmware\">Firmware</a>\n</li>\n";
+    webString += "<li role=\"presentation\"" + strActiveP9 +
+                 ">\n<a href=\"/configuration\" "
+                 "id=\"channel_link_config\">Configuration</a>\n</li>\n";
     webString += "</ul>\n</div>";
 
     if (page == 0) {
@@ -577,7 +583,7 @@ void setHTML(byte page) {
         struct tm tmstruct;
         tmstruct.tm_year = 0;
         time_t tn = now() - systemUptime;
-        getLocalTime(&tmstruct, 5000);
+        getLocalTime(&tmstruct, 0);
         sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
                 (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
                 tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min,
@@ -588,7 +594,11 @@ void setHTML(byte page) {
                      String(strTime) + "</b></div>\n";
 
         webString +=
+#if defined(CONFIG_IDF_TARGET_ESP32)
             "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) +
+#else
+            "<div>CPU Temp: " + String(temperatureRead(), 1) +
+#endif
             "&deg;C</div> \n";
         webString +=
             "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
@@ -852,6 +862,12 @@ void handle_setting() {
                         config.gps_alt = server.arg(i).toFloat();
                     }
                 }
+                if (server.argName(i) == "gps_mode") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.gps_mode = server.arg(i).toInt();
+                    }
+                }
                 if (server.argName(i) == "moniCall") {
                     if (server.arg(i) != "") {
                         strcpy(config.aprs_moniCall, server.arg(i).c_str());
@@ -939,6 +955,23 @@ void handle_setting() {
 
     webString += "<div class=\"form-group\">\n";
     webString +=
+        "<label class=\"col-sm-4 col-xs-12 control-label\">GPS Mode</label>\n";
+    webString +=
+        "<div class=\"col-sm-3 col-xs-6\"><select name=\"gps_mode\" "
+        "id=\"gps_mode\">\n";
+    for (int i = 0; i < 3; i++) {
+        if (config.gps_mode == i)
+            webString += "<option value=\"" + String(i) + "\" selected>" +
+                         gpsMode[i] + "</option>\n";
+        else
+            webString += "<option value=\"" + String(i) + "\" >" +
+                         gpsMode[i] + "</option>\n";
+    }
+    webString += "</select></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">Table</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-2\"><input class=\"form-control\" "
@@ -967,7 +1000,7 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval "
-        "(sec)<br>0 - SmartBeaconing</label>\n";
+        "(min)<br>0 - SmartBeaconing</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" "
         "id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" +
@@ -975,12 +1008,8 @@ void handle_setting() {
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Comment</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-10\"><input class=\"form-control\" "
-        "id=\"comment\" name=\"comment\" type=\"text\" value=\"" +
-        String(config.aprs_comment) + "\" /></div>\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Comment</label>\n";
+    webString += "<div class=\"col-sm-6 col-xs-10\"><input class=\"form-control\" id=\"comment\" name=\"comment\" type=\"text\" maxlength=\"" + String(sizeof(config.aprs_comment)) + "\" value=\"" + String(config.aprs_comment) + "\" /></div>\n";
     webString += "</div>\n";
 
     String syncFlage = "";
@@ -998,7 +1027,8 @@ void handle_setting() {
     webString += "</div>\n";  // div general
 
     webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
+
+    //webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" "
         "id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" "
@@ -1011,6 +1041,7 @@ void handle_setting() {
         "id=\"default_form_sumbit\" name=\"commit\" type=\"submit\" "
         "value=\"Default Config\" maxlength=\"80\"/></div>\n";
     webString += "</form>\n";
+
     webString += "</div>\n";
 
     webString += "</div>\n";
@@ -1511,7 +1542,11 @@ void handle_radio() {
         "Frequency</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+#ifndef BAND_70CM
         "id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" "
+#else
+        "id=\"tx_freq\" name=\"tx_freq\" min=\"430.0000\" max=\"440.0000\" "
+#endif /* BAND_70CM */
         "step=\"0.0001\" value=\"" +
         String(config.freq_tx, 4) + "\" /></div>\n";
     webString += "</div>\n";
@@ -1522,7 +1557,11 @@ void handle_radio() {
         "Frequency</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+#ifndef BAND_70CM
         "id=\"rx_freq\" name=\"rx_freq\" min=\"144.0000\" max=\"148.0000\" "
+#else
+        "id=\"rx_freq\" name=\"rx_freq\" min=\"432.0000\" max=\"433.0000\" "
+#endif /* BAND_70CM */
         "step=\"0.0001\" value=\"" +
         String(config.freq_rx, 4) + "\" /></div>\n";
     webString += "</div>\n";
@@ -1700,7 +1739,7 @@ void handle_system() {
                 if (server.arg(i) != "") {
                     config.timeZone = server.arg(i).toInt();
                     // Serial.println("WEB Config Time Zone);
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1715,8 +1754,8 @@ void handle_system() {
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
                     Serial.println("WEB Config NTP");
-                    configTime(3600 * config.timeZone, 0,
-                               server.arg(i).c_str());
+                    strcpy(config.ntpServer, server.arg(i).c_str());
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
             }
@@ -1814,6 +1853,12 @@ void handle_system() {
                 }
             }
 
+            // if (server.argName(i) == "gpsMode") {
+            //     if (server.arg(i) != "") {
+            //         config.gps_mode = server.arg(i).toInt();
+            //     }
+            // }
+
             if (server.argName(i) == "wifi_ssidAP") {
                 if (server.arg(i) != "") {
                     strcpy(config.wifi_ap_ssid, server.arg(i).c_str());
@@ -1858,7 +1903,7 @@ void handle_system() {
     struct tm tmstruct;
     char strTime[20];
     tmstruct.tm_year = 0;
-    getLocalTime(&tmstruct, 5000);
+    getLocalTime(&tmstruct, 0);
     sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900,
             (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour,
             tmstruct.tm_min, tmstruct.tm_sec);
@@ -1924,11 +1969,11 @@ void handle_system() {
     webString += "<div class=\"form-group\">\n";
     webString +=
         "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">NTP_Host</label></td>\n";
+        "control-label\">NTP Host</label></td>\n";
     webString +=
         "<td><div class=\"input-group\" id='ntp_update'><input "
         "class=\"form-control\" name=\"SetTimeNtp\" type=\"text\" "
-        "value=\"203.150.19.26\" />\n";
+        "value=\"" + String(config.ntpServer) + "\" />\n";
     webString += "</div></td>\n";
     webString +=
         "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
@@ -2203,7 +2248,7 @@ void handle_test() {
     }
     if (server.hasArg("sendBeacon")) {
         String tnc2Raw = send_gps_location();
-        if (config.tnc) pkgTxUpdate(tnc2Raw.c_str(), 0);
+        if (config.tnc && tnc2Raw.length() > 0) pkgTxUpdate(tnc2Raw.c_str(), 0);
         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
     } else if (server.hasArg("sendRaw")) {
         for (uint8_t i = 0; i < server.args(); i++) {
@@ -2233,7 +2278,7 @@ void handle_test() {
         "<div style=\"margin-left: 20px;\">TNC2 RAW: <input id=\"raw\" "
         "name=\"raw\" type=\"text\" size=\"60\" value=\"" +
         String(config.aprs_mycall) + "-" + String(config.aprs_ssid) +
-        ">APZ32E,WIDE1-1:>Test Status\"/></div>\n";
+        ">APESP1,WIDE1-1:>Test Status\"/></div>\n";
     webString +=
         "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn "
         "btn-primary\" name=\"sendRaw\" value='SEND RAW'></div> <br />\n";
@@ -2270,7 +2315,7 @@ void handle_firmware() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "Current Hardware Version: <b>ESP32DR</b>";
+    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
     webString += " <b>(MODEL:SR_FRS_1W)</b>";
@@ -2285,30 +2330,25 @@ void handle_firmware() {
     webString += " <b>(MODEL: Simple)</b>";
 #endif
     webString +=
-        "<br />Current Firmware Version: V" + String(VERSION) + "\n<br/>";
-    webString += "Develop by: <b>HS5TQA LY3PH</b>\n<br />";
+        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
+
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
-    webString +=
-        "<form method='POST' action='#' enctype='multipart/form-data' "
-        "id='upload_form' class=\"form-horizontal\">\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" "
-        "type=\"file\" onchange='sub(this)' /></div>\n";
+    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
     // webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input'
     // for='file'>   Choose file...</label></div>\n"; webString += "<div
     // class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\"
     // id=\"update_sumbit\" value='Firmware Update'></div>\n";
     webString += "</div>\n";
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn "
-        "btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
@@ -2318,6 +2358,7 @@ void handle_firmware() {
     webString += "</div>\n";
 
     webString += "</form></div>\n";
+
     webString +=
         "<script>"
         "function sub(obj){"
@@ -2356,8 +2397,7 @@ void handle_firmware() {
         "</script>";
 
     webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
+    server.send(200, "text/html", webString);
 
     delay(100);
     webString.clear();
@@ -2374,10 +2414,10 @@ void handle_upgrade() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "<b>Current Hardware Version:</b> ESP32DR Simple\n<br/>";
+    webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
     webString +=
-        "<b>Current Firmware Version:</b> V" + String(VERSION) + "\n<br/>";
-    webString += "<b>Develop by:</b> HS5TQA\n<br />";
+        "<b>Current Firmware Version:</b> V" + String(VERSION_FULL) + "\n<br/>";
+    webString += "<b>Develop by:</b> LY3PH\n<br />";
     webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
     webString +=
@@ -2449,6 +2489,169 @@ void handle_upgrade() {
     webString += "</body></html>\n";
     server.send(200, "text/html",
                 webString);  // send to someones browser when asked
+
+    delay(100);
+    webString.clear();
+}
+
+//holds the current upload
+File fsUploadFile;
+
+void handle_configuration() {
+    // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
+    if (server.hasArg("backupConfig")) {
+        char strCID[50];
+        uint64_t chipid = ESP.getEfuseMac();
+        sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+
+        String myStation;
+        if (config.aprs_ssid == 0) {
+            myStation = String(config.aprs_mycall);
+        } else {
+            myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
+        }
+
+        String path = "config.bin";
+        String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID);
+        String dataType = "text/plain";
+
+        SPIFFS.begin(true);
+        File myFile = SPIFFS.open("/" + path, "r");
+        if (myFile) {
+            server.sendHeader("Content-Type", dataType);
+            server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
+            server.sendHeader("Connection", "close");
+            server.streamFile(myFile, "application/octet-stream");
+            myFile.close();
+        }
+        SPIFFS.end();
+    } else if (server.hasArg("restoreConfig")) {
+        HTTPUpload& upload = server.upload();
+        Serial.println(upload.filename);
+        Serial.println(upload.totalSize);
+        Serial.println(upload.status);
+        if (upload.totalSize != (sizeof(Configuration) + 1)) {
+            Serial.println("Upload file size error!");
+            server.send(500, "text/plain", "Upload file size error!");
+            return;
+        }
+        //if (upload.status == UPLOAD_FILE_START) {
+            String filename = upload.filename;
+            filename = "config.bin";    // override filename
+            if (!filename.startsWith("/")) filename = "/" + filename;
+            Serial.print("handleFileUpload Name: "); Serial.println(filename);
+            SPIFFS.begin(true);
+            // SPIFFS.remove(filename);
+            fsUploadFile = SPIFFS.open(filename, "w");
+            filename = String();
+        //} else if (upload.status == UPLOAD_FILE_WRITE) {
+            Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+            if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+        //} else if (upload.status == UPLOAD_FILE_END) {
+            if (fsUploadFile) fsUploadFile.close();
+            Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+            SPIFFS.end();
+        //}
+        LoadReConfig();
+    }
+
+    char strCID[50];
+    uint64_t chipid = ESP.getEfuseMac();
+    sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
+    // webMessage = "";
+    setHTML(8);
+
+    webString +=
+        "<script "
+        "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
+        "jquery.min.js'></script>\n";
+    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
+#ifdef USE_RF
+#if defined(USE_SR_FRS)
+    webString += " <b>(MODEL:SR_FRS_1W)</b>";
+#elif defined(USE_SA828)
+    webString += " <b>(MODEL:SA828_1.5W)</b>";
+#elif defined(USE_SA818)
+    webString += " <b>(MODEL:SA818)</b>";
+#elif defined(USE_SA868)
+    webString += " <b>(MODEL:SA868)</b>";
+#endif
+#else
+    webString += " <b>(MODEL: Simple)</b>";
+#endif
+    webString +=
+        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
+    webString += "Developed by: <b>LY3PH</b>\n<br />";
+    webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
+
+    webString += "<hr>";
+
+    webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-primary\" id=\"backup_sumbit\" name=\"backupConfig\" value='Config Backup'></div>\n";
+    webString += "</div>\n";
+
+    webString += "</form></div>\n";
+
+    webString += "<hr>";
+
+    webString += "<div class = \"col-pad\">\n<h3>Configuration Restore</h3>\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">CFG FILE</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"restore_sumbit\" name=\"restoreConfig\" value='Config Restore'></div>\n";
+    webString += "</div>\n";
+
+    webString += "</form></div>\n";
+/*
+    webString +=
+        "<script>"
+        "function sub(obj){"
+        "var fileName = obj.value.split('\\\\');"
+        "document.getElementById('file-input').innerHTML = '   '+ "
+        "fileName[fileName.length-1];"
+        "};"
+        "$('form').submit(function(e){"
+        "e.preventDefault();"
+        "var form = $('#upload_form')[0];"
+        "var data = new FormData(form);"
+        "$.ajax({"
+        "url: '/update',"
+        "type: 'POST',"
+        "data: data,"
+        "contentType: false,"
+        "processData:false,"
+        "xhr: function() {"
+        "var xhr = new window.XMLHttpRequest();"
+        "xhr.upload.addEventListener('progress', function(evt) {"
+        "if (evt.lengthComputable) {"
+        "var per = evt.loaded / evt.total;"
+        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+        "$('#bar').css('width',Math.round(per*100) + '%');"
+        "}"
+        "}, false);"
+        "return xhr;"
+        "},"
+        "success:function(d, s) {"
+        "console.log('success!') "
+        "},"
+        "error: function (a, b, c) {"
+        "}"
+        "});"
+        "});"
+        "</script>";
+*/
+    webString += "</body></html>\n";
+    server.send(200, "text/html", webString);
 
     delay(100);
     webString.clear();
@@ -2620,6 +2823,7 @@ void webService() {
     server.on("/realtime", handle_realtime);
     server.on("/firmware", handle_firmware);
     server.on("/upgrade", handle_upgrade);
+    server.on("/configuration", handle_configuration);
     /*handling uploading firmware file */
     server.on(
         "/update", HTTP_POST,
@@ -2631,8 +2835,7 @@ void webService() {
         []() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
-                Serial.printf("Firmware Update FILE: %s\n",
-                              upload.filename.c_str());
+                Serial.printf("Firmware Update FILE: %s\r\n", upload.filename.c_str());
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
                                                            // available size
                     Update.printError(Serial);
@@ -2644,8 +2847,10 @@ void webService() {
                     disableCore1WDT();
                     disableLoopWDT();
 #ifdef I2S_INTERNAL
+#if defined(CONFIG_IDF_TARGET_ESP32)
                     i2s_adc_disable(I2S_NUM_0);
                     dac_i2s_disable();
+#endif /* CONFIG_IDF_TARGET_ESP32 */
 #endif
                     vTaskSuspend(taskAPRSHandle);
                     // vTaskSuspend(taskNetworkHandle);
@@ -2654,16 +2859,19 @@ void webService() {
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(false);
 #endif
+                    fwUpdateProcess = true;
+
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
-                /* flashing firmware to ESP*/
-                if (Update.write(upload.buf, upload.currentSize) !=
-                    upload.currentSize) {
+                /* flashing firmware to ESP*/                
+                // Serial.print("Firmware Update Data: "); Serial.println(upload.totalSize);
+                if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     Update.printError(Serial);
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_END) {
+                Serial.print("Firmware Update Size: "); Serial.println(upload.totalSize);
                 if (Update.end(true)) {  // true to set the size to the current
                                          // progress
                     delay(3);

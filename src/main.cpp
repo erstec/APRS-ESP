@@ -1,7 +1,7 @@
 /*
     Name:       APRS-ESP is APRS Internet Gateway / Tracker / Digipeater
     Created:    2022-10-10
-    Author:     Ernest (ErNis) / LY3PH
+    Author:     Ernest / LY3PH
     License:    GNU General Public License v3.0
     Includes code from:
                 https://github.com/nakhonthai/ESP32IGate
@@ -28,6 +28,8 @@
 #endif
 #include "digirepeater.h"
 #include "igate.h"
+#include <pbuf.h>
+#include <parse_aprs.h>
 #include <WiFiUdp.h>
 
 #ifdef USE_RF
@@ -35,11 +37,21 @@
 #endif
 
 #ifdef USE_GPS
-#include "TinyGPSPlus.h"
+#include "TinyGPS++.h"
 #endif
 
 #ifdef USE_ROTARY
 #include <Rotary.h>
+#endif
+
+#ifdef USE_PMU
+#include <XPowersLib.h>
+XPowersPMU PMU;
+#endif
+
+#if defined(USE_NEOPIXEL)
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800);
 #endif
 
 #include "rotaryProc.h"
@@ -47,6 +59,9 @@
 #ifdef USE_SCREEN
 #include "Wire.h"
 #include "Adafruit_GFX.h"
+#include <Fonts/FreeSansBold9pt7b.h>
+#include <Fonts/FreeSerifItalic9pt7b.h>
+#include <Fonts/Seven_Segment24pt7b.h>
 #if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
 #elif defined(USE_SCREEN_SH1106)
@@ -69,9 +84,40 @@
 #define SDCARD_MISO 2
 #endif
 
+#if defined(TX_LED_PIN)
+
+#if defined(INVERT_LEDS)
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
+#endif
+#else
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#else
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
+#endif
+#endif
+
+#else
+
+#if defined(USE_NEOPIXEL)
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
+#endif
+
+#endif
+
 #ifdef USE_RF
 HardwareSerial SerialRF(SERIAL_RF_UART);
 #endif
+
+bool fwUpdateProcess = false;
 
 time_t systemUptime = 0;
 time_t wifiUptime = 0;
@@ -101,6 +147,8 @@ Configuration config;
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 
+TelemetryType Telemetry[TLMLISTSIZE];
+
 #if defined(USE_TNC)
 HardwareSerial SerialTNC(SERIAL_TNC_UART);
 #endif
@@ -110,7 +158,7 @@ TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
-BluetoothSerial SerialBT;
+// BluetoothSerial SerialBT;
 
 #if defined(USE_SCREEN_SSD1306)
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
@@ -121,6 +169,9 @@ Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 #ifdef USE_ROTARY
 Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
 #endif
+
+struct pbuf_t aprs;
+ParseAPRS aprsParse;
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
@@ -136,6 +187,29 @@ static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
 
 const char *lastTitle = "LAST HERT";
+
+int tlmList_Find(char *call) {
+    int i;
+    for (i = 0; i < TLMLISTSIZE; i++) {
+        if (strstr(Telemetry[i].callsign, call) != NULL)
+            return i;
+    }
+    return -1;
+}
+
+int tlmListOld() {
+    int i, ret = 0;
+    time_t minimum = Telemetry[0].time;
+    for (i = 1; i < TLMLISTSIZE; i++) {
+        if (Telemetry[i].time < minimum) {
+            minimum = Telemetry[i].time;
+            ret = i;
+        }
+        if (Telemetry[i].time > now())
+            Telemetry[i].time = 0;
+    }
+    return ret;
+}
 
 bool pkgTxUpdate(const char *info, int delay) {
     char *ecs = strstr(info, ">");
@@ -171,12 +245,24 @@ bool pkgTxSend() {
             int decTime = millis() - txQueue[i].timeStamp;
             if (decTime > txQueue[i].Delay) {
 #ifdef USE_RF
-                digitalWrite(POWER_PIN, config.rf_power);  // RF Power LOW
+                if (config.rf_power) {
+#if defined(BOARD_TTWR_PLUS_MOD)
+                    pinMode(POWER_PIN, OUTPUT);
+                    digitalWrite(POWER_PIN, HIGH);
+#else
+                    pinMode(POWER_PIN, OPEN_DRAIN);
+#endif
+                } else {
+                    pinMode(POWER_PIN, OUTPUT);
+                    digitalWrite(POWER_PIN, LOW);  // RF Power
+                }
+
 #endif
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_setTail(APRS_TAIL);
                 APRS_sendTNC2Pkt(String(txQueue[i].Info));  // Send packet to RF
                 txQueue[i].Active = false;
+                igateTLM.TX++;
 #ifdef DEBUG_TNC
                 printTime();
                 Serial.println("TX->RF: " + String(txQueue[i].Info));
@@ -260,8 +346,243 @@ boolean APRSConnect() {
     return true;
 }
 
+#if defined(USE_PMU)
+bool vbusIn = false;
+bool pmu_flag = false;
+
+void setFlag(void)
+{
+    pmu_flag = true;
+}
+
+void setupPower()
+{
+    bool result = PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
+    if (result == false) {
+        while (1) {
+            Serial.println("PMU is not online...");
+            delay(500);
+        }
+    }
+
+    // Set the minimum common working voltage of the PMU VBUS input,
+    // below this value will turn off the PMU
+    PMU.setVbusVoltageLimit(XPOWERS_AXP2101_VBUS_VOL_LIM_3V88);
+
+    // Set the maximum current of the PMU VBUS input,
+    // higher than this value will turn off the PMU
+    PMU.setVbusCurrentLimit(XPOWERS_AXP2101_VBUS_CUR_LIM_2000MA);
+
+
+    // Get the VSYS shutdown voltage
+    uint16_t vol = PMU.getSysPowerDownVoltage();
+    Serial.printf("->  getSysPowerDownVoltage:%u\n", vol);
+
+    // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
+    PMU.setSysPowerDownVoltage(2600);
+
+
+    //! DC1 ESP32S3 Core VDD , Don't change
+    // PMU.setDC1Voltage(3300);
+
+    //! DC3 Radio & Pixels VDD , Don't change
+    PMU.setDC3Voltage(3400);
+
+    //! ALDO2 MICRO TF Card VDD, Don't change
+    PMU.setALDO2Voltage(3300);
+
+    //! ALDO4 GNSS VDD, Don't change
+    PMU.setALDO4Voltage(3300);
+
+    //! BLDO1 MIC VDD, Don't change
+    PMU.setBLDO1Voltage(3300);
+
+
+    //! The following supply voltages can be controlled by the user
+    // DC5 IMAX=2A
+    // 1200mV
+    // 1400~3700mV,100mV/step,24steps
+    PMU.setDC5Voltage(3300);
+
+    //ALDO1 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setALDO1Voltage(3300);
+
+    //ALDO3 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setALDO3Voltage(3300);
+
+    //BLDO2 IMAX=300mA
+    //500~3500mV, 100mV/step,31steps
+    PMU.setBLDO2Voltage(3300);
+
+    //! END
+
+
+    // Turn on the power that needs to be used
+    //! DC1 ESP32S3 Core VDD , Don't change
+    // PMU.enableDC3();
+
+    //! External pin power supply
+    PMU.enableDC5();
+    PMU.enableALDO1();
+    PMU.enableALDO3();
+    PMU.enableBLDO2();
+
+    //! ALDO2 MICRO TF Card VDD
+    PMU.enableALDO2();
+
+    //! ALDO4 GNSS VDD
+    PMU.enableALDO4();
+
+    //! BLDO1 MIC VDD
+    PMU.enableBLDO1();
+
+    //! DC3 Radio & Pixels VDD
+    PMU.enableDC3();
+
+    // power off when not in use
+    PMU.disableDC2();
+    PMU.disableDC4();
+    PMU.disableCPUSLDO();
+    PMU.disableDLDO1();
+    PMU.disableDLDO2();
+
+
+
+    Serial.println("DCDC=======================================================================");
+    Serial.printf("DC1  : %s   Voltage:%u mV \n",  PMU.isEnableDC1()  ? "+" : "-", PMU.getDC1Voltage());
+    Serial.printf("DC2  : %s   Voltage:%u mV \n",  PMU.isEnableDC2()  ? "+" : "-", PMU.getDC2Voltage());
+    Serial.printf("DC3  : %s   Voltage:%u mV \n",  PMU.isEnableDC3()  ? "+" : "-", PMU.getDC3Voltage());
+    Serial.printf("DC4  : %s   Voltage:%u mV \n",  PMU.isEnableDC4()  ? "+" : "-", PMU.getDC4Voltage());
+    Serial.printf("DC5  : %s   Voltage:%u mV \n",  PMU.isEnableDC5()  ? "+" : "-", PMU.getDC5Voltage());
+    Serial.println("ALDO=======================================================================");
+    Serial.printf("ALDO1: %s   Voltage:%u mV\n",  PMU.isEnableALDO1()  ? "+" : "-", PMU.getALDO1Voltage());
+    Serial.printf("ALDO2: %s   Voltage:%u mV\n",  PMU.isEnableALDO2()  ? "+" : "-", PMU.getALDO2Voltage());
+    Serial.printf("ALDO3: %s   Voltage:%u mV\n",  PMU.isEnableALDO3()  ? "+" : "-", PMU.getALDO3Voltage());
+    Serial.printf("ALDO4: %s   Voltage:%u mV\n",  PMU.isEnableALDO4()  ? "+" : "-", PMU.getALDO4Voltage());
+    Serial.println("BLDO=======================================================================");
+    Serial.printf("BLDO1: %s   Voltage:%u mV\n",  PMU.isEnableBLDO1()  ? "+" : "-", PMU.getBLDO1Voltage());
+    Serial.printf("BLDO2: %s   Voltage:%u mV\n",  PMU.isEnableBLDO2()  ? "+" : "-", PMU.getBLDO2Voltage());
+    Serial.println("===========================================================================");
+
+    // Set the time of pressing the button to turn off
+    PMU.setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
+    uint8_t opt = PMU.getPowerKeyPressOffTime();
+    Serial.print("PowerKeyPressOffTime:");
+    switch (opt) {
+    case XPOWERS_POWEROFF_4S: Serial.println("4 Second");
+        break;
+    case XPOWERS_POWEROFF_6S: Serial.println("6 Second");
+        break;
+    case XPOWERS_POWEROFF_8S: Serial.println("8 Second");
+        break;
+    case XPOWERS_POWEROFF_10S: Serial.println("10 Second");
+        break;
+    default:
+        break;
+    }
+    // Set the button power-on press time
+    PMU.setPowerKeyPressOnTime(XPOWERS_POWERON_128MS);
+    opt = PMU.getPowerKeyPressOnTime();
+    Serial.print("PowerKeyPressOnTime:");
+    switch (opt) {
+    case XPOWERS_POWERON_128MS: Serial.println("128 Ms");
+        break;
+    case XPOWERS_POWERON_512MS: Serial.println("512 Ms");
+        break;
+    case XPOWERS_POWERON_1S: Serial.println("1 Second");
+        break;
+    case XPOWERS_POWERON_2S: Serial.println("2 Second");
+        break;
+    default:
+        break;
+    }
+
+    Serial.println("===========================================================================");
+    // It is necessary to disable the detection function of the TS pin on the board
+    // without the battery temperature detection function, otherwise it will cause abnormal charging
+    PMU.disableTSPinMeasure();
+
+
+    // Enable internal ADC detection
+    PMU.enableBattDetection();
+    PMU.enableVbusVoltageMeasure();
+    PMU.enableBattVoltageMeasure();
+    PMU.enableSystemVoltageMeasure();
+
+
+    /*
+      The default setting is CHGLED is automatically controlled by the PMU.
+    - XPOWERS_CHG_LED_OFF,
+    - XPOWERS_CHG_LED_BLINK_1HZ,
+    - XPOWERS_CHG_LED_BLINK_4HZ,
+    - XPOWERS_CHG_LED_ON,
+    - XPOWERS_CHG_LED_CTRL_CHG,
+    * */
+    PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+
+    // Force add pull-up
+    pinMode(PMU_IRQ, INPUT_PULLUP);
+    attachInterrupt(PMU_IRQ, setFlag, FALLING);
+
+    // Disable all interrupts
+    PMU.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+    // Clear all interrupt flags
+    PMU.clearIrqStatus();
+    // Enable the required interrupt function
+    PMU.enableIRQ(
+        XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+        XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+        XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
+        XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
+    );
+
+    // Set the precharge charging current
+    PMU.setPrechargeCurr(XPOWERS_AXP2101_PRECHARGE_150MA);
+
+    // Set constant current charge current limit
+    //! Using inferior USB cables and adapters will not reach the maximum charging current.
+    //! Please pay attention to add a suitable heat sink above the PMU when setting the charging current to 1A
+    PMU.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_1000MA);
+
+    // Set stop charging termination current
+    PMU.setChargerTerminationCurr(XPOWERS_AXP2101_CHG_ITERM_150MA);
+
+    // Set charge cut-off voltage
+    PMU.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
+
+    // Disable the PMU long press shutdown function
+    PMU.disableLongPressShutdown();
+
+
+    // Get charging target current
+    const uint16_t currTable[] = {
+        0, 0, 0, 0, 100, 125, 150, 175, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+    };
+    uint8_t val = PMU.getChargerConstantCurr();
+    Serial.print("Val = "); Serial.println(val);
+    Serial.print("Setting Charge Target Current : ");
+    Serial.println(currTable[val]);
+
+    // Get charging target voltage
+    const uint16_t tableVoltage[] = {
+        0, 4000, 4100, 4200, 4350, 4400, 255
+    };
+    val = PMU.getChargeTargetVoltage();
+    Serial.print("Setting Charge Target Voltage : ");
+    Serial.println(tableVoltage[val]);
+
+}
+#endif
+
+// #include "soc/soc.h"
+// #include "soc/rtc_cntl_reg.h"
+
 void setup()
 {
+    // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
@@ -280,18 +601,64 @@ void setup()
     SerialGPS.setRxBufferSize(500);
 #endif
 
+#ifndef USE_ROTARY
+    pinMode(PIN_ROT_BTN, INPUT_PULLUP);
+#endif
+
     Serial.println();
-    Serial.println("Start APRS-ESP V" + String(VERSION));
+    Serial.println("Start APRS-ESP V" + String(VERSION_FULL));
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
+
+#if defined(BOARD_TTWR_MOD)
+    // +4.2V EN
+    pinMode(16, OUTPUT);
+    digitalWrite(16, HIGH);
+
+    // OLED EN
+    pinMode(23, OUTPUT);
+    digitalWrite(23, HIGH);
+#endif
+
+#if defined(ADC_BATTERY)
+    // Battery Voltage
+    pinMode(ADC_BATTERY, INPUT);
+#endif
 
 #ifdef USE_SCREEN
     OledStartup();
 #endif
 
+#if defined(USE_PMU)
+    // PMU
+    setupPower();
+#endif
+
+#if defined(BOARD_TTWR_PLUS_MOD)
+    // MIC Select
+    pinMode(MIC_CH_SEL, OUTPUT);
+    digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
+
+    // NeoPixel
+    strip.setBrightness(100);
+    strip.begin();
+
+    strip.setPixelColor(0, 0, 0, 255);  // Blue
+    strip.show();
+#endif
+
     LoadConfig();
 
 #ifdef USE_RF
-    RF_Init(true);
+    // RF SHOULD BE Initialized or there is no reason to startup at all
+    while (!RF_Init(true)) {};
+#endif
+
+#if defined(USE_PMU)
+    if (PMU.isVbusIn()) {
+        vbusIn = true;
+        Serial.println("Vbus In");
+        // PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+    }
 #endif
 
     // if SmartBeaconing - delay processing GPS data
@@ -302,6 +669,7 @@ void setup()
 
     // enableLoopWDT();
     // enableCore0WDT();
+
     enableCore1WDT();
 
     // Task 1
@@ -316,7 +684,7 @@ void setup()
     // Task 2
     xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
                             "taskNetwork", /* Name of the task */
-                            32768,         /* Stack size in words */
+                            16384,         /* Stack size in words */
                             NULL,          /* Task input parameter */
                             1,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
@@ -328,23 +696,41 @@ int pkgCount = 0;
 String send_gps_location() {
     String tnc2Raw = "";
     
-    float _lat;
-    float _lon;
+    float _lat = 0.0;
+    float _lon = 0.0;
 
-    //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
-    if (gps.location.isValid()) {
-        _lat = lat / 1000000.0;
-        _lon = lon / 1000000.0;
-        distance = 0;   // Reset counted distance
-        Serial.println("GPS Fix");
-    } else {
+    if (config.gps_mode == GPS_MODE_AUTO) {
+        Serial.println("GPS Mode: Auto");
+        //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
+        if (gps.location.isValid()) {
+            _lat = lat / 1000000.0;
+            _lon = lon / 1000000.0;
+            distance = 0;   // Reset counted distance
+            Serial.println("GPS Fix, using current location");
+        } else {
+            _lat = config.gps_lat;
+            _lon = config.gps_lon;
+            Serial.println("No GPS Fix, using fixed location");
+        }
+    } else if (config.gps_mode == GPS_MODE_FIXED) {
+        Serial.println("GPS Mode: Fixed Only");
         _lat = config.gps_lat;
         _lon = config.gps_lon;
-        Serial.println("No GPS Fix");
-
-        // Reset counted distance
-        distance = 0;
+    } else if (config.gps_mode == GPS_MODE_GPS) {
+        Serial.println("GPS Mode: GPS Only");
+        if (gps.location.isValid()) {
+            _lat = lat / 1000000.0;
+            _lon = lon / 1000000.0;
+            distance = 0;   // Reset counted distance
+            Serial.println("GPS Fix, using current location");
+        } else {
+            Serial.println("No GPS Fix, skipped");
+            return "";
+        }
     }
+
+    // Reset counted distance
+    distance = 0;
 
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
@@ -357,9 +743,9 @@ String send_gps_location() {
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
 
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APZ32E", config.aprs_mycall);
+        sprintf(strtmp, "%s>APESP1", config.aprs_mycall);
     else
-        sprintf(strtmp, "%s-%d>APZ32E", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>APESP1", config.aprs_mycall, config.aprs_ssid);
 
     tnc2Raw = String(strtmp);
 
@@ -415,9 +801,84 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     return tnc2.length();
 }
 
+#if defined(USE_PMU)
+uint8_t getBatteryPercentage() {
+// #if BATTERY_ADC_PIN != -1
+//     esp_adc_cal_characteristics_t adc_chars;
+//     esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+//     uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(BATTERY_ADC_PIN), &adc_chars);
+//     float battery_voltage = ((float)v / 1000) * 2;
+//     Serial.print("ADC RAW: ");
+//     Serial.println(v);
+//     Serial.print("Battery voltage: ");
+//     Serial.println(battery_voltage);
+//     if (battery_voltage > 4.2) {
+//         return 100;
+//     } else {
+//         return (uint8_t)(((battery_voltage - 3.0) / (4.2 - 3.0)) * 100);
+//     }
+// #else
+    return PMU.isBatteryConnect() ? PMU.getBatteryPercent() : 0;
+// #endif
+}
+#endif
+
+#if defined(ADC_BATTERY)
+static uint16_t batteryVoltage = 0;
+#endif
+#if defined(ADC_BATTERY) || defined(USE_PMU)
+static uint8_t batteryPercentage = 0;
+#endif
+
+#if defined(ADC_BATTERY)
+#include <esp_adc_cal.h>
+uint8_t getBatteryPercentage() {
+    esp_adc_cal_characteristics_t adc_chars;
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(ADC_BATTERY), &adc_chars);
+    v += (v > 0 ? (BATT_OFFSET / 2) : 0);
+    float battery_voltage = ((float)v / 1000) * 2;
+    // Serial.print("ADC RAW: ");
+    // Serial.println(v);
+    // Serial.print("Battery voltage: ");
+    // Serial.println(battery_voltage);
+    batteryVoltage = battery_voltage * 1000;
+    if (battery_voltage > 4.2) {
+        return 100;
+    } else if (battery_voltage < 3.0) {
+        return 0;
+    } else {
+        return (uint8_t)(((battery_voltage - 3.0) / (4.2 - 3.0)) * 100);
+    }
+}
+#endif
+
 void printPeriodicDebug() {
+#if defined(ADC_BATTERY)
+    if (config.wifi_mode == WIFI_OFF) {
+        // batteryVoltage = (analogRead(ADC_BATTERY) * 2);
+        // batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
+
+        batteryPercentage = getBatteryPercentage();
+    } else {
+        batteryPercentage = digitalRead(ADC_BATTERY);
+    }
+
+#endif
+#if defined(USE_PMU)
+    batteryPercentage = getBatteryPercentage();
+#endif
     printTime();
-    Serial.print("lat: ");
+    Serial.print("Bat: ");
+#if defined(ADC_BATTERY)
+    Serial.print(batteryVoltage);
+    Serial.print("mV ");
+#endif
+#if defined(ADC_BATTERY) || defined(USE_PMU)
+    Serial.print(batteryPercentage);
+    Serial.print("%");
+#endif
+    Serial.print(", lat: ");
     Serial.print(lat);
     Serial.print(" lon: ");
     Serial.print(lon);
@@ -436,9 +897,21 @@ void updateScreenAndGps(bool force) {
 
     // 1/sec
     if ((millis() - scrUpdTMO > 1000) || force) {
-        OledUpdate();
-        printPeriodicDebug();
         scrUpdTMO = millis();
+
+        if (fwUpdateProcess) {
+            OledUpdateFWU();
+            return;
+        }
+
+#if defined(ADC_BATTERY)
+        OledUpdate(batteryPercentage, false);
+#elif defined(USE_PMU)
+        OledUpdate(batteryPercentage, vbusIn);
+#else
+        OledUpdate(-1, false);
+#endif
+        printPeriodicDebug();
     }
 
     // If startup dealy not expired
@@ -458,6 +931,71 @@ void updateScreenAndGps(bool force) {
     }
 }
 
+#if defined(USE_PMU)
+void loopPMU()
+{
+    if (!pmu_flag) {
+        return;
+    }
+
+    pmu_flag = false;
+    // Get PMU Interrupt Status Register
+    uint32_t status = PMU.getIrqStatus();
+    Serial.print("STATUS => HEX:");
+    Serial.print(status, HEX);
+    Serial.print(" BIN:");
+    Serial.println(status, BIN);
+
+    // if (PMU.isPekeyShortPressIrq()) {
+    //     volumeUp();
+    // }
+
+    if (PMU.isBatChagerStartIrq() || PMU.isBatteryConnect()) {
+        Serial.println("Battery Charging");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+    }
+
+    if (PMU.isBatChagerDoneIrq()) {
+        Serial.println("Battery Charging Done");
+    }
+
+    if (PMU.isBatRemoveIrq()) {
+        Serial.println("Battery Removed");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+    }
+
+    if (PMU.isVbusInsertIrq()) {
+        Serial.println("USB Detected");
+        vbusIn = true;
+    }
+
+    if (PMU.isVbusRemoveIrq()) {
+        Serial.println("USB Removed");
+        vbusIn = false;
+    }
+
+    if (PMU.isPekeyLongPressIrq()) {
+    //     vTaskDelete(dataTaskHandler);
+    //     vTaskDelete(clearvolumeSliderTaskHandler);
+    //     vTaskDelete(gnssTaskHandler);
+    //     vTaskDelete(encoderTaskHandler);
+    //     vTaskDelete(updateTaskHandler);
+    //     vTaskDelete(pielxTaskHandler);
+
+    //     u8g2.setFont(u8g2_font_timR14_tf);
+    //     u8g2.clearBuffer();
+    //     int8_t height = 30 + u8g2.getAscent();
+    //     u8g2.drawStr(20, height, "Power OFF");
+    //     u8g2.sendBuffer();
+    //     delay(3000);
+        PMU.shutdown();
+    }
+
+    // Clear PMU Interrupt Status Register
+    PMU.clearIrqStatus();
+}
+#endif
+
 long sendTimer = 0;
 bool AFSKInitAct = false;
 int btn_count = 0;
@@ -468,7 +1006,7 @@ void loop()
     vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
     if (millis() > timeCheck) {
         timeCheck = millis() + 10000;
-        if (ESP.getFreeHeap() < 70000) esp_restart();
+        if (ESP.getFreeHeap() < 60000) esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
     }
 #ifdef USE_RF
@@ -482,14 +1020,14 @@ void loop()
 #endif
     if (AFSKInitAct == true) {
 #ifdef USE_RF
-        AFSK_Poll(true, config.rf_power, POWER_PIN);
+        AFSK_Poll(true);
 #else
         AFSK_Poll(false, LOW);
 #endif
 #ifdef USE_GPS
         // if (SerialGPS.available()) {
         //     String gpsData = SerialGPS.readStringUntil('\n');
-        //     Serial.println(gpsData);
+        //     Serial.print(gpsData);
         // }
 #endif
     }
@@ -503,6 +1041,95 @@ void loop()
     // if (update_screen) OledUpdate();
 
     updateScreenAndGps(update_screen);
+
+    uint8_t bootPin2 = HIGH;
+#ifndef USE_ROTARY
+    bootPin2 = digitalRead(PIN_ROT_BTN);
+#endif
+
+    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+        btn_count++;
+        if (btn_count > 1000 && btn_count < 2000)  // Push BOOT 10sec
+        {
+            RX_LED_ON();
+            TX_LED_ON();
+        }
+        if (btn_count > 2000)  // Push BOOT 20sec
+        {
+            RX_LED_OFF();
+            TX_LED_OFF();
+        }
+    } else {
+        if (btn_count > 0) {
+            // Serial.printf("btn_count=%dms\n", btn_count * 10);
+            if (btn_count > 1000)  // Push BOOT 10sec to Disable/Enable WiFi
+            {
+                if (config.wifi_mode == WIFI_OFF) {
+                    config.wifi_mode = WIFI_AP_STA_FIX;
+                    Serial.println("WiFi ON");
+                } else {
+                    config.wifi_mode = WIFI_OFF;
+                    Serial.println("WiFi OFF");
+                }
+                btn_count = 0;
+                SaveConfig();
+                esp_restart();
+            }
+            else if (btn_count > 2000) {    // Config Default
+                Serial.println("Factory Default");
+                btn_count = 0;
+                DefaultConfig();
+                SaveConfig();
+                esp_restart();
+            }
+            else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
+            {
+                if (config.tnc) {
+                    String tnc2Raw = send_gps_location();
+                    if (tnc2Raw.length() > 0) {
+                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
+#ifdef DEBUG_TNC
+                        Serial.println("Manual TX: " + tnc2Raw);
+                    }
+#endif
+                }
+            }
+            btn_count = 0;
+        }
+    }
+
+#if defined(USE_PMU)
+    loopPMU();
+#endif
+}
+
+String sendIsAckMsg(String toCallSign, int msgId) {
+    char str[300];
+    char call[11];
+    int i;
+    memset(&call[0], 0, 11);
+    sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
+    strcpy(&call[0], toCallSign.c_str());
+    i = strlen(call);
+    for (; i < 9; i++)
+        call[i] = 0x20;
+    memset(&str[0], 0, 300);
+
+    sprintf(str, "%s-%d>APESP1%s::%s:ack%d", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
+    //	client.println(str);
+    return String(str);
+}
+
+void sendIsPkg(char *raw) {
+    char str[300];
+    sprintf(str, "%s-%d>APESP1%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
+    // client.println(str);
+    String tnc2Raw = String(str);
+    if (aprsClient.connected())
+        aprsClient.println(tnc2Raw); // Send packet to Inet
+    if (config.tnc && config.tnc_digi)
+        pkgTxUpdate(str, 0);
 }
 
 void sendIsPkgMsg(char *raw) {
@@ -522,9 +1149,9 @@ void sendIsPkgMsg(char *raw) {
     for (; i < 9; i++) call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APZ32E::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>APESP1::%s:%s", config.aprs_mycall, call, raw);
     else
-        sprintf(str, "%s-%d>APZ32E::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>APESP1::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
     
@@ -558,7 +1185,7 @@ void taskAPRS(void *pvParameters) {
     kiss_init(&AX25, &modem, &Serial, 0);
 #endif
 
-    sendTimer = millis() - (config.aprs_beacon * 1000) + 30000;
+    sendTimer = millis() - (config.aprs_beacon * 60 * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
     timeSlot = millis();
@@ -582,36 +1209,6 @@ void taskAPRS(void *pvParameters) {
             }
         }
 
-        if (digitalRead(BOOT_PIN) == LOW) {
-            btn_count++;
-            if (btn_count > 1000)  // Push BOOT 10sec
-            {
-                digitalWrite(RX_LED_PIN, HIGH);
-                digitalWrite(TX_LED_PIN, HIGH);
-            }
-        } else {
-            if (btn_count > 0) {
-                // Serial.printf("btn_count=%dms\n", btn_count * 10);
-                if (btn_count > 1000)  // Push BOOT 10sec to Factory Default
-                {
-                    DefaultConfig();
-                    Serial.println("SYSTEM REBOOT NOW!");
-                    esp_restart();
-                } 
-                else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
-                {
-                    if (config.tnc) {
-                        String tnc2Raw = send_gps_location();
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
-                        // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
-#ifdef DEBUG_TNC
-                        Serial.println("Manual TX: " + tnc2Raw);
-#endif
-                    }
-                }
-                btn_count = 0;
-            }
-        }
 #ifdef USE_RF
 // if(digitalRead(SQL_PIN)==HIGH){
 // 	delay(10);
@@ -631,7 +1228,7 @@ void taskAPRS(void *pvParameters) {
 
         bool sendByTime = false;
         if (config.aprs_beacon > 0) {   // it interval configured
-            sendByTime = (now > (sendTimer + (config.aprs_beacon * 1000)));
+            sendByTime = (now > (sendTimer + (config.aprs_beacon * 60 * 1000)));
         }
         bool sendByFlag = send_aprs_update;
 
@@ -651,14 +1248,16 @@ void taskAPRS(void *pvParameters) {
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
-                    if (aprsClient.connected()) {
-                        aprsClient.println(tnc2Raw);  // Send packet to Inet
-                    }
-                    pkgTxUpdate(tnc2Raw.c_str(), 0);
-                    // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
+                    if (tnc2Raw.length() > 0) {
+                        if (aprsClient.connected()) {
+                            aprsClient.println(tnc2Raw);  // Send packet to Inet
+                        }
+                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
 #ifdef DEBUG_TNC
-                    // Serial.println("TX: " + tnc2Raw);
+                        // Serial.println("TX: " + tnc2Raw);
 #endif
+                    }
                 }
             }
             // send_gps_location();
@@ -666,7 +1265,7 @@ void taskAPRS(void *pvParameters) {
             //  	APRS_setPath1("WIDE1", 1);
             //  	APRS_setPreamble(APRS_PREAMBLE);
             //  	APRS_setTail(APRS_TAIL);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APZ32E,TRACE2-2:=1343.76N/10026.06E&ESP32
+            // APRS_sendTNC2Pkt("HS5TQA-6>APESP1,TRACE2-2:=1343.76N/10026.06E&ESP32
             // APRS Internet Gateway");
         }
 
@@ -681,13 +1280,13 @@ void taskAPRS(void *pvParameters) {
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0) {
-                    sprintf(rawTlm, "%s>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                    sprintf(rawTlm, "%s>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
                             config.aprs_mycall, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
                 } else {
                     sprintf(
-                        rawTlm, "%s-%d>APZ32E:T#%03d,%d,%d,%d,%d,%d,00000000",
+                        rawTlm, "%s-%d>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
                         config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);
@@ -732,7 +1331,7 @@ void taskAPRS(void *pvParameters) {
                     } else {
                         status.rf2inet++;
                         igateTLM.RF2INET++;
-                        igateTLM.TX++;
+                        // igateTLM.TX++;
 #ifdef DEBUG
                         printTime();
                         Serial.print("RF->INET: ");
@@ -744,7 +1343,9 @@ void taskAPRS(void *pvParameters) {
                         } else {
                             sprintf(call, "%s", incomingPacket.src.call);
                         }
-                        pkgListUpdate(call, 1);
+                        
+                        uint8_t type = pkgType((char *)incomingPacket.info);
+                        pkgListUpdate(call, type);
                     }
                 }
 
@@ -753,6 +1354,8 @@ void taskAPRS(void *pvParameters) {
                     int dlyFlag = digiProcess(incomingPacket);
                     if (dlyFlag > 0) {
                         int digiDelay;
+                        status.digiCount++;
+                        igateTLM.RX++;
                         if (dlyFlag == 1) {
                             digiDelay = 0;
                         } else {
@@ -773,6 +1376,10 @@ void taskAPRS(void *pvParameters) {
                         packet2Raw(digiPkg, incomingPacket);
                         pkgTxUpdate(digiPkg.c_str(), digiDelay);
                     }
+                    else
+                    {
+                        igateTLM.DROP++;
+                    }
                 }
 
                 lastPkg = true;
@@ -785,6 +1392,8 @@ void taskAPRS(void *pvParameters) {
 }
 
 long wifiTTL = 0;
+
+static bool wiFiActive = false;
 
 void taskNetwork(void *pvParameters) {
     int c = 0;
@@ -804,29 +1413,38 @@ void taskNetwork(void *pvParameters) {
         Serial.print("Access point running. IP address: ");
         Serial.print(WiFi.softAPIP());
         Serial.println("");
+        wiFiActive = true;
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(100);
         Serial.println(F("WiFi Station Only mode"));
+        wiFiActive = true;
     } else {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
-        Serial.println(F("WiFi OFF. BT only mode"));
-        SerialBT.begin("ESP32TNC");
+        // Serial.println(F("WiFi OFF. BT only mode"));
+        Serial.println(F("WiFi OFF All mode"));
+        // SerialBT.begin("ESP32TNC");
+        wiFiActive = false;
     }
 
-    webService();
+    if (wiFiActive) {
+        webService();
+    }
+
     pingTimeout = millis() + 10000;
 
     for (;;) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
-        serviceHandle();
 
-        if (config.wifi_mode == WIFI_AP_STA_FIX ||
-            config.wifi_mode == WIFI_STA_FIX) {
+        if (wiFiActive) {
+            serviceHandle();
+        }
+
+        if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
             if (WiFi.status() != WL_CONNECTED) {
                 unsigned long int tw = millis();
                 if (tw > wifiTTL) {
@@ -862,9 +1480,6 @@ void taskNetwork(void *pvParameters) {
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
-// Serial.println("Contacting Time Server");
-// configTime(3600 * timeZone, 0, "aprs.dprns.com", "1.pool.ntp.org");
-// vTaskDelay(3000 / portTICK_PERIOD_MS);
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(true);
 #endif
@@ -875,7 +1490,7 @@ void taskNetwork(void *pvParameters) {
                     // Serial.println("Config NTP");
                     // setSyncProvider(getNtpTime);
                     Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, "203.150.19.26", "110.170.126.101", "77.68.122.252");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                     vTaskDelay(3000 / portTICK_PERIOD_MS);
                     time_t systemTime;
                     time(&systemTime);
@@ -891,63 +1506,74 @@ void taskNetwork(void *pvParameters) {
                         APRSConnect();
                     } else {
                         if (aprsClient.available()) {
-                            // pingTimeout = millis() + 300000; // Reset ping
-                            // timout
+                            pingTimeout = millis() + 300000; // Reset ping
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
-                            Serial.print("APRS-IS ");
+                            Serial.print("APRS-IS: ");
                             Serial.println(line);
 #endif
                             status.isCount++;
-                            int start_val =
-                                line.indexOf(">", 0);  // find the first position of >
+
+                            int start_val = line.indexOf(">", 0);  // find the first position of >
                             if (start_val > 3) {
                                 // raw = (char *)malloc(line.length() + 1);
                                 String src_call = line.substring(0, start_val);
-                                String msg_call = "::" + src_call;
-
-                                status.allCount++;
-                                igateTLM.RX++;
-                                if (config.tnc && config.inet2rf) {
-                                    if (line.indexOf(msg_call) <= 0)  // src callsign = msg callsign
-                                    // Not a telemetry topic
-                                    {
-                                        if (line.indexOf(":T#") < 0)  // not telemetry
-                                        {
-                                            if (line.indexOf("::") > 0)  // text only
-                                            {  // message only
-                                                // raw[0] = '}';
-                                                // line.toCharArray(&raw[1],
-                                                // line.length()); tncTxEnable =
-                                                // false; SerialTNC.flush();
-                                                // SerialTNC.println(raw);
-                                                pkgTxUpdate(line.c_str(), 0);
-                                                // APRS_sendTNC2Pkt(line); //
-                                                // Send out RF by TNC build in
-                                                //  tncTxEnable = true;
-                                                status.inet2rf++;
-                                                igateTLM.INET2RF++;
-                                                printTime();
-#ifdef DEBUG
-                                                Serial.print("INET->RF ");
-                                                Serial.println(line);
+                                int msg_call_idx = line.indexOf("::");  // text only
+                                String msg_call = "";
+                                if (msg_call_idx > 0) {
+                                    msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
+                                }
+#ifdef DEBUG_IS
+                                Serial.printf("SRC_CALL: %s\r\n", src_call.c_str());
+                                if (msg_call_idx > 0) {
+                                    Serial.printf("MSG_CALL: %s\r\n", msg_call.c_str());
+                                }
 #endif
+                                status.allCount++;
+                                // igateTLM.RX++;
+
+                                // Is it not Telemetry?
+                                if (line.indexOf(":T#") < 0
+                                    && line.indexOf("PARM.") < 0
+                                    && line.indexOf("UNIT.") < 0
+                                    && line.indexOf("EQNS.") < 0
+                                    && line.indexOf("BITS.") < 0)
+                                {
+                                    // Is INET2RF configured and MSG_CALL present
+                                    if (config.tnc && config.inet2rf && (msg_call != "")) {
+                                        // Is adresse is in owner callsigns group?
+                                        if (msg_call.startsWith(config.aprs_mycall)) {
+                                            Serial.println("MSG to Owner group");
+                                            pkgTxUpdate(line.c_str(), 0);
+                                            status.inet2rf++;
+                                            igateTLM.INET2RF++;
+                                            printTime();
+#ifdef DEBUG
+                                            Serial.print("INET->RF " + line);
+#endif
+                                        } else {
+                                            // Is it a message for last heard stations?
+                                            for (int i = 0; i < PKGLISTSIZE; i++) {
+                                                if (pkgList[i].time > 0) {
+                                                    if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
+                                                        Serial.println("MSG to last heard");
+                                                        pkgTxUpdate(line.c_str(), 0);
+                                                        status.inet2rf++;
+                                                        igateTLM.INET2RF++;
+                                                        printTime();
+                                                        Serial.println("INET->RF " + line);
+                                                    }
+                                                }
                                             }
                                         }
-                                    } else {
-                                        igateTLM.DROP++;
-                                        Serial.print(
-                                            "INET Message TELEMETRY from ");
-                                        Serial.println(src_call);
                                     }
+                                } else {
+                                    // Telemetry found
+                                    igateTLM.DROP++;
+                                    Serial.print("INET Message TELEMETRY from ");
+                                    Serial.println(src_call);
                                 }
-
-                                // memset(&raw[0], 0, sizeof(raw));
-                                // line.toCharArray(&raw[0], start_val + 1);
-                                // raw[start_val + 1] = 0;
-                                // pkgListUpdate(&raw[0], 0);
-                                // free(raw);
                             }
                         }
                     }

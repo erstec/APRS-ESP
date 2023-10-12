@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for work with Configuration, stored in EEPROM.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -67,11 +67,14 @@ typedef struct Config_Struct {
     uint8_t volume;
 #endif
     int8_t timeZone;
+    char ntpServer[50];
+    uint8_t gps_mode;   // 0 - Auto, 1 - GPS only, 2 - Fixed only
 } Configuration;
 
 void DefaultConfig();
 uint8_t checkSum(uint8_t *ptr, size_t count);
-void SaveConfig();
+void SaveConfig(bool storeBackup = true);
 void LoadConfig();
+bool LoadReConfig();
 
 #endif

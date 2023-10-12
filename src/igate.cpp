@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the IGate functionality.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -69,13 +69,23 @@ int igateProcess(AX25Msg &Packet) {
 
     // Add Infomation
     header += String(F(":"));
-    uint8_t Raw[500];
-    memset(Raw, 0, sizeof(Raw));
     size_t hSize = strlen(header.c_str());
-    memcpy(&Raw[0], header.c_str(), hSize);
-    memcpy(&Raw[hSize], &Packet.info[0], Packet.len);
-    aprsClient.write(&Raw[0],
-                     hSize + Packet.len);  // info binary write aprsc support
-    aprsClient.println();
+    uint8_t raw[500];
+    memset(raw, 0, sizeof(raw));
+    memcpy(&raw[0], header.c_str(), hSize);
+
+    // Prevent multi lines (Issue #48)
+    size_t crlf_pos = Packet.len;
+    for (int i = 0; i < Packet.len; i++) {
+        if (Packet.info[i] == '\n' || Packet.info[i] == '\r') {
+            crlf_pos = i;
+            break;
+        }
+    }
+
+    memcpy(&raw[hSize], &Packet.info[0], crlf_pos);
+    aprsClient.write(&raw[0], hSize + crlf_pos);
+    aprsClient.write("\r\n");
+
     return 1;
 }

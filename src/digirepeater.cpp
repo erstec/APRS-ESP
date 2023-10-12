@@ -1,7 +1,7 @@
 /*
     Description:    This file is part of the APRS-ESP project.
                     This file contains the code for the Digipeater functionality.
-    Author:         Ernest (ErNis) / LY3PH
+    Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
                     https://github.com/nakhonthai/ESP32IGate
@@ -50,12 +50,9 @@ int digiProcess(AX25Msg &Packet) {
             Packet.dst.ssid = ctmp;
             if (Packet.rpt_count > 0) {
                 for (idx = 0; idx < Packet.rpt_count; idx++) {
-                    if (!strcmp(
-                            &Packet.rpt_list[idx].call[0],
-                            &config.aprs_mycall[0]))  // Is path same callsign
+                    if (!strcmp(&Packet.rpt_list[idx].call[0], &config.aprs_mycall[0]))  // Is path same callsign
                     {
-                        if (Packet.rpt_list[idx].ssid ==
-                            config.aprs_ssid)  // IS path same SSID
+                        if (Packet.rpt_list[idx].ssid == config.aprs_ssid)  // IS path same SSID
                         {
                             if (Packet.rpt_flags & (1 << idx)) {
                                 digiLog.DropRx++;
@@ -70,21 +67,20 @@ int digiProcess(AX25Msg &Packet) {
                         if (Packet.rpt_flags & (1 << j)) break;
                     }
                     // Move current part to next part
-                    for (; j >= idx; j--) {
-                        int n = j + 1;
-                        strcpy(&Packet.rpt_list[n].call[0],
-                               &Packet.rpt_list[j].call[0]);
-                        Packet.rpt_list[n].ssid = Packet.rpt_list[j].ssid;
-                        if (Packet.rpt_flags & (1 << j))
-                            Packet.rpt_flags |= (1 << n);
-                        else
-                            Packet.rpt_flags &= ~(1 << n);
+                    if (Packet.rpt_count > 1) {
+                        for (; j >= idx; j--) {
+                            int n = j + 1;
+                            strcpy(&Packet.rpt_list[n].call[0], &Packet.rpt_list[j].call[0]);
+                            Packet.rpt_list[n].ssid = Packet.rpt_list[j].ssid;
+                            if (Packet.rpt_flags & (1 << j))
+                                Packet.rpt_flags |= (1 << n);
+                            else
+                                Packet.rpt_flags &= ~(1 << n);
+                        }
+                        // Add new part
+                        Packet.rpt_count += 1;
                     }
-
-                    // Add new part
-                    Packet.rpt_count += 1;
-                    strcpy(&Packet.rpt_list[idx].call[0],
-                           &config.aprs_mycall[0]);
+                    strcpy(&Packet.rpt_list[idx].call[0], &config.aprs_mycall[0]);
                     Packet.rpt_list[idx].ssid = config.aprs_ssid;
                     Packet.rpt_flags |= (1 << idx);
                     return 2;
