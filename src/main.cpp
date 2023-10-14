@@ -181,6 +181,8 @@ int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
 
+teTimeSync timeSyncFlag = T_SYNC_NONE;
+
 static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
 
@@ -274,6 +276,41 @@ bool pkgTxSend() {
     return false;
 }
 
+void aprsTimeGet(uint8_t *buf) {
+    String msg = String((char *)buf);
+    // Try get time from APRS message
+    if (msg.length() < 10) return;
+    int etaPos = msg.indexOf('@');
+    if (etaPos < 0) {
+        etaPos = msg.indexOf('*');
+        if (etaPos < 0) return;
+    }
+    int tzpos = etaPos + 7;
+    if (tzpos > msg.length()) return;
+    if (msg[tzpos] != 'z') return;
+    String time = msg.substring(etaPos + 1, etaPos + 7); // mmhhss
+    int hh = time.substring(0, 2).toInt();
+    int mm = time.substring(2, 4).toInt();
+    int ss = time.substring(4, 6).toInt();
+
+    Serial.printf("APRS Time: %02d:%02d:%02d\r\n", hh, mm, ss);
+
+    if (timeSyncFlag == T_SYNC_NONE) {
+        // setTime(hh, mm, ss, day(), month(), year());
+        // timeSync = T_SYNC_APRS;
+    }
+
+    // Serial.println("Setting up NTP");
+    // configTime(3600 * config.timeZone, 0, config.ntpServer);
+    // vTaskDelay(3000 / portTICK_PERIOD_MS);
+    // time_t systemTime;
+    // time(&systemTime);
+    // setTime(systemTime);
+    // if (systemUptime == 0) {
+    //     systemUptime = now();
+    // }
+}
+
 uint8_t *packetData;
 
 void aprs_msg_callback(struct AX25Msg *msg) {
@@ -297,35 +334,7 @@ void aprs_msg_callback(struct AX25Msg *msg) {
     PacketBuffer.push(&pkg);
 //TODO processPacket();
     
-}
-
-void aprsTimeGet(String msg) {
-    // Try get time from APRS message
-    if (msg.length() < 10) return;
-    int etaPos = msg.indexOf('@');
-    if (etaPos < 0) {
-        etaPos = msg.indexOf('*');
-        if (etaPos < 0) return;
-    }
-    int tzpos = etaPos + 7;
-    if (tzpos > msg.length()) return;
-    if (msg[tzpos] != 'z') return;
-    String time = msg.substring(etaPos + 1, etaPos + 7); // mmhhss
-    int hh = time.substring(0, 2).toInt();
-    int mm = time.substring(2, 4).toInt();
-    int ss = time.substring(4, 6).toInt();
-
-    Serial.printf("APRS Time: %02d:%02d:%02d\r\n", hh, mm, ss);
-
-    // Serial.println("Setting up NTP");
-    // configTime(3600 * config.timeZone, 0, config.ntpServer);
-    // vTaskDelay(3000 / portTICK_PERIOD_MS);
-    // time_t systemTime;
-    // time(&systemTime);
-    // setTime(systemTime);
-    // if (systemUptime == 0) {
-    //     systemUptime = now();
-    // }
+    aprsTimeGet(pkg.info);
 }
 
 uint8_t gwRaw[PKGLISTSIZE][66];
@@ -1053,6 +1062,7 @@ long sendTimer = 0;
 bool AFSKInitAct = false;
 int btn_count = 0;
 long timeCheck = 0;
+long TimeSyncPeriod = 0;
 
 void loop()
 {
@@ -1061,6 +1071,15 @@ void loop()
         timeCheck = millis() + 10000;
         if (ESP.getFreeHeap() < 60000) esp_restart();
         // Serial.println(String(ESP.getFreeHeap()));
+    }
+
+    if (millis() > TimeSyncPeriod) {
+        TimeSyncPeriod = millis() + 600000; // 10 min
+        if (timeSyncFlag != T_SYNC_NONE) {
+            // Reset time sync flag
+            timeSyncFlag = T_SYNC_NONE;
+            Serial.println("TimeSync Flag Reset");
+        }
     }
 #ifdef USE_RF
 #ifdef DEBUG_RF
@@ -1543,18 +1562,22 @@ void taskNetwork(void *pvParameters) {
 #endif
                 }
             } else {
-                if (millis() > NTP_Timeout) {
+                if (millis() > NTP_Timeout) {                    
                     NTP_Timeout = millis() + 86400000;
-                    // Serial.println("Config NTP");
-                    // setSyncProvider(getNtpTime);
-                    Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, config.ntpServer);
-                    vTaskDelay(3000 / portTICK_PERIOD_MS);
-                    time_t systemTime;
-                    time(&systemTime);
-                    setTime(systemTime);
-                    if (systemUptime == 0) {
-                        systemUptime = now();
+                    if (config.synctime) {
+                        // Serial.println("Config NTP");
+                        // setSyncProvider(getNtpTime);
+                        Serial.println("Setting up NTP");
+                        configTime(3600 * config.timeZone, 0, config.ntpServer);
+                        vTaskDelay(3000 / portTICK_PERIOD_MS);
+                        time_t systemTime;
+                        time(&systemTime);
+                        setTime(systemTime);
+                        if (systemUptime == 0) {
+                            systemUptime = now();
+                        }
+
+                        timeSyncFlag = T_SYNC_NTP;
                     }
                 }
 

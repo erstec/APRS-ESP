@@ -209,6 +209,15 @@ enum gpsMode_enum {
     GPS_MODE_FIXED = 2
 };
 
+typedef enum {
+    T_SYNC_NONE = 0,
+    T_SYNC_NTP,
+    T_SYNC_GPS,
+    T_SYNC_APRS,
+} teTimeSync;
+
+extern teTimeSync timeSyncFlag;
+
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
 int processPacket(String &tnc2);

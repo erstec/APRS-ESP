@@ -10,12 +10,16 @@
 #include "gps.h"
 #include "smartBeaconing.h"
 #include "TinyGPS++.h"
+#include "config.h"
 
 // #define DEBUG_GPS
 
 // extern Configuration config;
 extern TinyGPSPlus gps;
 extern HardwareSerial SerialGPS;
+extern Configuration config;
+
+extern teTimeSync timeSyncFlag;
 
 // buffer for conversions
 #define CONV_BUF_SIZE 15
@@ -107,6 +111,22 @@ void GpsUpdate() {
             lat = gps.location.lat() * 1000000;
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
+
+            if (config.synctime && gps.time.isValid() && timeSyncFlag == T_SYNC_NONE) {
+                Serial.print("GPS Time: ");
+                Serial.print(gps.time.hour());
+                Serial.print(":");
+                Serial.print(gps.time.minute());
+                Serial.print(":");
+                Serial.println(gps.time.second());
+
+                // time_t systemTime;
+                // time(&systemTime);
+                // setTime(systemTime);
+
+                timeSyncFlag = T_SYNC_GPS;
+            }
+
             updateDistance();
             // if (!gotGpsFix && gps.location.isValid()) gotGpsFix = true;
         }

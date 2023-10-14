@@ -641,15 +641,11 @@ void setHTML(byte page) {
                 pkgList[i].calsign[10] = 0;
                 // time_t tm = pkgList[i].time;
                 localtime_r(&pkgList[i].time, &tmstruct);
-                String str = String(tmstruct.tm_hour, DEC) + ":" +
-                             String(tmstruct.tm_min, DEC) + ":" +
-                             String(tmstruct.tm_sec, DEC);
+                String str = String(tmstruct.tm_hour, DEC) + ":" + String(tmstruct.tm_min, DEC) + ":" + String(tmstruct.tm_sec, DEC);
                 // String str = String(hour(pkgList[i].time), DEC) + ":" +
                 // String(minute(pkgList[i].time), DEC) + ":" +
                 // String(second(pkgList[i].time), DEC);
-                webString += "<tr><td align=\"left\">" +
-                             String(pkgList[i].calsign) +
-                             "</td><td align=\"right\">" + str + "</td></tr>";
+                webString += "<tr><td align=\"left\">" + String(pkgList[i].calsign) + "</td><td align=\"right\">" + str + "</td></tr>";
             }
         }
         webString += "</table>";
@@ -1015,13 +1011,8 @@ void handle_setting() {
     String syncFlage = "";
     if (config.synctime) syncFlage = "checked";
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Sync Time</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" "
-        "id=\"field_checkbox_1\" name=\"synctime\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        syncFlage + "/></div>\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Sync Time</label>\n";
+    webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_1\" name=\"synctime\" type=\"checkbox\" value=\"OK\" " + syncFlage + "/></div>\n";
     webString += "</div>\n";
 
     webString += "</div>\n";  // div general
@@ -1277,45 +1268,29 @@ void handle_service() {
         "<label class=\"col-sm-4 col-xs-12 control-label\">APRS "
         "Filter</label>\n";
     webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" "
-        "id=\"aprsFilter\" name=\"aprsFilter\" type=\"text\" value=\"" +
+        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsFilter\" name=\"aprsFilter\" type=\"text\" value=\"" +
         String(config.aprs_filter) + "\" /></div>\n";
     webString += "</div>\n";
 
     String tncFlage = "";
     if (config.tnc) tncFlage = "checked";
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">TNC "
-        "Enable</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"tncEnable\" name=\"tncEnable\" type=\"checkbox\" value=\"OK\" " +
-        tncFlage + "/></div>\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Main TNC Functionality Enable (should be ON)</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"tncEnable\" name=\"tncEnable\" type=\"checkbox\" value=\"OK\" " + tncFlage + "/></div>\n";
     webString += "</div>\n";
 
     String tlmFlage = "";
     if (config.tnc_telemetry) tlmFlage = "checked";
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Telemetry "
-        "Enable</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"tlmEnable\" name=\"tlmEnable\" type=\"checkbox\" value=\"OK\" " +
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Telemetry Enable</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"tlmEnable\" name=\"tlmEnable\" type=\"checkbox\" value=\"OK\" " +
         tlmFlage + "/></div>\n";
     webString += "</div>\n";
     String rf2inetFlage = "";
     if (config.rf2inet) rf2inetFlage = "checked";
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">RF->Inet "
-        "Enable</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"rf2inetEnable\" name=\"rf2inetEnable\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        rf2inetFlage + "/></div>\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">RF->Inet Enable</label>\n";
+    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"rf2inetEnable\" name=\"rf2inetEnable\" type=\"checkbox\" value=\"OK\" " + rf2inetFlage + "/></div>\n";
     webString += "</div>\n";
     String inet2rfFlage = "";
     if (config.inet2rf) inet2rfFlage = "checked";
@@ -1342,7 +1317,7 @@ void handle_service() {
     if (config.tnc_digi) digiFlage = "checked";
     webString += "<div class=\"form-group\">\n";
     webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Repeater</label>\n";
+        "<label class=\"col-sm-4 col-xs-12 control-label\">Digipeater</label>\n";
     webString +=
         "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
         "id=\"digiEnable\" name=\"digiEnable\" type=\"checkbox\" "
@@ -1352,11 +1327,9 @@ void handle_service() {
 
     webString += "<div class=\"form-group\">\n";
     webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi "
-        "Delay(mSec)</label>\n";
+        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Delay (mSec)</label>\n";
     webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"digiDelay\" "
-        "id=\"digiDelay\">\n";
+        "<div class=\"col-sm-2 col-xs-6\"><select name=\"digiDelay\" id=\"digiDelay\">\n";
     for (uint16_t delay = 0; delay <= 5000; delay += 500) {
         if (config.digi_delay == delay) {
             if (delay == 0)
@@ -1379,8 +1352,7 @@ void handle_service() {
 
     webString += "<div class=\"form-group\">\n";
     webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">TX Time "
-        "Slot(mSec)</label>\n";
+        "<label class=\"col-sm-4 col-xs-12 control-label\">TX Time Slot (mSec)</label>\n";
     webString +=
         "<div class=\"col-sm-2 col-xs-6\"><select name=\"timeSlot\" "
         "id=\"timeSlot\">\n";
@@ -1561,71 +1533,38 @@ void handle_radio() {
         String(config.freq_rx, 4) + "\" /></div>\n";
     webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">TX Offset</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
-        "id=\"tx_offset\" name=\"tx_offset\" min=\"-5000\" max=\"5000\" "
-        "step=\"100\" value=\"" +
-        String(config.offset_tx) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">RX Offset</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
-        "id=\"rx_offset\" name=\"rx_offset\" min=\"-5000\" max=\"5000\" "
-        "step=\"100\" value=\"" +
-        String(config.offset_rx) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"tx_ctcss\" "
-        "id=\"tx_ctcss\">\n";
-    for (int i = 0; i < 39; i++) {
-        if (config.tone_tx == i)
-            webString += "<option value=\"" + String(i) + "\" selected>" +
-                         String(ctcss[i], 1) + "</option>\n";
-        else
-            webString += "<option value=\"" + String(i) + "\" >" +
-                         String(ctcss[i], 1) + "</option>\n";
-    }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
     // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS
-    // Ch</label>\n"; webString += "<div class=\"col-sm-2 col-xs-6\"><input
-    // type=\"number\" id=\"tx_ctcss\" name=\"tx_ctcss\" min=\"0\" max=\"38\"
-    // step=\"1\" value=\"" + String(config.tone_tx) + "\" /></div>\n";
+    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Offset</label>\n";
+    // webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"tx_offset\" name=\"tx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_tx) + "\" /></div>\n";
     // webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_ctcss\" "
-        "id=\"rx_ctcss\">\n";
-    for (int i = 0; i < 39; i++) {
-        if (config.tone_rx == i)
-            webString += "<option value=\"" + String(i) + "\" selected>" +
-                         String(ctcss[i], 1) + "</option>\n";
-        else
-            webString += "<option value=\"" + String(i) + "\" >" +
-                         String(ctcss[i], 1) + "</option>\n";
-    }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
+    // webString += "<div class=\"form-group\">\n";
+    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Offset</label>\n";
+    // webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"rx_offset\" name=\"rx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_rx) + "\" /></div>\n";
+    // webString += "</div>\n";
 
     // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS
-    // Ch</label>\n"; webString += "<div class=\"col-sm-2 col-xs-6\"><input
-    // type=\"number\" id=\"rx_ctcss\" name=\"rx_ctcss\" min=\"0\" max=\"38\"
-    // step=\"1\" value=\"" + String(config.tone_rx) + "\" /></div>\n";
+    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS</label>\n";
+    // webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"tx_ctcss\" id=\"tx_ctcss\">\n";
+    // for (int i = 0; i < 39; i++) {
+    //     if (config.tone_tx == i)
+    //         webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
+    //     else
+    //         webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
+    // }
+    // webString += "</select></div>\n";
+    // webString += "</div>\n";
+
+    // webString += "<div class=\"form-group\">\n";
+    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS</label>\n";
+    // webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_ctcss\" id=\"rx_ctcss\">\n";
+    // for (int i = 0; i < 39; i++) {
+    //     if (config.tone_rx == i)
+    //         webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
+    //     else
+    //         webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
+    // }
+    // webString += "</select></div>\n";
     // webString += "</div>\n";
 
     String cmSelSqlT = "";
@@ -2313,21 +2252,21 @@ void handle_firmware() {
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
-    webString += " <b>(MODEL:SR_FRS_1W)</b>";
+    webString += " <b>(MODEL: SR_FRS_1W)</b>";
 #elif defined(USE_SA828)
-    webString += " <b>(MODEL:SA828_1.5W)</b>";
+    webString += " <b>(MODEL: SA828_1.5W)</b>";
 #elif defined(USE_SA818)
-    webString += " <b>(MODEL:SA818)</b>";
+    webString += " <b>(MODEL: SA818)</b>";
 #elif defined(USE_SA868)
-    webString += " <b>(MODEL:SA868)</b>";
+    webString += " <b>(MODEL: SA868)</b>";
 #endif
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
+    webString += "Developed by <b>LY3PH</b>\n<br />";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
     webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
