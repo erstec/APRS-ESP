@@ -593,17 +593,9 @@ void setHTML(byte page) {
         webString += "<div style=\"width:300px\"><b>Last Readings at " +
                      String(strTime) + "</b></div>\n";
 
-        webString +=
-#if defined(CONFIG_IDF_TARGET_ESP32)
-            "<div>CPU Temp: " + String((temprature_sens_read() - 32) / 1.8, 1) +
-#else
-            "<div>CPU Temp: " + String(temperatureRead(), 1) +
-#endif
-            "&deg;C</div> \n";
-        webString +=
-            "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
-        sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn),
-                minute(tn), second(tn));
+        webString += "<div>CPU Temp: " + String(temperatureRead(), 1) + "&deg;C</div> \n";
+        webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
+        sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn), minute(tn), second(tn));
         webString += "<div>System Uptime: " + String(strTime) + "</div> \n";
 
         webString += "</td></tr><tr><td>\n";
