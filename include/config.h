@@ -18,7 +18,7 @@ typedef struct Config_Struct {
     bool aprs;
     bool wifi_client;
     bool wifi;
-    char wifi_mode;  // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
+    uint8_t wifi_mode;  // WIFI_AP,WIFI_STA,WIFI_AP_STA,WIFI_OFF
     float gps_lat;
     float gps_lon;
     float gps_alt;
@@ -50,7 +50,7 @@ typedef struct Config_Struct {
     char tnc_btext[50];
     char tnc_comment[50];
     char aprs_object[10];
-    char wifi_power;
+    uint8_t wifi_power;
     uint16_t tx_timeslot;
     uint16_t digi_delay;
     bool input_hpf;

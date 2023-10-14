@@ -18,7 +18,6 @@
 #include <KISS.h>
 #include "webservice.h"
 #include <WiFiUdp.h>
-#include "ESP32Ping.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include "cppQueue.h"
@@ -181,7 +180,6 @@ IPAddress subnet(255, 255, 255, 0);
 int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
-unsigned long pingTimeout;
 
 static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
@@ -284,8 +282,50 @@ void aprs_msg_callback(struct AX25Msg *msg) {
 #ifdef USE_KISS
     kiss_messageCallback(ctx);
 #endif
+    // Prevent multiline messages
+    size_t crlf_pos = pkg.len;
+    for (int i = 0; i < pkg.len; i++) {
+        if (pkg.info[i] == '\n' || pkg.info[i] == '\r') {
+            crlf_pos = i;
+            break;
+        }
+    }
+
+    pkg.info[crlf_pos] = 0;
+    pkg.len = crlf_pos;
+
     PacketBuffer.push(&pkg);
 //TODO processPacket();
+    
+}
+
+void aprsTimeGet(String msg) {
+    // Try get time from APRS message
+    if (msg.length() < 10) return;
+    int etaPos = msg.indexOf('@');
+    if (etaPos < 0) {
+        etaPos = msg.indexOf('*');
+        if (etaPos < 0) return;
+    }
+    int tzpos = etaPos + 7;
+    if (tzpos > msg.length()) return;
+    if (msg[tzpos] != 'z') return;
+    String time = msg.substring(etaPos + 1, etaPos + 7); // mmhhss
+    int hh = time.substring(0, 2).toInt();
+    int mm = time.substring(2, 4).toInt();
+    int ss = time.substring(4, 6).toInt();
+
+    Serial.printf("APRS Time: %02d:%02d:%02d\r\n", hh, mm, ss);
+
+    // Serial.println("Setting up NTP");
+    // configTime(3600 * config.timeZone, 0, config.ntpServer);
+    // vTaskDelay(3000 / portTICK_PERIOD_MS);
+    // time_t systemTime;
+    // time(&systemTime);
+    // setTime(systemTime);
+    // if (systemUptime == 0) {
+    //     systemUptime = now();
+    // }
 }
 
 uint8_t gwRaw[PKGLISTSIZE][66];
@@ -327,15 +367,20 @@ boolean APRSConnect() {
             if (cnt > 50) return false;
         }
         //
-        if (config.aprs_ssid == 0) {
-            login = "user " + String(config.aprs_mycall) + " pass " +
-                    String(config.aprs_passcode) + " vers APRS-ESP V" +
-                    String(VERSION) + " filter " + String(config.aprs_filter);
+        if (strlen(config.aprs_object) >= 3) {
+            uint16_t passcode = aprsParse.passCode(config.aprs_object);
+            login = "user " + String(config.aprs_object) + " pass " + String(passcode, DEC) + " vers ESP32IGate V" + String(VERSION) + " filter " + String(config.aprs_filter);
         } else {
-            login = "user " + String(config.aprs_mycall) + "-" +
-                    String(config.aprs_ssid) + " pass " +
-                    String(config.aprs_passcode) + " vers APRS-ESP V" +
-                    String(VERSION) + " filter " + String(config.aprs_filter);
+            if (config.aprs_ssid == 0) {
+                login = "user " + String(config.aprs_mycall) + " pass " +
+                        String(config.aprs_passcode) + " vers APRS-ESP V" +
+                        String(VERSION) + " filter " + String(config.aprs_filter);
+            } else {
+                login = "user " + String(config.aprs_mycall) + "-" +
+                        String(config.aprs_ssid) + " pass " +
+                        String(config.aprs_passcode) + " vers APRS-ESP V" +
+                        String(VERSION) + " filter " + String(config.aprs_filter);
+            }
         }
         aprsClient.println(login);
         // Serial.println(login);
@@ -586,19 +631,19 @@ void setup()
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
-    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
     Serial.setRxBufferSize(256);
+    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
 
 #if defined(USE_TNC)
+    SerialTNC.setRxBufferSize(500);
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
                     SERIAL_TNC_TXPIN);
-    SerialTNC.setRxBufferSize(500);
 #endif
 
 #if defined(USE_GPS)
+    SerialGPS.setRxBufferSize(500);
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
                     SERIAL_GPS_TXPIN);
-    SerialGPS.setRxBufferSize(500);
 #endif
 
 #ifndef USE_ROTARY
@@ -739,8 +784,16 @@ String send_gps_location() {
     DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
 
-    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
+    // sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
+    //         lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    
+    if (strlen(config.aprs_object) >= 3) {
+        sprintf(loc, ")%s!%02d%02d.%02dN%c%03d%02d.%02dE%c",
+            config.aprs_object, lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    } else {
+        sprintf(loc, "!%02d%02d.%02dN%c%03d%02d.%02dE%c",
             lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    }
 
     if (config.aprs_ssid == 0)
         sprintf(strtmp, "%s>APESP1", config.aprs_mycall);
@@ -834,7 +887,7 @@ static uint8_t batteryPercentage = 0;
 #include <esp_adc_cal.h>
 uint8_t getBatteryPercentage() {
     esp_adc_cal_characteristics_t adc_chars;
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    // esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(ADC_BATTERY), &adc_chars);
     v += (v > 0 ? (BATT_OFFSET / 2) : 0);
     float battery_voltage = ((float)v / 1000) * 2;
@@ -1319,7 +1372,7 @@ void taskAPRS(void *pvParameters) {
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
 #ifdef DEBUG_TNC                
-                Serial.println("RX->RF: " + tnc2);
+                Serial.print("RX->RF: " + tnc2);
 #endif
 
                 // IGate Process
@@ -1394,6 +1447,7 @@ void taskAPRS(void *pvParameters) {
 long wifiTTL = 0;
 
 static bool wiFiActive = false;
+bool wifiConnected = false;
 
 void taskNetwork(void *pvParameters) {
     int c = 0;
@@ -1434,8 +1488,6 @@ void taskNetwork(void *pvParameters) {
         webService();
     }
 
-    pingTimeout = millis() + 10000;
-
     for (;;) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -1474,6 +1526,12 @@ void taskNetwork(void *pvParameters) {
                         continue;
                     }
 
+                    if (!wifiConnected) {
+                        if (WiFi.status() == WL_CONNECTED) {
+                            wifiConnected = true;
+                        }
+                    }
+
                     Serial.println("WiFi connected");
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
@@ -1498,7 +1556,6 @@ void taskNetwork(void *pvParameters) {
                     if (systemUptime == 0) {
                         systemUptime = now();
                     }
-                    pingTimeout = millis() + 2000;
                 }
 
                 if (config.aprs) {
@@ -1506,7 +1563,6 @@ void taskNetwork(void *pvParameters) {
                         APRSConnect();
                     } else {
                         if (aprsClient.available()) {
-                            pingTimeout = millis() + 300000; // Reset ping
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
@@ -1579,16 +1635,11 @@ void taskNetwork(void *pvParameters) {
                     }
                 }
 
-                if (millis() > pingTimeout) {
-                    pingTimeout = millis() + 300000;
-                    Serial.println("Ping GW to " + WiFi.gatewayIP().toString());
-                    if (ping_start(WiFi.gatewayIP(), 3, 0, 0, 5) == true) {
-                        Serial.println("Ping GW OK");
-                    } else {
-                        Serial.println("Ping GW Fail");
-                        WiFi.disconnect();
-                        wifiTTL = 0;
-                    }
+                if (WiFi.status() != WL_CONNECTED && wifiConnected) {
+                    Serial.println("WiFi disconnected");
+                    wifiConnected = false;
+                    WiFi.disconnect();
+                    wifiTTL = 0;
                 }
             }
         }

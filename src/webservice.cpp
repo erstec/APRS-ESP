@@ -1248,12 +1248,10 @@ void handle_service() {
         String(config.aprs_passcode) + "\" /></div>\n";
     webString += "</div>\n";
 
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS
-    // OBJECT</label>\n"; webString += "<div class=\"col-sm-3 col-xs-4\"><input
-    // class=\"form-control\" id=\"myobject\" name=\"myobject\" type=\"text\"
-    // value=\"" + String(config.aprs_object) + "\" /></div>\n"; webString +=
-    // "</div>\n";
+    webString += "<div class=\"form-group\">\n";
+	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS ITEM</label>\n";
+	webString += "<div class=\"col-sm-3 col-xs-4\"><input class=\"form-control\" id=\"myobject\" name=\"myobject\" type=\"text\" maxlength=\"9\" value=\"" + String(config.aprs_object) + "\" /></div>\n";
+	webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
     webString +=
@@ -1335,19 +1333,16 @@ void handle_service() {
     if (config.input_hpf) hpfFlage = "checked";
     webString += "<div class=\"form-group\">\n";
     webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">AF Input "
-        "HPF</label>\n";
+        "<label class=\"col-sm-4 col-xs-12 control-label\">AF Input BPF</label>\n";
     webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"hpfEnable\" name=\"hpfEnable\" type=\"checkbox\" value=\"OK\" " +
+        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"hpfEnable\" name=\"hpfEnable\" type=\"checkbox\" value=\"OK\" " +
         hpfFlage + "/></div>\n";
     webString += "</div>\n";
     String digiFlage = "";
     if (config.tnc_digi) digiFlage = "checked";
     webString += "<div class=\"form-group\">\n";
     webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi "
-        "Repeater</label>\n";
+        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Repeater</label>\n";
     webString +=
         "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
         "id=\"digiEnable\" name=\"digiEnable\" type=\"checkbox\" "
@@ -2112,7 +2107,7 @@ void handle_system() {
     webString += "<div class = \"col-pad\">\n<h3>WiFi Status</h3>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString += "<table border=\"0\" cellspacing=\"10\" cellpadding=\"10\">\n";
+    webString += "<table border=\"0\" >\n";
     webString += "<tr><td align=\"right\"><b>Mode:</b></td>\n";
     webString += "<td align=\"left\">";
     if (config.wifi_mode == WIFI_AP_FIX) {
@@ -2511,18 +2506,35 @@ void handle_configuration() {
             myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
         }
 
-        String path = "config.bin";
-        String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID);
-        String dataType = "text/plain";
+        // // BIN
+        // String path = "config.bin";
+        // String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID) + ".bin";
+        // String dataType = "text/plain";
+
+        // SPIFFS.begin(true);
+        // File myFile = SPIFFS.open("/" + path, "r");
+        // if (myFile) {
+        //     server.sendHeader("Content-Type", dataType);
+        //     server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
+        //     server.sendHeader("Connection", "close");
+        //     server.streamFile(myFile, "application/octet-stream");
+        //     myFile.close();
+        // }
+        // SPIFFS.end();
+
+        // JSON
+        String jsonPath = "config.json";
+        String jsonPathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID) + ".json";
+        String jsonDataType = "text/plain";
 
         SPIFFS.begin(true);
-        File myFile = SPIFFS.open("/" + path, "r");
-        if (myFile) {
-            server.sendHeader("Content-Type", dataType);
-            server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
+        File jsonFile = SPIFFS.open("/" + jsonPath, "r");
+        if (jsonFile) {
+            server.sendHeader("Content-Type", jsonDataType);
+            server.sendHeader("Content-Disposition", "attachment; filename=" + jsonPathOfFileDownload);
             server.sendHeader("Connection", "close");
-            server.streamFile(myFile, "application/octet-stream");
-            myFile.close();
+            server.streamFile(jsonFile, "application/octet-stream");
+            jsonFile.close();
         }
         SPIFFS.end();
     } else if (server.hasArg("restoreConfig")) {
@@ -2530,28 +2542,50 @@ void handle_configuration() {
         Serial.println(upload.filename);
         Serial.println(upload.totalSize);
         Serial.println(upload.status);
-        if (upload.totalSize != (sizeof(Configuration) + 1)) {
+        // if (upload.totalSize != (sizeof(Configuration) + 1)) {
+        //     Serial.println("Upload file size error!");
+        //     server.send(500, "text/plain", "Upload file size error!");
+        //     return;
+        // }
+        // //if (upload.status == UPLOAD_FILE_START) {
+        //     String filename = upload.filename;
+        //     filename = "config.bin";    // override filename
+        //     if (!filename.startsWith("/")) filename = "/" + filename;
+        //     Serial.print("handleFileUpload Name: "); Serial.println(filename);
+        //     SPIFFS.begin(true);
+        //     // SPIFFS.remove(filename);
+        //     fsUploadFile = SPIFFS.open(filename, "w");
+        //     filename = String();
+        // //} else if (upload.status == UPLOAD_FILE_WRITE) {
+        //     Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+        //     if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+        // //} else if (upload.status == UPLOAD_FILE_END) {
+        //     if (fsUploadFile) fsUploadFile.close();
+        //     Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+        //     SPIFFS.end();
+        // //}
+
+        if (upload.totalSize == 0) {
             Serial.println("Upload file size error!");
             server.send(500, "text/plain", "Upload file size error!");
             return;
         }
-        //if (upload.status == UPLOAD_FILE_START) {
-            String filename = upload.filename;
-            filename = "config.bin";    // override filename
-            if (!filename.startsWith("/")) filename = "/" + filename;
-            Serial.print("handleFileUpload Name: "); Serial.println(filename);
-            SPIFFS.begin(true);
-            // SPIFFS.remove(filename);
-            fsUploadFile = SPIFFS.open(filename, "w");
-            filename = String();
-        //} else if (upload.status == UPLOAD_FILE_WRITE) {
-            Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
-            if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
-        //} else if (upload.status == UPLOAD_FILE_END) {
-            if (fsUploadFile) fsUploadFile.close();
-            Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
-            SPIFFS.end();
-        //}
+
+        String filenameJson = upload.filename;
+        filenameJson = "config.json";    // override filename
+        if (!filenameJson.startsWith("/")) 
+            filenameJson = "/" + filenameJson;
+        Serial.print("handleFileUpload Name: "); Serial.println(filenameJson);
+        SPIFFS.begin(true);
+        // SPIFFS.remove(filenameJson);
+        fsUploadFile = SPIFFS.open(filenameJson, "w");
+        filenameJson = String();
+        Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+        if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+        if (fsUploadFile) fsUploadFile.close();
+        Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+        SPIFFS.end();
+
         LoadReConfig();
     }
 
@@ -2603,7 +2637,7 @@ void handle_configuration() {
 
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-2 col-xs-6 control-label\">CFG FILE</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
+    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" accept=\".json\" onchange='sub(this)' /></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
