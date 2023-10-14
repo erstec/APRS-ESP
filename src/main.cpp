@@ -931,7 +931,9 @@ void printPeriodicDebug() {
     batteryPercentage = getBatteryPercentage();
 #endif
     printTime();
+#if defined(ADC_BATTERY) || defined(USE_PMU)
     Serial.print("Bat: ");
+#endif
 #if defined(ADC_BATTERY)
     Serial.print(batteryVoltage);
     Serial.print("mV ");
@@ -940,7 +942,11 @@ void printPeriodicDebug() {
     Serial.print(batteryPercentage);
     Serial.print("%");
 #endif
+#if defined(ADC_BATTERY) || defined(USE_PMU)
     Serial.print(", lat: ");
+#else
+    Serial.print("Lat: ");
+#endif
     Serial.print(lat);
     Serial.print(" lon: ");
     Serial.print(lon);
