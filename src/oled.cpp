@@ -55,7 +55,8 @@ void OledStartup() {
 
     sprintf(buf, "Boot...");
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
-    display.print(buf);
+    display.println(buf);
+    display.print("RF init...");
 
     display.display();
 #endif
@@ -94,8 +95,19 @@ void OledUpdate(int batData, bool usbPlugged) {
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
     sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
-    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2), CHAR_HEIGHT * 2);   // center on the screen
+    display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2) , CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
+    // Timesync source
+    display.setCursor((display.width() / 2) + (strlen(buf) * CHAR_WIDTH / 2) + CHAR_WIDTH, CHAR_HEIGHT * 2);
+    if (timeSyncFlag == T_SYNC_NTP) {
+        display.print("NTP");
+    } else if (timeSyncFlag == T_SYNC_GPS) {
+        display.print("GPS");
+    } else if (timeSyncFlag == T_SYNC_APRS) {
+        display.print("APRS");
+    } else {
+        display.print("NO");
+    }
 
     display.setCursor(0, CHAR_HEIGHT * 2);
     display.print("B:");
