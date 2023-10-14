@@ -289,13 +289,13 @@ void aprsTimeGet(uint8_t *buf) {
     if (tzpos > msg.length()) return;
     if (msg[tzpos] != 'z') return;
     String time = msg.substring(etaPos + 1, etaPos + 7); // mmhhss
-    int hh = time.substring(0, 2).toInt();
-    int mm = time.substring(2, 4).toInt();
-    int ss = time.substring(4, 6).toInt();
+    int day = time.substring(0, 2).toInt();
+    int hour = time.substring(2, 4).toInt();
+    int min = time.substring(4, 6).toInt();
 
-    Serial.printf("APRS Time: %02d:%02d:%02d\r\n", hh, mm, ss);
+    Serial.printf("APRS Time: %02d %02d:%02d\r\n", day, hour, min);
 
-    if (timeSyncFlag == T_SYNC_NONE) {
+    if (config.synctime && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
         // setTime(hh, mm, ss, day(), month(), year());
         // timeSync = T_SYNC_APRS;
     }
@@ -1082,7 +1082,7 @@ void loop()
 
     if (millis() > TimeSyncPeriod) {
         TimeSyncPeriod = millis() + 600000; // 10 min
-        if (timeSyncFlag != T_SYNC_NONE) {
+        if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
             // Reset time sync flag
             timeSyncFlag = T_SYNC_NONE;
             Serial.println("TimeSync Flag Reset");

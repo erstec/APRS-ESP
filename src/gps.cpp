@@ -7,6 +7,7 @@
                     https://github.com/sh123/aprs_tracker
 */
 
+#include <WiFi.h>
 #include "gps.h"
 #include "smartBeaconing.h"
 #include "TinyGPS++.h"
@@ -112,7 +113,7 @@ void GpsUpdate() {
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
 
-            if (config.synctime && gps.time.isValid() && timeSyncFlag == T_SYNC_NONE) {
+            if (config.synctime && gps.time.isValid() && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
                 Serial.print("GPS Time: ");
                 Serial.print(gps.time.hour());
                 Serial.print(":");
