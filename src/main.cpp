@@ -896,7 +896,8 @@ static uint8_t batteryPercentage = 0;
 #include <esp_adc_cal.h>
 uint8_t getBatteryPercentage() {
     esp_adc_cal_characteristics_t adc_chars;
-    // esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    // esp_adc_cal_value_t val_type = 
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(ADC_BATTERY), &adc_chars);
     v += (v > 0 ? (BATT_OFFSET / 2) : 0);
     float battery_voltage = ((float)v / 1000) * 2;
