@@ -21,8 +21,8 @@ extern HardwareSerial SerialGPS;
 #define CONV_BUF_SIZE 15
 static char conv_buf[CONV_BUF_SIZE];
 
-char active_heuristic = H_OFF;
-char selected_heuristic = H_OFF;
+int8_t active_heuristic = H_OFF;
+int8_t selected_heuristic = H_OFF;
 
 // static bool gotGpsFix = false;
 
