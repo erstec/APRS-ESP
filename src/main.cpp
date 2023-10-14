@@ -1394,6 +1394,17 @@ void taskAPRS(void *pvParameters) {
                 Serial.print("RX->RF: " + tnc2);
 #endif
 
+                // store to log
+                char call[11];
+                if (incomingPacket.src.ssid > 0) {
+                    sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
+                } else {
+                    sprintf(call, "%s", incomingPacket.src.call);
+                }
+                
+                uint8_t type = pkgType((char *)incomingPacket.info);
+                pkgListUpdate(call, type);
+
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
                     int ret = igateProcess(incomingPacket);
@@ -1409,15 +1420,6 @@ void taskAPRS(void *pvParameters) {
                         Serial.print("RF->INET: ");
                         Serial.println(tnc2);
 #endif
-                        char call[11];
-                        if (incomingPacket.src.ssid > 0) {
-                            sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
-                        } else {
-                            sprintf(call, "%s", incomingPacket.src.call);
-                        }
-                        
-                        uint8_t type = pkgType((char *)incomingPacket.info);
-                        pkgListUpdate(call, type);
                     }
                 }
 
