@@ -139,6 +139,8 @@ void GpsUpdate() {
                     // adjustTime(config.timeZone * SECS_PER_HOUR);
                     
                     timeSyncFlag = T_SYNC_GPS;
+
+                    TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
                 }
             }
 

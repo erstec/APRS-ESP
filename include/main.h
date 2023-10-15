@@ -217,6 +217,7 @@ typedef enum {
 } teTimeSync;
 
 extern teTimeSync timeSyncFlag;
+extern long TimeSyncPeriod;
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);

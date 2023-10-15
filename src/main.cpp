@@ -319,6 +319,8 @@ void aprsTimeGet(uint8_t *buf) {
         settimeofday(&tv, &tz);
 
         timeSyncFlag = T_SYNC_APRS;
+
+        TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
     }
 }
 
@@ -1092,7 +1094,7 @@ void loop()
     }
 
     if (millis() > TimeSyncPeriod) {
-        TimeSyncPeriod = millis() + 600000; // 10 min
+        TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
         if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
             // Reset time sync flag
             timeSyncFlag = T_SYNC_NONE;
