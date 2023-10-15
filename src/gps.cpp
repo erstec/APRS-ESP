@@ -12,6 +12,7 @@
 #include "smartBeaconing.h"
 #include "TinyGPS++.h"
 #include "config.h"
+#include "TimeLib.h"
 
 // #define DEBUG_GPS
 
@@ -114,18 +115,31 @@ void GpsUpdate() {
             age = gps.location.age();
 
             if (config.synctime && gps.time.isValid() && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
-                Serial.print("GPS Time: ");
-                Serial.print(gps.time.hour());
-                Serial.print(":");
-                Serial.print(gps.time.minute());
-                Serial.print(":");
-                Serial.println(gps.time.second());
+                if (gps.time.hour() != 0 && gps.time.minute() != 0 && gps.time.second() != 0) {
+                    Serial.print("GPS Time: ");
+                    Serial.print(gps.time.hour());
+                    Serial.print(":");
+                    Serial.print(gps.time.minute());
+                    Serial.print(":");
+                    Serial.println(gps.time.second());
 
-                // time_t systemTime;
-                // time(&systemTime);
-                // setTime(systemTime);
+                    timeval tv;
+                    tv.tv_sec = gps.time.hour() * 3600 + gps.time.minute() * 60 + gps.time.second();
+                    tv.tv_usec = 0;
+                    
+                    timezone tz;
+                    tz.tz_minuteswest = config.timeZone * 60;
+                    tz.tz_dsttime = 0;
 
-                timeSyncFlag = T_SYNC_GPS;
+                    settimeofday(&tv, &tz);
+
+                    // set internal rtc time
+                    setTime(gps.time.hour(), gps.time.minute(), gps.time.second(), gps.date.day(), gps.date.month(), gps.date.year());
+                    // adjust locat timezone
+                    // adjustTime(config.timeZone * SECS_PER_HOUR);
+                    
+                    timeSyncFlag = T_SYNC_GPS;
+                }
             }
 
             updateDistance();

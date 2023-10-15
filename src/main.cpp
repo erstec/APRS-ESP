@@ -288,7 +288,7 @@ void aprsTimeGet(uint8_t *buf) {
     int tzpos = etaPos + 7;
     if (tzpos > msg.length()) return;
     if (msg[tzpos] != 'z') return;
-    String time = msg.substring(etaPos + 1, etaPos + 7); // mmhhss
+    String time = msg.substring(etaPos + 1, etaPos + 7); // ddhhmm
     int day = time.substring(0, 2).toInt();
     int hour = time.substring(2, 4).toInt();
     int min = time.substring(4, 6).toInt();
@@ -296,19 +296,30 @@ void aprsTimeGet(uint8_t *buf) {
     Serial.printf("APRS Time: %02d %02d:%02d\r\n", day, hour, min);
 
     if (config.synctime && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
-        // setTime(hh, mm, ss, day(), month(), year());
-        // timeSync = T_SYNC_APRS;
-    }
+        // set internal rtc time
+        struct tm tmstruct;
+        getLocalTime(&tmstruct, 0);
+        tmstruct.tm_mday = day;
+        tmstruct.tm_hour = hour;
+        tmstruct.tm_min = min;
+        tmstruct.tm_sec = 0;
+        time_t t = mktime(&tmstruct);
+        setTime(t);
+        // adjust locat timezone
+        // adjustTime(config.timeZone * SECS_PER_HOUR);
 
-    // Serial.println("Setting up NTP");
-    // configTime(3600 * config.timeZone, 0, config.ntpServer);
-    // vTaskDelay(3000 / portTICK_PERIOD_MS);
-    // time_t systemTime;
-    // time(&systemTime);
-    // setTime(systemTime);
-    // if (systemUptime == 0) {
-    //     systemUptime = now();
-    // }
+        timeval tv;
+        tv.tv_sec = hour * 3600 + min * 60;
+        tv.tv_usec = 0;
+        
+        timezone tz;
+        tz.tz_minuteswest = config.timeZone * 60;
+        tz.tz_dsttime = 0;
+
+        settimeofday(&tv, &tz);
+
+        timeSyncFlag = T_SYNC_APRS;
+    }
 }
 
 uint8_t *packetData;
@@ -1515,6 +1526,8 @@ void taskNetwork(void *pvParameters) {
     if (wiFiActive) {
         webService();
     }
+
+    configTime(3600 * config.timeZone, 0, config.ntpServer);
 
     for (;;) {
         // wdtNetworkTimer = millis();
