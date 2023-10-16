@@ -633,10 +633,8 @@ void setHTML(byte page) {
                 pkgList[i].calsign[10] = 0;
                 // time_t tm = pkgList[i].time;
                 localtime_r(&pkgList[i].time, &tmstruct);
-                String str = String(tmstruct.tm_hour, DEC) + ":" + String(tmstruct.tm_min, DEC) + ":" + String(tmstruct.tm_sec, DEC);
-                // String str = String(hour(pkgList[i].time), DEC) + ":" +
-                // String(minute(pkgList[i].time), DEC) + ":" +
-                // String(second(pkgList[i].time), DEC);
+                sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+                String str = String(strTime);
                 webString += "<tr><td align=\"left\">" + String(pkgList[i].calsign) + "</td><td align=\"right\">" + str + "</td></tr>";
             }
         }
@@ -2811,12 +2809,7 @@ void webService() {
                     disableCore0WDT();
                     disableCore1WDT();
                     disableLoopWDT();
-#ifdef I2S_INTERNAL
-#if defined(CONFIG_IDF_TARGET_ESP32)
-                    i2s_adc_disable(I2S_NUM_0);
-                    dac_i2s_disable();
-#endif /* CONFIG_IDF_TARGET_ESP32 */
-#endif
+
                     vTaskSuspend(taskAPRSHandle);
                     // vTaskSuspend(taskNetworkHandle);
                     config.aprs = false;

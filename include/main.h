@@ -221,6 +221,7 @@ extern long TimeSyncPeriod;
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
+void taskOLEDDisplay(void *pvParameters);
 int processPacket(String &tnc2);
 String send_gps_location();
 int digiProcess(AX25Msg &Packet);

@@ -67,6 +67,7 @@ void OledStartup() {
 void OledUpdate(int batData, bool usbPlugged) {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
+    if (AFSK_modem->hdlc.receiving) return;
 
     char buf[24];
 
@@ -93,10 +94,14 @@ void OledUpdate(int batData, bool usbPlugged) {
         display.print("No IP - WiFi OFF");
     }
 
-    // DateTime / Battey
+    // DateTime / Battery
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
-    sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+    if (tmstruct.tm_hour > 25 || tmstruct.tm_min > 60 || tmstruct.tm_sec > 60) {
+        sprintf(buf, "NO TIME");
+    } else {
+        sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+    }
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2) , CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
     // Timesync source

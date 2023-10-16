@@ -60,7 +60,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #include "Adafruit_GFX.h"
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSerifItalic9pt7b.h>
-#include <Fonts/Seven_Segment24pt7b.h>
+// #include <Fonts/Seven_Segment24pt7b.h>
 #if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
 #elif defined(USE_SCREEN_SH1106)
@@ -145,6 +145,7 @@ Configuration config;
 
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
+TaskHandle_t taskOLEDDisplayHandle;
 
 TelemetryType Telemetry[TLMLISTSIZE];
 
@@ -751,11 +752,20 @@ void setup()
     // Task 2
     xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
                             "taskNetwork", /* Name of the task */
-                            16384,         /* Stack size in words */
+                            (65536),       /* Stack size in words */
                             NULL,          /* Task input parameter */
                             1,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
                             1); /* Core where the task should run */
+
+    // Task 3
+    xTaskCreatePinnedToCore(taskOLEDDisplay,        /* Function to implement the task */
+                            "taskOLEDDisplay",      /* Name of the task */
+                            8192,                   /* Stack size in words */
+                            NULL,                   /* Task input parameter */
+                            1,                      /* Priority of the task */
+                            &taskOLEDDisplayHandle, /* Task handle. */
+                            1);                     /* Core where the task should run */
 }
 
 int pkgCount = 0;
@@ -981,18 +991,6 @@ void updateScreenAndGps(bool force) {
     if ((millis() - scrUpdTMO > 1000) || force) {
         scrUpdTMO = millis();
 
-        if (fwUpdateProcess) {
-            OledUpdateFWU();
-            return;
-        }
-
-#if defined(ADC_BATTERY)
-        OledUpdate(batteryPercentage, false);
-#elif defined(USE_PMU)
-        OledUpdate(batteryPercentage, vbusIn);
-#else
-        OledUpdate(-1, false);
-#endif
         printPeriodicDebug();
     }
 
@@ -1411,7 +1409,7 @@ void taskAPRS(void *pvParameters) {
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
 #ifdef DEBUG_TNC                
-                Serial.print("RX->RF: " + tnc2);
+                Serial.println("RX->RF: " + tnc2);
 #endif
 
                 // store to log
@@ -1690,5 +1688,27 @@ void taskNetwork(void *pvParameters) {
                 }
             }
         }
+    }
+}
+
+void taskOLEDDisplay(void *pvParameters) {
+
+    Serial.println("Task <OLEDDisplay> started");
+
+    for (;;) {
+        if (fwUpdateProcess) {
+            OledUpdateFWU();
+            continue;
+        }
+
+#if defined(ADC_BATTERY)
+        OledUpdate(batteryPercentage, false);
+#elif defined(USE_PMU)
+        OledUpdate(batteryPercentage, vbusIn);
+#else
+        OledUpdate(-1, false);
+#endif
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

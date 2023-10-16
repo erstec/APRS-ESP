@@ -114,7 +114,10 @@ void GpsUpdate() {
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
 
-            if (config.synctime && gps.time.isValid() && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
+            if (config.synctime 
+                && (gps.time.age() / 1000) < 10
+                && timeSyncFlag == T_SYNC_NONE
+                && WiFi.status() != WL_CONNECTED) {
                 if (gps.time.hour() != 0 && gps.time.minute() != 0 && gps.time.second() != 0) {
                     Serial.print("GPS Time: ");
                     Serial.print(gps.time.hour());
