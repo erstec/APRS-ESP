@@ -171,9 +171,10 @@ float conv_coords(float in_coords) {
 }
 
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS) {
-    *DD = (int)DD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
-    *MM = (int)((DD_DDDDD - *DD) * 60);         //получили минуты
-    *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
+    float uDD_DDDDD = abs(DD_DDDDD);  //получили модуль числа
+    *DD = (int)uDD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
+    *MM = (int)((uDD_DDDDD - *DD) * 60);         //получили минуты
+    *SS = ((uDD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
 }
 
 /*

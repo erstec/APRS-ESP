@@ -1238,10 +1238,7 @@ void handle_service() {
     webString +=
         "<label class=\"col-sm-4 col-xs-12 control-label\">APRS "
         "Server</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" "
-        "id=\"aprsHost\" name=\"aprsHost\" type=\"text\" value=\"" +
-        String(config.aprs_host) + "\" /></div>\n";
+    webString += "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsHost\" name=\"aprsHost\" type=\"text\" value=\"" + String(config.aprs_host) + "\" /></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";

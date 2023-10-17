@@ -813,18 +813,28 @@ String send_gps_location() {
     char strtmp[300], loc[30];
 
     memset(strtmp, 0, 300);
+    char lon_ew = 'E';
+    char lat_ns = 'N';
+
     DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
+
+    if (_lat < 0) {
+        lat_ns = 'S';
+    }
+    if (_lon < 0) {
+        lon_ew = 'W';
+    }
 
     // sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
     //         lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
     
     if (strlen(config.aprs_object) >= 3) {
-        sprintf(loc, ")%s!%02d%02d.%02dN%c%03d%02d.%02dE%c",
-            config.aprs_object, lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+        sprintf(loc, ")%s!%02d%02d.%02d%c%c%03d%02d.%02d%c%c",
+            config.aprs_object, lat_dd, lat_mm, lat_ss, lat_ns, config.aprs_table, lon_dd, lon_mm, lon_ss, lon_ew, config.aprs_symbol);
     } else {
-        sprintf(loc, "!%02d%02d.%02dN%c%03d%02d.%02dE%c",
-            lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+        sprintf(loc, "!%02d%02d.%02d%c%c%03d%02d.%02d%c%c",
+            lat_dd, lat_mm, lat_ss, lat_ns, config.aprs_table, lon_dd, lon_mm, lon_ss, lon_ew, config.aprs_symbol);
     }
 
     if (config.aprs_ssid == 0)
