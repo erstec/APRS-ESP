@@ -30,6 +30,13 @@ int igateProcess(AX25Msg &Packet) {
     }
 
     for (idx = 0; idx < Packet.rpt_count; idx++) {
+        if (!strncmp(&Packet.rpt_list[idx].call[0], "NOGATE", 6)) {
+            // digiLog.DropRx++;
+            return 0;
+        }
+    }  
+
+    for (idx = 0; idx < Packet.rpt_count; idx++) {
         if (!strncmp(&Packet.rpt_list[idx].call[0], "TCPIP", 5)) {
             // digiLog.DropRx++;
             return 0;
