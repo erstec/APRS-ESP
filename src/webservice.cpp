@@ -23,19 +23,11 @@ void setHTML(byte page) {
     webString = "<html><head>\n";
     webString += "<meta charset=\"utf-8\">";
     webString += "<style>\n";
-    webString +=
-        "body{background-color: #5f5f5f;font-family:\"Segoe "
-        "UI\",Tahoma,sans-serif;color:#f1f1f1;font-weight: normal;}\n";
-    webString +=
-        "hdr1{background-color: powderblue;color: white;vertical-align: "
-        "middle;text-align: center;font-size: 16px;font-weight: "
-        "bold;}\n</style>\n";
+    webString += "body{background-color: #5f5f5f;font-family:\"Segoe UI\",Tahoma,sans-serif;color:#f1f1f1;font-weight: normal;display: inline-block;}\n";
+    webString += "hdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n</style>\n";
     if (page == 0)
-        webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" +
-                     WiFi.localIP().toString() + "\"> \n";
-    webString +=
-        "<meta http - equiv = \"content-type\" content = \"text/html; "
-        "charset=utf-8\" / > \n";
+        webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
+    webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
 
     webString +=
         "<style>\n"
@@ -55,19 +47,19 @@ void setHTML(byte page) {
         "text-align: center;"
         "width: 33%;"
         "margin: 1px;"
-        "background: red;"
+        "background: darkgray;"
         "color: white;"
-        "font-size: 10px;"
+        "font-size: 15px;"
         "font-family:\"Segoe UI\",Tahoma,sans-serif;"
-        "border-radius: 5px;"
+        "border-radius: 0px;"
         "font-weight: bold;"
         "}\n";
     webString += F(".col-pad{width: 500px;}");
     webString +=
-        F(".form-control{display:block;width:100%;height:34px;padding:6px "
-          "12px;font-size:14px;line-height:1.42857143;color:#555;background-"
+        F(".form-control{display:block;width:100%;height:22px;padding:6px "
+          "5px;font-size:14px;line-height:1.42857143;color:#555;background-"
           "color:#fff;background-image:none;border:1px solid "
-          "#ccc;border-radius:4px;-webkit-box-shadow:inset 0 1px 1px "
+          "#ccc;border-radius:0px;-webkit-box-shadow:inset 0 1px 1px "
           "rgba(0,0,0,.075);box-shadow:inset 0 1px 1px "
           "rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out "
           ".15s,box-shadow ease-in-out .15s;transition:border-color "
@@ -75,8 +67,8 @@ void setHTML(byte page) {
     webString += F(
         ".btn{display:inline-block;margin-bottom:0;font-weight:400;text-align:"
         "center;vertical-align:middle;cursor:pointer;background-image:none;"
-        "border:1px solid transparent;white-space:nowrap;padding:6px "
-        "12px;font-size:14px;line-height:1.42857143;border-radius:4px;-webkit-"
+        "border:1px solid transparent;white-space:nowrap;padding:0px "
+        "10px;font-size:14px;line-height:1.42857143;border-radius:0px;-webkit-"
         "user-select:none;-moz-user-select:none;-ms-user-select:none;user-"
         "select:none}.btn:focus,.btn:active:focus,.btn.active:focus{outline:"
         "thin dotted;outline:5px auto "
@@ -130,8 +122,7 @@ void setHTML(byte page) {
     webString += F(
         ".nav{margin-bottom:0;padding-left:0;list-style:none}.nav>li{position:"
         "relative;display:block}.nav>li>a{position:relative;display:block;"
-        "padding:10px "
-        "15px}.nav>li>a:hover,.nav>li>a:focus{text-decoration:none;background-"
+        "padding:2px 10px}.nav>li>a:hover,.nav>li>a:focus{text-decoration:none;background-"
         "color:#eee}.nav>li.disabled>a{color:#999}.nav>li.disabled>a:hover,."
         "nav>li.disabled>a:focus{color:#999;text-decoration:none;background-"
         "color:transparent;cursor:not-allowed}.nav .open>a,.nav "
@@ -142,8 +133,7 @@ void setHTML(byte page) {
         "none}.nav-tabs{border-bottom:1px solid "
         "#ddd}.nav-tabs>li{float:left;margin-bottom:-1px}.nav-tabs>li>a{margin-"
         "right:0px;line-height:1.42857143;border:1px solid "
-        "#ddd;border-radius:10px 10px 0 "
-        "0}.nav-tabs>li>a:hover{border-color:#eee #eee "
+        "#ddd;border-radius:0 0 0 0;text-decoration:none;color:darkgray;}.nav-tabs>li>a:hover{border-color:#eee #eee "
         "#ddd}.nav-tabs>li.active>a,.nav-tabs>li.active>a:hover,.nav-tabs>li."
         "active>a:focus{color:#428bca;background-color:#e5e5e5;border:1px "
         "solid "
@@ -154,14 +144,13 @@ void setHTML(byte page) {
         ".dropdown-menu{top:auto;left:auto}@media "
         "(min-width:768px){.nav-tabs.nav-justified>li{display:table-cell;width:"
         "1%}.nav-tabs.nav-justified>li>a{margin-bottom:0}}.nav-tabs.nav-"
-        "justified>li>a{margin-right:0;border-radius:4px}.nav-tabs.nav-"
+        "justified>li>a{margin-right:0;border-radius:0px}.nav-tabs.nav-"
         "justified>.active>a,.nav-tabs.nav-justified>.active>a:hover,.nav-tabs."
         "nav-justified>.active>a:focus{border:1px solid #ddd}@media "
         "(min-width:768px){.nav-tabs.nav-justified>li>a{border-bottom:1px "
-        "solid #ddd;border-radius:4px 4px 0 "
-        "0}.nav-tabs.nav-justified>.active>a,.nav-tabs.nav-justified>.active>a:"
+        "solid #ddd;border-radius:0 0 0 0}.nav-tabs.nav-justified>.active>a,.nav-tabs.nav-justified>.active>a:"
         "hover,.nav-tabs.nav-justified>.active>a:focus{border-bottom-color:#"
-        "fff}}.nav-pills>li{float:left}.nav-pills>li>a{border-radius:4px}.nav-"
+        "fff}}.nav-pills>li{float:left}.nav-pills>li>a{border-radius:0px}.nav-"
         "pills>li+li{margin-left:2px}.nav-pills>li.active>a,.nav-pills>li."
         "active>a:hover,.nav-pills>li.active>a:focus{color:#fff;background-"
         "color:#428bca}.nav-stacked>li{float:none}.nav-stacked>li+li{margin-"
@@ -170,12 +159,11 @@ void setHTML(byte page) {
         "nav-justified>.dropdown .dropdown-menu{top:auto;left:auto}@media "
         "(min-width:768px){.nav-justified>li{display:table-cell;width:1%}.nav-"
         "justified>li>a{margin-bottom:0}}.nav-tabs-justified{border-bottom:0}."
-        "nav-tabs-justified>li>a{margin-right:0;border-radius:4px}.nav-tabs-"
+        "nav-tabs-justified>li>a{margin-right:0;border-radius:0px}.nav-tabs-"
         "justified>.active>a,.nav-tabs-justified>.active>a:hover,.nav-tabs-"
         "justified>.active>a:focus{border:1px solid #ddd}@media "
         "(min-width:768px){.nav-tabs-justified>li>a{border-bottom:1px solid "
-        "#ddd;border-radius:4px 4px 0 "
-        "0}.nav-tabs-justified>.active>a,.nav-tabs-justified>.active>a:hover,."
+        "#ddd;border-radius:0 0 0 0}.nav-tabs-justified>.active>a,.nav-tabs-justified>.active>a:hover,."
         "nav-tabs-justified>.active>a:focus{border-bottom-color:#fff}}.tab-"
         "content>.tab-pane{display:none}.tab-content>.active{display:block}."
         "nav-tabs "
@@ -199,10 +187,10 @@ void setHTML(byte page) {
         "input[type=checkbox],fieldset[disabled] .radio,fieldset[disabled] "
         ".radio-inline,fieldset[disabled] .checkbox,fieldset[disabled] "
         ".checkbox-inline{cursor:not-allowed}.input-sm{height:30px;padding:5px "
-        "10px;font-size:12px;line-height:1.5;border-radius:3px}select.input-sm{"
+        "10px;font-size:12px;line-height:1.5;border-radius:0px}select.input-sm{"
         "height:30px;line-height:30px}textarea.input-sm,select[multiple].input-"
         "sm{height:auto}.input-lg{height:46px;padding:10px "
-        "16px;font-size:18px;line-height:1.33;border-radius:6px}select.input-"
+        "16px;font-size:18px;line-height:1.33;border-radius:0px}select.input-"
         "lg{height:46px;line-height:46px}textarea.input-lg,select[multiple]."
         "input-lg{height:auto}.has-feedback{position:relative}.has-feedback "
         ".form-control{padding-right:42.5px}.has-feedback "
@@ -275,8 +263,8 @@ void setHTML(byte page) {
         ".col-xs-8,.col-sm-8,.col-md-8,.col-lg-8,.col-xs-9,.col-sm-9,.col-md-9,"
         ".col-lg-9,.col-xs-10,.col-sm-10,.col-md-10,.col-lg-10,.col-xs-11,.col-"
         "sm-11,.col-md-11,.col-lg-11,.col-xs-12,.col-sm-12,.col-md-12,.col-lg-"
-        "12{position:relative;min-height:1px;padding-left:15px;padding-right:"
-        "15px}.col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-"
+        "12{position:relative;min-height:1px;padding-left:10px;padding-right:"
+        "10px}.col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-"
         "xs-7,.col-xs-8,.col-xs-9,.col-xs-10,.col-xs-11,.col-xs-12{float:left}."
         "col-xs-12{width:100%}.col-xs-11{width:91.66666667%}.col-xs-10{width:"
         "83.33333333%}.col-xs-9{width:75%}.col-xs-8{width:66.66666667%}.col-xs-"
@@ -388,42 +376,7 @@ void setHTML(byte page) {
     webString += "</style>\n";
 
     if (page == 0) {
-        ///////////// google charts script
-        webString +=
-            "<script type=\"text/javascript\" "
-            "src=\"https://www.gstatic.com/charts/loader.js\"></script> \n";
-        webString += "   <script type=\"text/javascript\"> \n";
-        webString +=
-            "    google.charts.load('current', "
-            "{'packages':['corechart','gauge']}); \n";
-
-        webString += "    google.charts.setOnLoadCallback(drawBatGauge); \n";
-        webString += "function drawBatGauge() { \n";
-        webString +=
-            "      var data = google.visualization.arrayToDataTable([ \n";
-        webString += "        ['Label', 'Value'], ";
-        webString += "        ['dBm',  ";
-        webString += String(WiFi.RSSI());
-        webString += " ], ";
-        webString += "       ]); \n";
-        // setup the google chart options here
-        webString += "    var options = {";
-        webString += "width: 250, height: 150,";
-        webString += "min: -100, max: -30,";
-        webString += "redFrom: -100, redTo: -90,";
-        webString += "greenFrom: -90, greenTo: -60,";
-        webString += "yellowFrom: -60, yellowTo: -30,";
-        webString += "minorTicks: 5";
-        webString += "    }; \n";
-        webString +=
-            "   var chart = new "
-            "google.visualization.Gauge(document.getElementById('chart_"
-            "divGaugeBat')); \n";
-        webString += "  chart.draw(data, options); \n";
-        webString += "}\n\n";
-
-        ////////////
-        webString += "    </script> \n";
+        //
     } else if (page == 6) {
         webString +=
             "<script "
@@ -503,6 +456,13 @@ void setHTML(byte page) {
         webString += "}}, 1000);};\n";
         webString += "$('#vumeter').highcharts(json, chartFunction);\n";
         webString += "});\n</script>\n";
+    } else if (page == 7) {
+        webString += "<script language=\"JavaScript\">";
+        webString += "function showVoxValue(newValue) { document.getElementById(\"voxShow\").innerHTML=newValue; }";
+        webString += "\n</script>\n";
+        webString += "<script language=\"JavaScript\">";
+        webString += "function showSqlValue(newValue) { document.getElementById(\"sqlShow\").innerHTML=newValue; }";
+        webString += "\n</script>\n";
     }
 
     String strActiveP1 = "";
@@ -544,7 +504,7 @@ void setHTML(byte page) {
         "Internet Gateway - " +
         myStation + "</div>\n";
     webString += "<div class=\"row\">\n";
-    webString += "<ul class=\"nav nav-tabs\" style=\"margin: 25px;\">\n";
+    webString += "<ul class=\"nav nav-tabs\" style=\"margin-top: 10px;margin-bottom: 10px;\">\n";
     webString += "<li role=\"presentation\"" + strActiveP1 +
                  ">\n<a href=\"/\" id=\"channel_link_private_view\">Dash "
                  "Board</a>\n</li>\n";
@@ -590,27 +550,22 @@ void setHTML(byte page) {
                 tmstruct.tm_sec);
 
         webString += "<table style=\"width:800px;\"><tr><td>";
-        webString += "<div style=\"width:300px\"><b>Last Readings at " +
-                     String(strTime) + "</b></div>\n";
+        webString += "<div style=\"width:300px\"><b>Last Readings at " + String(strTime) + "</b></div>\n";
+
+        webString += "<span>&nbsp;</span>\n";
 
         webString += "<div>CPU Temp: " + String(temperatureRead(), 1) + "&deg;C</div> \n";
         webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
         sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn), minute(tn), second(tn));
         webString += "<div>System Uptime: " + String(strTime) + "</div> \n";
+        webString += "<div>WiFi RSSI: " + String(WiFi.RSSI()) + " dBm</div> \n";
+        webString += "<span>&nbsp;</span>\n";
 
-        webString += "</td></tr><tr><td>\n";
+        webString += "</td></tr>\n";
 
-        webString +=
-            "<table border=\"1\"><tr align=\"center\"><td class=\"hdr1\">WiFi "
-            "Signal</td></tr>\n";
-        webString +=
-            "<tr align=\"center\"><td><div id=\"chart_divGaugeBat\" "
-            "style=\"width: 250px;\"></div><br /><hr width=\"50%\"></td>\n";
-        webString += "</table>\n";
+        webString += "<tr align=\"left\"><td>\n";
 
-        webString += "</td></tr><br /><tr align=\"left\"><td>\n";
-
-        webString += "<div  class=\"L1\">STATISTICS</div>";
+        webString += "<div class=\"L1\">STATISTICS</div>";
         webString += "<table border=\"0\" width=\"180\">";
         webString += "<tr><td>ALL DATA</td><td align=\"right\">" +
                      String(status.allCount) + "</td></tr>";
@@ -623,8 +578,10 @@ void setHTML(byte page) {
         webString += "<tr><td>ERROR</td><td align=\"right\">" +
                      String(status.errorCount) + "</td></tr>";
         webString += "</table>";
-
-        webString += "<div  class=\"L1\">LAST STATION</div>";
+        
+        webString += "<span>&nbsp;</span>\n";
+        
+        webString += "<div class=\"L1\">LAST STATION</div>";
         webString += "<table border=\"0\" width=\"200\">";
         sort(pkgList, PKGLISTSIZE);
 
@@ -639,7 +596,10 @@ void setHTML(byte page) {
             }
         }
         webString += "</table>";
-        webString += "<div  class=\"L1\">TOP SEND</div>";
+
+        webString += "<span>&nbsp;</span>\n";
+
+        webString += "<div class=\"L1\">TOP SEND</div>";
         webString += "<table border=\"0\" width=\"200\">";
         sortPkgDesc(pkgList, PKGLISTSIZE);
         for (int i = 0; i < PKGLISTSIZE; i++) {
@@ -658,7 +618,6 @@ void setHTML(byte page) {
         // webString += "PAGE 2</br>\n";
     } else if (page == 2) {
         // webString += "PAGE 3</br>\n";
-    } else if (page == 3) {
     }
     // webString += "</body></html>\n";
 }
@@ -670,8 +629,7 @@ void setHTML(byte page) {
 void handle_root() {
     setHTML(0);
     webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
+    server.send(200, "text/html", webString);  // send to someones browser when asked
     delay(100);
     webString.clear();
 }
@@ -1010,17 +968,9 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
 
     //webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" "
-        "id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" "
-        "value=\"Save Config\" maxlength=\"80\"/></div>\n";
-    webString +=
-        "</form><form action=\"/default\" class=\"button_to\" "
-        "method=\"post\">\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-danger\" "
-        "id=\"default_form_sumbit\" name=\"commit\" type=\"submit\" "
-        "value=\"Default Config\" maxlength=\"80\"/></div>\n";
+    webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save Config\" maxlength=\"80\"/></div>\n";
+    webString += "</form><form action=\"/default\" class=\"button_to\" method=\"post\">\n";
+    webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-danger\" id=\"default_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Default Config - DON'T PRESS!\" maxlength=\"80\"/></div>\n";
     webString += "</form>\n";
 
     webString += "</div>\n";
@@ -1491,33 +1441,25 @@ void handle_radio() {
     webString += "<div>\n<h3>RF Module SA818/SA828/SA868</h3>\n";
 #endif
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">TX "
-        "Frequency</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
 #ifndef BAND_70CM
         "id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" "
 #else
         "id=\"tx_freq\" name=\"tx_freq\" min=\"430.0000\" max=\"440.0000\" "
 #endif /* BAND_70CM */
-        "step=\"0.0001\" value=\"" +
-        String(config.freq_tx, 4) + "\" /></div>\n";
+        "step=\"0.0125\" value=\"" + String(config.freq_tx, 4) + "\" /></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">RX "
-        "Frequency</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Frequency</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
 #ifndef BAND_70CM
         "id=\"rx_freq\" name=\"rx_freq\" min=\"144.0000\" max=\"148.0000\" "
 #else
         "id=\"rx_freq\" name=\"rx_freq\" min=\"432.0000\" max=\"433.0000\" "
 #endif /* BAND_70CM */
-        "step=\"0.0001\" value=\"" +
-        String(config.freq_rx, 4) + "\" /></div>\n";
+        "step=\"0.0125\" value=\"" + String(config.freq_rx, 4) + "\" /></div>\n";
     webString += "</div>\n";
 
     // webString += "<div class=\"form-group\">\n";
@@ -1590,27 +1532,15 @@ void handle_radio() {
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">VOLUME</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" "
-        "id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" "
-        "value=\"" +
-        String(config.volume) +
-        "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" +
-        String(config.volume) + "</span></div>\n";
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" value=\"" +
+        String(config.volume) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.volume) + "</span></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Level</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" "
-        "id=\"sql_level\" name=\"sql_level\" type=\"range\" min=\"0\" "
-        "max=\"8\" value=\"" +
-        String(config.sql_level) +
-        "\" onchange=\"showSqlValue(this.value)\" /><span id=\"sqlShow\">" +
-        String(config.sql_level) + "</span></div>\n";
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Level</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"sql_level\" name=\"sql_level\" type=\"range\" min=\"0\" max=\"8\" value=\"" +
+        String(config.sql_level) + "\" onchange=\"showSqlValue(this.value)\" /><span id=\"sqlShow\">" + String(config.sql_level) + "</span></div>\n";
     webString += "</div>\n";
 
     // webString += "<div class=\"form-group\">\n";
@@ -1849,9 +1779,7 @@ void handle_system() {
         "e8bddc60e73c1ec2475f827be36e1957af72e2ea/src/js/"
         "bootstrap-datetimepicker.js\"></script>";
 
-    webString +=
-        "<div class=\"col-pad\">\n<h3>TIME Setting</h3>\n<table "
-        "border=\"0\"><tr>";
+    webString += "<div class=\"col-pad\">\n<h3>Time Setting</h3>\n<table border=\"0\"><tr>";
 
     webString += "<div class=\"form-group\">\n";
     webString +=
@@ -2211,10 +2139,7 @@ void handle_test() {
     webString +=
         "<tr><td><div id=\"vumeter\" style=\"width: 300px; height: 200px; "
         "margin: 10px;\"></div></td>\n";
-    webString +=
-        "<tr><td><div style=\"margin: 15px;\">Terminal<br /><textarea "
-        "id=\"raw_txt\" name=\"raw_txt\" rows=\"25\" cols=\"80\" "
-        "/></textarea></div></td></tr>\n";
+    webString += "<tr><td><div style=\"margin: 15px;\">Terminal<br /><textarea id=\"raw_txt\" name=\"raw_txt\" rows=\"25\" cols=\"80\" /></textarea></div></td></tr>\n";
     webString += "</table>\n";
 
     webString += "</body></html>\n";
@@ -2232,10 +2157,7 @@ void handle_firmware() {
     // webMessage = "";
     setHTML(5);
 
-    webString +=
-        "<script "
-        "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
-        "jquery.min.js'></script>\n";
+    webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
@@ -2250,16 +2172,17 @@ void handle_firmware() {
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
-    webString +=
-        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "Chip ID: <b>" + String(strCID) + "</b>\n<hr>";
-    webString += "Developed by <b>LY3PH</b>\n<br />";
+    webString += "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
+    webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
+    webString += "<hr>";
+    webString += "Maintained by <b>LY3PH</b>\n<br />";
+    webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
     webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
 
     webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
+    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FW File</label>\n";
     webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
     // webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input'
     // for='file'>   Choose file...</label></div>\n"; webString += "<div
@@ -2269,7 +2192,7 @@ void handle_firmware() {
 
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
+    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Update FW'></div>\n";
     webString += "</div>\n";
 
     webString += "<div class=\"form-group\">\n";
@@ -2302,7 +2225,7 @@ void handle_firmware() {
         "xhr.upload.addEventListener('progress', function(evt) {"
         "if (evt.lengthComputable) {"
         "var per = evt.loaded / evt.total;"
-        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+        "$('#prg').html('Uploading FW: ' + Math.round(per*100) + '%');"
         "$('#bar').css('width',Math.round(per*100) + '%');"
         "}"
         "}, false);"
@@ -2319,97 +2242,6 @@ void handle_firmware() {
 
     webString += "</body></html>\n";
     server.send(200, "text/html", webString);
-
-    delay(100);
-    webString.clear();
-}
-
-void handle_upgrade() {
-    char strCID[50];
-    uint64_t chipid = ESP.getEfuseMac();
-    sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
-    webString = "<html><body>";
-    // setHTML(5);
-
-    webString +=
-        "<script "
-        "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
-        "jquery.min.js'></script>\n";
-    webString += "<b>Current Hardware Version:</b>" + String(BOARD_NAME) + "\n<br/>";
-    webString +=
-        "<b>Current Firmware Version:</b> V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "<b>Develop by:</b> LY3PH\n<br />";
-    webString += "<b>Chip ID:</b> " + String(strCID) + "\n<hr>";
-    webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
-    webString +=
-        "<form method='POST' action='#' enctype='multipart/form-data' "
-        "id='upload_form' class=\"form-horizontal\">\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-2 col-xs-6 control-label\">FILE</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" "
-        "type=\"file\" onchange='sub(this)' /></div>\n";
-    // webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input'
-    // for='file'>   Choose file...</label></div>\n"; webString += "<div
-    // class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\"
-    // id=\"update_sumbit\" value='Firmware Update'></div>\n";
-    webString += "</div>\n";
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn "
-        "btn-danger\" id=\"update_sumbit\" value='Firmware Update'></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div id='prg'></div>\n";
-    webString += "<br><div id='prgbar'><div id='bar'></div></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-    webString +=
-        "<script>"
-        "function sub(obj){"
-        "var fileName = obj.value.split('\\\\');"
-        "document.getElementById('file-input').innerHTML = '   '+ "
-        "fileName[fileName.length-1];"
-        "};"
-        "$('form').submit(function(e){"
-        "e.preventDefault();"
-        "var form = $('#upload_form')[0];"
-        "var data = new FormData(form);"
-        "$.ajax({"
-        "url: '/update',"
-        "type: 'POST',"
-        "data: data,"
-        "contentType: false,"
-        "processData:false,"
-        "xhr: function() {"
-        "var xhr = new window.XMLHttpRequest();"
-        "xhr.upload.addEventListener('progress', function(evt) {"
-        "if (evt.lengthComputable) {"
-        "var per = evt.loaded / evt.total;"
-        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-        "$('#bar').css('width',Math.round(per*100) + '%');"
-        "}"
-        "}, false);"
-        "return xhr;"
-        "},"
-        "success:function(d, s) {"
-        "console.log('success!') "
-        "},"
-        "error: function (a, b, c) {"
-        "}"
-        "});"
-        "});"
-        "</script>";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
 
     delay(100);
     webString.clear();
@@ -2541,9 +2373,10 @@ void handle_configuration() {
 #endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "Developed by: <b>LY3PH</b>\n<br />";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
+    webString += "<hr>";
+    webString += "Maintained by <b>LY3PH</b>\n<br />";
     webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
@@ -2782,9 +2615,8 @@ void webService() {
     server.on("/test", handle_test);
     server.on("/realtime", handle_realtime);
     server.on("/firmware", handle_firmware);
-    server.on("/upgrade", handle_upgrade);
     server.on("/configuration", handle_configuration);
-    /*handling uploading firmware file */
+    /* handling uploading firmware file */
     server.on(
         "/update", HTTP_POST,
         []() {
@@ -2811,6 +2643,7 @@ void webService() {
                     // vTaskSuspend(taskNetworkHandle);
                     config.aprs = false;
                     config.tnc = false;
+
 #ifndef I2S_INTERNAL
                     AFSK_TimerEnable(false);
 #endif

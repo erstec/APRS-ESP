@@ -752,7 +752,7 @@ void setup()
     // Task 2
     xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
                             "taskNetwork", /* Name of the task */
-                            (65536),       /* Stack size in words */
+                            (32768),       /* Stack size in words */
                             NULL,          /* Task input parameter */
                             1,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
@@ -1004,6 +1004,8 @@ void updateScreenAndGps(bool force) {
         printPeriodicDebug();
     }
 
+    if (fwUpdateProcess) return;
+
     // If startup dealy not expired
     if (!gpsUnlock) {
         if ((long)millis() - gpsUpdTMO < 0) {
@@ -1095,43 +1097,46 @@ long TimeSyncPeriod = 0;
 void loop()
 {
     vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
-    if (millis() > timeCheck) {
-        timeCheck = millis() + 10000;
-        if (ESP.getFreeHeap() < 60000) esp_restart();
-        // Serial.println(String(ESP.getFreeHeap()));
-    }
-
-    if (millis() > TimeSyncPeriod) {
-        TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
-        if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
-            // Reset time sync flag
-            timeSyncFlag = T_SYNC_NONE;
-            Serial.println("TimeSync Flag Reset");
+    if (!fwUpdateProcess) {
+        if (millis() > timeCheck) {
+            timeCheck = millis() + 10000;
+            if (ESP.getFreeHeap() < 60000) esp_restart();
+            // Serial.println(String(ESP.getFreeHeap()));
         }
-    }
+
+        if (millis() > TimeSyncPeriod) {
+            TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
+            if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
+                // Reset time sync flag
+                timeSyncFlag = T_SYNC_NONE;
+                Serial.println("TimeSync Flag Reset");
+            }
+        }
 #ifdef USE_RF
 #ifdef DEBUG_RF
 #ifdef USE_SA828
-    if (SerialRF.available()) {
-        Serial.print(SerialRF.readString());
-    }
+        if (SerialRF.available()) {
+            Serial.print(SerialRF.readString());
+        }
 #endif
 #endif
 #endif
-    if (AFSKInitAct == true) {
+        if (AFSKInitAct == true) {
 #ifdef USE_RF
-        AFSK_Poll(true);
+            AFSK_Poll(true);
 #else
-        AFSK_Poll(false, LOW);
+            AFSK_Poll(false, LOW);
 #endif
 #ifdef USE_GPS
-        // if (SerialGPS.available()) {
-        //     String gpsData = SerialGPS.readStringUntil('\n');
-        //     Serial.print(gpsData);
-        // }
+            // if (SerialGPS.available()) {
+            //     String gpsData = SerialGPS.readStringUntil('\n');
+            //     Serial.print(gpsData);
+            // }
 #endif
-    }
+        }
 
+    } // if (!fwUpdateProcess)
+        
     bool update_screen = RotaryProcess();
 
     // if (send_aprs_update) {
@@ -1139,8 +1144,10 @@ void loop()
     //     // send_aprs_update = false;    // moved to APRS task
     // }
     // if (update_screen) OledUpdate();
-
+    
     updateScreenAndGps(update_screen);
+
+    if (fwUpdateProcess) return;
 
     uint8_t bootPin2 = HIGH;
 #ifndef USE_ROTARY
