@@ -18,7 +18,6 @@
 #include <KISS.h>
 #include "webservice.h"
 #include <WiFiUdp.h>
-#include "ESP32Ping.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include "cppQueue.h"
@@ -61,7 +60,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #include "Adafruit_GFX.h"
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSerifItalic9pt7b.h>
-#include <Fonts/Seven_Segment24pt7b.h>
+// #include <Fonts/Seven_Segment24pt7b.h>
 #if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
 #elif defined(USE_SCREEN_SH1106)
@@ -146,6 +145,7 @@ Configuration config;
 
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
+TaskHandle_t taskOLEDDisplayHandle;
 
 TelemetryType Telemetry[TLMLISTSIZE];
 
@@ -181,7 +181,8 @@ IPAddress subnet(255, 255, 255, 0);
 int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
-unsigned long pingTimeout;
+
+teTimeSync timeSyncFlag = T_SYNC_NONE;
 
 static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
@@ -276,6 +277,54 @@ bool pkgTxSend() {
     return false;
 }
 
+void aprsTimeGet(uint8_t *buf) {
+    String msg = String((char *)buf);
+    // Try get time from APRS message
+    if (msg.length() < 10) return;
+    int etaPos = msg.indexOf('@');
+    if (etaPos < 0) {
+        etaPos = msg.indexOf('*');
+        if (etaPos < 0) return;
+    }
+    int tzpos = etaPos + 7;
+    if (tzpos > msg.length()) return;
+    if (msg[tzpos] != 'z') return;
+    String time = msg.substring(etaPos + 1, etaPos + 7); // ddhhmm
+    int day = time.substring(0, 2).toInt();
+    int hour = time.substring(2, 4).toInt();
+    int min = time.substring(4, 6).toInt();
+
+    Serial.printf("APRS Time: %02d %02d:%02d\r\n", day, hour, min);
+
+    if (config.synctime && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
+        // set internal rtc time
+        struct tm tmstruct;
+        getLocalTime(&tmstruct, 0);
+        tmstruct.tm_mday = day;
+        tmstruct.tm_hour = hour;
+        tmstruct.tm_min = min;
+        tmstruct.tm_sec = 0;
+        time_t t = mktime(&tmstruct);
+        setTime(t);
+        // adjust locat timezone
+        // adjustTime(config.timeZone * SECS_PER_HOUR);
+
+        timeval tv;
+        tv.tv_sec = hour * 3600 + min * 60;
+        tv.tv_usec = 0;
+        
+        timezone tz;
+        tz.tz_minuteswest = config.timeZone * 60;
+        tz.tz_dsttime = 0;
+
+        settimeofday(&tv, &tz);
+
+        timeSyncFlag = T_SYNC_APRS;
+
+        TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
+    }
+}
+
 uint8_t *packetData;
 
 void aprs_msg_callback(struct AX25Msg *msg) {
@@ -284,8 +333,22 @@ void aprs_msg_callback(struct AX25Msg *msg) {
 #ifdef USE_KISS
     kiss_messageCallback(ctx);
 #endif
+    // Prevent multiline messages
+    size_t crlf_pos = pkg.len;
+    for (int i = 0; i < pkg.len; i++) {
+        if (pkg.info[i] == '\n' || pkg.info[i] == '\r') {
+            crlf_pos = i;
+            break;
+        }
+    }
+
+    pkg.info[crlf_pos] = 0;
+    pkg.len = crlf_pos;
+
     PacketBuffer.push(&pkg);
 //TODO processPacket();
+    
+    aprsTimeGet(pkg.info);
 }
 
 uint8_t gwRaw[PKGLISTSIZE][66];
@@ -327,15 +390,20 @@ boolean APRSConnect() {
             if (cnt > 50) return false;
         }
         //
-        if (config.aprs_ssid == 0) {
-            login = "user " + String(config.aprs_mycall) + " pass " +
-                    String(config.aprs_passcode) + " vers APRS-ESP V" +
-                    String(VERSION) + " filter " + String(config.aprs_filter);
+        if (strlen(config.aprs_object) >= 3) {
+            uint16_t passcode = aprsParse.passCode(config.aprs_object);
+            login = "user " + String(config.aprs_object) + " pass " + String(passcode, DEC) + " vers ESP32IGate V" + String(VERSION) + " filter " + String(config.aprs_filter);
         } else {
-            login = "user " + String(config.aprs_mycall) + "-" +
-                    String(config.aprs_ssid) + " pass " +
-                    String(config.aprs_passcode) + " vers APRS-ESP V" +
-                    String(VERSION) + " filter " + String(config.aprs_filter);
+            if (config.aprs_ssid == 0) {
+                login = "user " + String(config.aprs_mycall) + " pass " +
+                        String(config.aprs_passcode) + " vers APRS-ESP V" +
+                        String(VERSION) + " filter " + String(config.aprs_filter);
+            } else {
+                login = "user " + String(config.aprs_mycall) + "-" +
+                        String(config.aprs_ssid) + " pass " +
+                        String(config.aprs_passcode) + " vers APRS-ESP V" +
+                        String(VERSION) + " filter " + String(config.aprs_filter);
+            }
         }
         aprsClient.println(login);
         // Serial.println(login);
@@ -586,19 +654,19 @@ void setup()
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
-    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
     Serial.setRxBufferSize(256);
+    Serial.begin(SERIAL_DEBUG_BAUD);  // debug
 
 #if defined(USE_TNC)
+    SerialTNC.setRxBufferSize(500);
     SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
                     SERIAL_TNC_TXPIN);
-    SerialTNC.setRxBufferSize(500);
 #endif
 
 #if defined(USE_GPS)
+    SerialGPS.setRxBufferSize(500);
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
                     SERIAL_GPS_TXPIN);
-    SerialGPS.setRxBufferSize(500);
 #endif
 
 #ifndef USE_ROTARY
@@ -684,11 +752,20 @@ void setup()
     // Task 2
     xTaskCreatePinnedToCore(taskNetwork,   /* Function to implement the task */
                             "taskNetwork", /* Name of the task */
-                            16384,         /* Stack size in words */
+                            (32768),       /* Stack size in words */
                             NULL,          /* Task input parameter */
                             1,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
                             1); /* Core where the task should run */
+
+    // Task 3
+    xTaskCreatePinnedToCore(taskOLEDDisplay,        /* Function to implement the task */
+                            "taskOLEDDisplay",      /* Name of the task */
+                            8192,                   /* Stack size in words */
+                            NULL,                   /* Task input parameter */
+                            1,                      /* Priority of the task */
+                            &taskOLEDDisplayHandle, /* Task handle. */
+                            1);                     /* Core where the task should run */
 }
 
 int pkgCount = 0;
@@ -736,11 +813,29 @@ String send_gps_location() {
     char strtmp[300], loc[30];
 
     memset(strtmp, 0, 300);
+    char lon_ew = 'E';
+    char lat_ns = 'N';
+
     DD_DDDDDtoDDMMSS(_lat, &lat_dd, &lat_mm, &lat_ss);
     DD_DDDDDtoDDMMSS(_lon, &lon_dd, &lon_mm, &lon_ss);
 
-    sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
-            lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    if (_lat < 0) {
+        lat_ns = 'S';
+    }
+    if (_lon < 0) {
+        lon_ew = 'W';
+    }
+
+    // sprintf(loc, "=%02d%02d.%02dN%c%03d%02d.%02dE%c", 
+    //         lat_dd, lat_mm, lat_ss, config.aprs_table, lon_dd, lon_mm, lon_ss, config.aprs_symbol);
+    
+    if (strlen(config.aprs_object) >= 3) {
+        sprintf(loc, ")%s!%02d%02d.%02d%c%c%03d%02d.%02d%c%c",
+            config.aprs_object, lat_dd, lat_mm, lat_ss, lat_ns, config.aprs_table, lon_dd, lon_mm, lon_ss, lon_ew, config.aprs_symbol);
+    } else {
+        sprintf(loc, "!%02d%02d.%02d%c%c%03d%02d.%02d%c%c",
+            lat_dd, lat_mm, lat_ss, lat_ns, config.aprs_table, lon_dd, lon_mm, lon_ss, lon_ew, config.aprs_symbol);
+    }
 
     if (config.aprs_ssid == 0)
         sprintf(strtmp, "%s>APESP1", config.aprs_mycall);
@@ -834,7 +929,8 @@ static uint8_t batteryPercentage = 0;
 #include <esp_adc_cal.h>
 uint8_t getBatteryPercentage() {
     esp_adc_cal_characteristics_t adc_chars;
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
+    // esp_adc_cal_value_t val_type = 
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
     uint32_t v = esp_adc_cal_raw_to_voltage(analogRead(ADC_BATTERY), &adc_chars);
     v += (v > 0 ? (BATT_OFFSET / 2) : 0);
     float battery_voltage = ((float)v / 1000) * 2;
@@ -869,7 +965,9 @@ void printPeriodicDebug() {
     batteryPercentage = getBatteryPercentage();
 #endif
     printTime();
+#if defined(ADC_BATTERY) || defined(USE_PMU)
     Serial.print("Bat: ");
+#endif
 #if defined(ADC_BATTERY)
     Serial.print(batteryVoltage);
     Serial.print("mV ");
@@ -878,7 +976,11 @@ void printPeriodicDebug() {
     Serial.print(batteryPercentage);
     Serial.print("%");
 #endif
+#if defined(ADC_BATTERY) || defined(USE_PMU)
     Serial.print(", lat: ");
+#else
+    Serial.print("Lat: ");
+#endif
     Serial.print(lat);
     Serial.print(" lon: ");
     Serial.print(lon);
@@ -899,20 +1001,10 @@ void updateScreenAndGps(bool force) {
     if ((millis() - scrUpdTMO > 1000) || force) {
         scrUpdTMO = millis();
 
-        if (fwUpdateProcess) {
-            OledUpdateFWU();
-            return;
-        }
-
-#if defined(ADC_BATTERY)
-        OledUpdate(batteryPercentage, false);
-#elif defined(USE_PMU)
-        OledUpdate(batteryPercentage, vbusIn);
-#else
-        OledUpdate(-1, false);
-#endif
         printPeriodicDebug();
     }
+
+    if (fwUpdateProcess) return;
 
     // If startup dealy not expired
     if (!gpsUnlock) {
@@ -1000,38 +1092,51 @@ long sendTimer = 0;
 bool AFSKInitAct = false;
 int btn_count = 0;
 long timeCheck = 0;
+long TimeSyncPeriod = 0;
 
 void loop()
 {
     vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
-    if (millis() > timeCheck) {
-        timeCheck = millis() + 10000;
-        if (ESP.getFreeHeap() < 60000) esp_restart();
-        // Serial.println(String(ESP.getFreeHeap()));
-    }
+    if (!fwUpdateProcess) {
+        if (millis() > timeCheck) {
+            timeCheck = millis() + 10000;
+            if (ESP.getFreeHeap() < 60000) esp_restart();
+            // Serial.println(String(ESP.getFreeHeap()));
+        }
+
+        if (millis() > TimeSyncPeriod) {
+            TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
+            if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
+                // Reset time sync flag
+                timeSyncFlag = T_SYNC_NONE;
+                Serial.println("TimeSync Flag Reset");
+            }
+        }
 #ifdef USE_RF
 #ifdef DEBUG_RF
 #ifdef USE_SA828
-    if (SerialRF.available()) {
-        Serial.print(SerialRF.readString());
-    }
+        if (SerialRF.available()) {
+            Serial.print(SerialRF.readString());
+        }
 #endif
 #endif
 #endif
-    if (AFSKInitAct == true) {
+        if (AFSKInitAct == true) {
 #ifdef USE_RF
-        AFSK_Poll(true);
+            AFSK_Poll(true);
 #else
-        AFSK_Poll(false, LOW);
+            AFSK_Poll(false, LOW);
 #endif
 #ifdef USE_GPS
-        // if (SerialGPS.available()) {
-        //     String gpsData = SerialGPS.readStringUntil('\n');
-        //     Serial.print(gpsData);
-        // }
+            // if (SerialGPS.available()) {
+            //     String gpsData = SerialGPS.readStringUntil('\n');
+            //     Serial.print(gpsData);
+            // }
 #endif
-    }
+        }
 
+    } // if (!fwUpdateProcess)
+        
     bool update_screen = RotaryProcess();
 
     // if (send_aprs_update) {
@@ -1039,8 +1144,10 @@ void loop()
     //     // send_aprs_update = false;    // moved to APRS task
     // }
     // if (update_screen) OledUpdate();
-
+    
     updateScreenAndGps(update_screen);
+
+    if (fwUpdateProcess) return;
 
     uint8_t bootPin2 = HIGH;
 #ifndef USE_ROTARY
@@ -1322,6 +1429,17 @@ void taskAPRS(void *pvParameters) {
                 Serial.println("RX->RF: " + tnc2);
 #endif
 
+                // store to log
+                char call[11];
+                if (incomingPacket.src.ssid > 0) {
+                    sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
+                } else {
+                    sprintf(call, "%s", incomingPacket.src.call);
+                }
+                
+                uint8_t type = pkgType((char *)incomingPacket.info);
+                pkgListUpdate(call, type);
+
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
                     int ret = igateProcess(incomingPacket);
@@ -1337,15 +1455,6 @@ void taskAPRS(void *pvParameters) {
                         Serial.print("RF->INET: ");
                         Serial.println(tnc2);
 #endif
-                        char call[11];
-                        if (incomingPacket.src.ssid > 0) {
-                            sprintf(call, "%s-%d", incomingPacket.src.call, incomingPacket.src.ssid);
-                        } else {
-                            sprintf(call, "%s", incomingPacket.src.call);
-                        }
-                        
-                        uint8_t type = pkgType((char *)incomingPacket.info);
-                        pkgListUpdate(call, type);
                     }
                 }
 
@@ -1394,6 +1503,7 @@ void taskAPRS(void *pvParameters) {
 long wifiTTL = 0;
 
 static bool wiFiActive = false;
+bool wifiConnected = false;
 
 void taskNetwork(void *pvParameters) {
     int c = 0;
@@ -1434,7 +1544,7 @@ void taskNetwork(void *pvParameters) {
         webService();
     }
 
-    pingTimeout = millis() + 10000;
+    configTime(3600 * config.timeZone, 0, config.ntpServer);
 
     for (;;) {
         // wdtNetworkTimer = millis();
@@ -1474,6 +1584,12 @@ void taskNetwork(void *pvParameters) {
                         continue;
                     }
 
+                    if (!wifiConnected) {
+                        if (WiFi.status() == WL_CONNECTED) {
+                            wifiConnected = true;
+                        }
+                    }
+
                     Serial.println("WiFi connected");
                     Serial.print("IP address: ");
                     Serial.println(WiFi.localIP());
@@ -1485,20 +1601,23 @@ void taskNetwork(void *pvParameters) {
 #endif
                 }
             } else {
-                if (millis() > NTP_Timeout) {
+                if (millis() > NTP_Timeout) {                    
                     NTP_Timeout = millis() + 86400000;
-                    // Serial.println("Config NTP");
-                    // setSyncProvider(getNtpTime);
-                    Serial.println("Setting up NTP");
-                    configTime(3600 * config.timeZone, 0, config.ntpServer);
-                    vTaskDelay(3000 / portTICK_PERIOD_MS);
-                    time_t systemTime;
-                    time(&systemTime);
-                    setTime(systemTime);
-                    if (systemUptime == 0) {
-                        systemUptime = now();
+                    if (config.synctime) {
+                        // Serial.println("Config NTP");
+                        // setSyncProvider(getNtpTime);
+                        Serial.println("Setting up NTP");
+                        configTime(3600 * config.timeZone, 0, config.ntpServer);
+                        vTaskDelay(3000 / portTICK_PERIOD_MS);
+                        time_t systemTime;
+                        time(&systemTime);
+                        setTime(systemTime);
+                        if (systemUptime == 0) {
+                            systemUptime = now();
+                        }
+
+                        timeSyncFlag = T_SYNC_NTP;
                     }
-                    pingTimeout = millis() + 2000;
                 }
 
                 if (config.aprs) {
@@ -1506,7 +1625,6 @@ void taskNetwork(void *pvParameters) {
                         APRSConnect();
                     } else {
                         if (aprsClient.available()) {
-                            pingTimeout = millis() + 300000; // Reset ping
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
                             printTime();
@@ -1579,18 +1697,35 @@ void taskNetwork(void *pvParameters) {
                     }
                 }
 
-                if (millis() > pingTimeout) {
-                    pingTimeout = millis() + 300000;
-                    Serial.println("Ping GW to " + WiFi.gatewayIP().toString());
-                    if (ping_start(WiFi.gatewayIP(), 3, 0, 0, 5) == true) {
-                        Serial.println("Ping GW OK");
-                    } else {
-                        Serial.println("Ping GW Fail");
-                        WiFi.disconnect();
-                        wifiTTL = 0;
-                    }
+                if (WiFi.status() != WL_CONNECTED && wifiConnected) {
+                    Serial.println("WiFi disconnected");
+                    wifiConnected = false;
+                    WiFi.disconnect();
+                    wifiTTL = 0;
                 }
             }
         }
+    }
+}
+
+void taskOLEDDisplay(void *pvParameters) {
+
+    Serial.println("Task <OLEDDisplay> started");
+
+    for (;;) {
+        if (fwUpdateProcess) {
+            OledUpdateFWU();
+            continue;
+        }
+
+#if defined(ADC_BATTERY)
+        OledUpdate(batteryPercentage, false);
+#elif defined(USE_PMU)
+        OledUpdate(batteryPercentage, vbusIn);
+#else
+        OledUpdate(-1, false);
+#endif
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

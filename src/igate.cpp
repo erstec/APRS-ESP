@@ -30,6 +30,13 @@ int igateProcess(AX25Msg &Packet) {
     }
 
     for (idx = 0; idx < Packet.rpt_count; idx++) {
+        if (!strncmp(&Packet.rpt_list[idx].call[0], "NOGATE", 6)) {
+            // digiLog.DropRx++;
+            return 0;
+        }
+    }  
+
+    for (idx = 0; idx < Packet.rpt_count; idx++) {
         if (!strncmp(&Packet.rpt_list[idx].call[0], "TCPIP", 5)) {
             // digiLog.DropRx++;
             return 0;
@@ -61,10 +68,14 @@ int igateProcess(AX25Msg &Packet) {
 
     // Add qAR,callSSID
     header += String(F(",qAR,"));
-    header += String(config.aprs_mycall);
-    if (config.aprs_ssid > 0) {
-        header += String(F("-"));
-        header += String(config.aprs_ssid);
+    if (strlen(config.aprs_object) >= 3) {
+        header += String(config.aprs_object);
+    } else {
+        header += String(config.aprs_mycall);
+        if (config.aprs_ssid > 0) {
+            header += String(F("-"));
+            header += String(config.aprs_ssid);
+        }
     }
 
     // Add Infomation

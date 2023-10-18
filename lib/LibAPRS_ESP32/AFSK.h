@@ -176,7 +176,10 @@ inline static uint8_t sinSample(uint16_t i)
 #define PHASE_THRESHOLD (PHASE_MAX / 2)        // Target transition point of our phase window
 
 #define I2S_INTERNAL
+
+#if !defined(NOSQL)
 #define SQL
+#endif
 
 #include "../../include/pinout.h"
 
@@ -328,7 +331,7 @@ void AFSK_poll(Afsk *afsk);
 
 void afsk_putchar(char c);
 int afsk_getchar(void);
-void AFSK_Poll(bool SA818);
+void AFSK_Poll(bool isRF);
 void AFSK_TimerEnable(bool sts);
 
 #endif

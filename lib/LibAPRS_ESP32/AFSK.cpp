@@ -125,7 +125,11 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
 #endif
       .sample_rate = SAMPLE_RATE,
       .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+#if defined MONO_OUT
+      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+#else
       .channel_format = I2S_CHANNEL_FMT_ALL_LEFT,
+#endif
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
       .communication_format = (i2s_comm_format_t)I2S_COMM_FORMAT_STAND_MSB,
 #else
@@ -285,7 +289,7 @@ void AFSK_init(Afsk *afsk)
   // BPF
   flt.size = FIR_BPF_N;
   flt.pass_freq = 1000;
-  flt.cutoff_freq = 2500;
+  flt.cutoff_freq = 2700;
   bpf_an = filter_coeff(&flt);
 
   // LPF
@@ -878,7 +882,7 @@ long lastVrms = 0;
 bool VrmsFlag = false;
 bool sqlActive = false;
 
-void AFSK_Poll(bool SA818)
+void AFSK_Poll(bool isRF)
 {
   int mV;
   int x = 0;
@@ -895,7 +899,12 @@ void AFSK_Poll(bool SA818)
   {
 #if defined(I2S_INTERNAL) && defined(CONFIG_IDF_TARGET_ESP32)
     memset(pcm_out, 0, sizeof(pcm_out));
-    for (x = 0; x < ADC_SAMPLES_COUNT; x++)
+#if defined MONO_OUT
+    int sampleCnt = ADC_SAMPLES_COUNT / 2;
+#else
+    int sampleCnt = ADC_SAMPLES_COUNT;
+#endif
+    for (x = 0; x < sampleCnt; x++)
     {
       // RX_LED_ON();
       adcVal = (int)AFSK_dac_isr(AFSK_modem);
@@ -906,52 +915,29 @@ void AFSK_Poll(bool SA818)
 
       // float adcF = hp_filter.Update((float)adcVal);
       // adcVal = (int)adcF;
-      // Ref: https://lang-ship.com/blog/work/esp32-i2s-dac/#toc6
-      // Left Channel GPIO 26
-      pcm_out[x] = (uint16_t)adcVal; // MSB
-      if(SA818){
-        pcm_out[x] <<= 7;
-        pcm_out[x] += 10000;
-      }
-      else
-      {
-        pcm_out[x] <<= 8;
-      }
-      x++;
-      // Right Channel GPIO 25
-      pcm_out[x] = 0;
+
+    uint16_t val = (uint16_t)adcVal; // MSB
+    if (isRF) {
+      val <<= 7;
+      val += 10000;
+      // val += (1 << 15);
+    } else {
+      val <<= 8;
     }
 
-    // size_t writeByte;
-    if (x > 0)
-    {
-      // size_t writeByte;
-      if (i2s_write_bytes(I2S_NUM_0, (char *)&pcm_out, (x * sizeof(uint16_t)), portMAX_DELAY) == ESP_OK)
-      // if (i2s_write(I2S_NUM_0, (char *)&pcm_out, (x * sizeof(uint16_t)),&writeByte, portMAX_DELAY) == ESP_OK)
-      {
-        Serial.println("I2S Write Error");
-      }
-    }
-    // size_t writeByte;
-    // int availableBytes = x * sizeof(uint16_t);
-    // int buffer_position = 0;
-    // size_t bytesWritten = 0;
-    // if (x > 0)
-    // {
-    //   do
-    //   {
+#if !defined MONO_OUT
+        // Right Channel GPIO 26
+        pcm_out[x++] = val;
+#endif
 
-    //     // do we have something to write?
-    //     if (availableBytes > 0)
-    //     {
-    //       // write data to the i2s peripheral
-    //       i2s_write(I2S_NUM_0, buffer_position + (char *)&pcm_out,availableBytes, &bytesWritten, portMAX_DELAY);
-    //       availableBytes -= bytesWritten;
-    //       buffer_position += bytesWritten;
-    //     }
-    //     delay(bytesWritten);
-    //   } while (bytesWritten > 0);
-    // }
+        // Left Channel GPIO 25
+        pcm_out[x] = val;
+    }
+
+    size_t bytesWritten = 0;
+    if (x > 0) {
+        ESP_ERROR_CHECK(i2s_write(I2S_NUM_0, (void*)&pcm_out, x * sizeof(uint16_t), &bytesWritten, portMAX_DELAY));
+    }
 
     // Wait for the I2S DAC to pass all buffers before turning the DAC/PTT off.
     if (AFSK_modem->sending == false)
@@ -960,10 +946,8 @@ void AFSK_Poll(bool SA818)
       memset(pcm_out, 0, sizeof(pcm_out));
       // Serial.println("TX TAIL");
       //  Clear Delay DMA Buffer
-      // size_t writeByte;
       for (int i = 0; i < 5; i++)
-        // i2s_write(I2S_NUM_0, (char *)&pcm_out, (ADC_SAMPLES_COUNT * sizeof(uint16_t)),&writeByte, portMAX_DELAY);
-        i2s_write_bytes(I2S_NUM_0, (char *)&pcm_out, (ADC_SAMPLES_COUNT * sizeof(uint16_t)), portMAX_DELAY);
+        ESP_ERROR_CHECK(i2s_write(I2S_NUM_0, (void*)&pcm_out, ADC_SAMPLES_COUNT * sizeof(uint16_t), &bytesWritten, portMAX_DELAY));
       // wait on I2S event queue until a TX_DONE is found
       while (xQueueReceive(i2s_event_queue, &i2s_evt, portMAX_DELAY) == pdPASS)
       {
@@ -985,7 +969,7 @@ void AFSK_Poll(bool SA818)
 #else
       digitalWrite(PTT_PIN, LOW);
 #endif
-      if (SA818) {
+      if (isRF) {
         // pinMode(POWER_PIN, OUTPUT);
         // digitalWrite(POWER_PIN, LOW);  // RF Power LOW
       }

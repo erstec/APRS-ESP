@@ -74,8 +74,9 @@ void sortPkgDesc(pkgListType a[], int size) {
 uint8_t pkgType(const char *raw) {
     uint8_t type = 0;
     char packettype = 0;
-    const char *info_start, *body;
-    int paclen = strlen(raw);
+    const char *body;
+    // const char *info_start;
+    // int paclen = strlen(raw);
     // info_start = (char*)strchr(raw, ':');
     // if (info_start == NULL) return 0;
     // info_start=0;

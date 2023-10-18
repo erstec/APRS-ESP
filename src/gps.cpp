@@ -7,22 +7,28 @@
                     https://github.com/sh123/aprs_tracker
 */
 
+#include <WiFi.h>
 #include "gps.h"
 #include "smartBeaconing.h"
 #include "TinyGPS++.h"
+#include "config.h"
+#include "TimeLib.h"
 
 // #define DEBUG_GPS
 
 // extern Configuration config;
 extern TinyGPSPlus gps;
 extern HardwareSerial SerialGPS;
+extern Configuration config;
+
+extern teTimeSync timeSyncFlag;
 
 // buffer for conversions
 #define CONV_BUF_SIZE 15
 static char conv_buf[CONV_BUF_SIZE];
 
-char active_heuristic = H_OFF;
-char selected_heuristic = H_OFF;
+int8_t active_heuristic = H_OFF;
+int8_t selected_heuristic = H_OFF;
 
 // static bool gotGpsFix = false;
 
@@ -107,6 +113,40 @@ void GpsUpdate() {
             lat = gps.location.lat() * 1000000;
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
+
+            if (config.synctime 
+                && (gps.time.age() / 1000) < 10
+                && timeSyncFlag == T_SYNC_NONE
+                && WiFi.status() != WL_CONNECTED) {
+                if (gps.time.hour() != 0 && gps.time.minute() != 0 && gps.time.second() != 0) {
+                    Serial.print("GPS Time: ");
+                    Serial.print(gps.time.hour());
+                    Serial.print(":");
+                    Serial.print(gps.time.minute());
+                    Serial.print(":");
+                    Serial.println(gps.time.second());
+
+                    timeval tv;
+                    tv.tv_sec = gps.time.hour() * 3600 + gps.time.minute() * 60 + gps.time.second();
+                    tv.tv_usec = 0;
+                    
+                    timezone tz;
+                    tz.tz_minuteswest = config.timeZone * 60;
+                    tz.tz_dsttime = 0;
+
+                    settimeofday(&tv, &tz);
+
+                    // set internal rtc time
+                    setTime(gps.time.hour(), gps.time.minute(), gps.time.second(), gps.date.day(), gps.date.month(), gps.date.year());
+                    // adjust locat timezone
+                    // adjustTime(config.timeZone * SECS_PER_HOUR);
+                    
+                    timeSyncFlag = T_SYNC_GPS;
+
+                    TimeSyncPeriod = millis() + (60 * 60 * 1000); // 60 min
+                }
+            }
+
             updateDistance();
             // if (!gotGpsFix && gps.location.isValid()) gotGpsFix = true;
         }
@@ -131,9 +171,10 @@ float conv_coords(float in_coords) {
 }
 
 void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS) {
-    *DD = (int)DD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
-    *MM = (int)((DD_DDDDD - *DD) * 60);         //получили минуты
-    *SS = ((DD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
+    float uDD_DDDDD = abs(DD_DDDDD);  //получили модуль числа
+    *DD = (int)uDD_DDDDD;  //сделали из 37.45545 это 37 т.е. Градусы
+    *MM = (int)((uDD_DDDDD - *DD) * 60);         //получили минуты
+    *SS = ((uDD_DDDDD - *DD) * 60 - *MM) * 100;  //получили секунды
 }
 
 /*

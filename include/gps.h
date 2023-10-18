@@ -36,8 +36,8 @@ extern unsigned long age;
 
 extern bool send_aprs_update;
 
-extern char active_heuristic;
-extern char selected_heuristic;
+extern int8_t active_heuristic;
+extern int8_t selected_heuristic;
 
 void GpsUpdate();
 void heuristicDistanceChanged();
