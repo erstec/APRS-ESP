@@ -1488,6 +1488,7 @@ void taskAPRS(void *pvParameters) {
                     else
                     {
                         igateTLM.DROP++;
+                        status.dropCount++;
                     }
                 }
 
@@ -1689,6 +1690,7 @@ void taskNetwork(void *pvParameters) {
                                 } else {
                                     // Telemetry found
                                     igateTLM.DROP++;
+                                    status.dropCount++;
                                     Serial.print("INET Message TELEMETRY from ");
                                     Serial.println(src_call);
                                 }

@@ -39,6 +39,10 @@ int digiProcess(AX25Msg &Packet) {
         digiLog.DropRx++;
         return 0;
     }
+    if (!strncmp(&Packet.src.call[0], "NOGATE", 6)) {
+        digiLog.DropRx++;
+        return 0;
+    }
 
     // Destination SSID Trace
     if (Packet.dst.ssid > 0) {

@@ -575,8 +575,8 @@ void setHTML(byte page) {
                      String(status.inet2rf) + "</td></tr>";
         webString += "<tr><td>DROP</td><td align=\"right\">" +
                      String(status.dropCount) + "</td></tr>";
-        webString += "<tr><td>ERROR</td><td align=\"right\">" +
-                     String(status.errorCount) + "</td></tr>";
+        // webString += "<tr><td>ERROR</td><td align=\"right\">" +
+        //              String(status.errorCount) + "</td></tr>";
         webString += "</table>";
         
         webString += "<span>&nbsp;</span>\n";
