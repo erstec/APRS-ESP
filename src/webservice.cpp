@@ -2097,7 +2097,7 @@ void handle_test() {
     }
     if (server.hasArg("sendBeacon")) {
         String tnc2Raw = send_gps_location();
-        if (config.tnc && tnc2Raw.length() > 0) pkgTxUpdate(tnc2Raw.c_str(), 0);
+        if (config.tnc && tnc2Raw.length() > 0) pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
     } else if (server.hasArg("sendRaw")) {
         for (uint8_t i = 0; i < server.args(); i++) {
@@ -2105,7 +2105,7 @@ void handle_test() {
                 if (server.arg(i) != "") {
                     String tnc2Raw = server.arg(i);
                     if (config.tnc) {
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
                         // APRS_sendTNC2Pkt(server.arg(i)); // Send packet to RF
                         // Serial.println("Send RAW: " + tnc2Raw);
                     }

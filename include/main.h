@@ -28,10 +28,8 @@
 #define DEBUG_RF
 
 //#define SDCARD
-//#define USE_TNC
 #define USE_GPS
 //#define USE_BLE
-//#define USE_KISS  // disables tracker, enables kiss serial modem mode
 //#define USE_ROTARY
 #define USE_SMART_BEACONING
 
@@ -68,10 +66,6 @@
 #define USE_RF
 #endif
 
-#if defined(USE_TNC) && defined(USE_GPS)
-#error "Cannot use both USE_TNC and USE_GPS"
-#endif
-
 #ifdef SR_FRS
 #ifndef USE_SA818
 #define USE_SA818
@@ -87,7 +81,7 @@
 #define APRS_SB_MIN_TURN_ANGLE  15          // The minimum angle by which you must change course before it will trigger a beacon
 #define APRS_SB_TURN_SLOPE      240         // This number, when divided by your current speed will be added to the Min Turn Angle in order to increase the turn threshold at lower speeds
 
-#define EEPROM_SIZE 1024
+#define EEPROM_SIZE 2048
 
 #include "pinout.h"
 
@@ -106,8 +100,28 @@
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
+#ifdef BOARD_HAS_PSRAM
+#define TLMLISTSIZE 10
+#define PKGLISTSIZE 100
+#define PKGTXSIZE 100
+#else
+#define TLMLISTSIZE 10
 #define PKGLISTSIZE 10
-#define PKGTXSIZE 5
+#define PKGTXSIZE 10
+#endif
+
+#define FILTER_ALL 0				// Packet is disable all packet
+#define FILTER_OBJECT (1 << 0)		// packet is an object
+#define FILTER_ITEM (1 << 1)		// packet is an item
+#define FILTER_MESSAGE (1 << 2)		// packet is a message
+#define FILTER_WX (1 << 3)			// packet is WX data
+#define FILTER_TELEMETRY (1 << 4)	// packet is telemetry
+#define FILTER_QUERY (1 << 5)		// packet is a query
+#define FILTER_STATUS (1 << 6)		// packet is status
+#define FILTER_POSITION (1 << 7)	// packet is postion
+#define FILTER_BUOY (1 << 8)		// packet is buoy
+#define FILTER_MICE (1 << 9)		// packet is MIC-E
+#define FILTER_THIRDPARTY (1 << 10) // packet is 3rd-party packet from INET2RF
 
 #include <Arduino.h>
 #include <FS.h>
@@ -143,16 +157,18 @@ typedef struct igateTLM_struct {
 } igateTLMType;
 
 typedef struct statisticStruct {
-    uint32_t allCount;
-    uint32_t tncCount;
-    uint32_t isCount;
-    uint32_t locationCount;
-    uint32_t wxCount;
-    uint32_t digiCount;
-    uint32_t errorCount;
-    uint32_t dropCount;
-    uint32_t rf2inet;
-    uint32_t inet2rf;
+	uint32_t allCount;
+	uint32_t tncCount;
+	uint32_t isCount;
+	uint32_t locationCount;
+	uint32_t wxCount;
+	uint32_t digiCount;
+	uint32_t errorCount;
+	uint32_t dropCount;
+	uint32_t rf2inet;
+	uint32_t inet2rf;
+	uint32_t txCount;
+	uint32_t rxCount;
 } statusType;
 
 typedef struct digiTLM_struct {
@@ -164,8 +180,6 @@ typedef struct digiTLM_struct {
     unsigned char DropRx;
     unsigned char ErPkts;
 } digiTLMType;
-
-#define TLMLISTSIZE 20
 
 typedef struct Telemetry_struct {
 	time_t time;
@@ -184,7 +198,7 @@ typedef struct txQueue_struct {
     bool Active;
     long timeStamp;
     int Delay;
-    char Info[300];
+    char Info[500];
 } txQueueType;
 
 extern bool fwUpdateProcess;
@@ -219,12 +233,16 @@ typedef enum {
 extern teTimeSync timeSyncFlag;
 extern long TimeSyncPeriod;
 
+#if defined(BOARD_TTWR)
+extern bool psramBusy;
+#endif
+
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
 void taskOLEDDisplay(void *pvParameters);
 int processPacket(String &tnc2);
 String send_gps_location();
 int digiProcess(AX25Msg &Packet);
-bool pkgTxUpdate(const char *info, int delay);
+bool pkgTxPush(const char *info, size_t len, int dly);
 
 #endif

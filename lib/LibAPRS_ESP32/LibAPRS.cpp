@@ -51,6 +51,49 @@ size_t lastMessageLen;
 bool message_autoAck = false;
 /////////////////////////
 
+// (2^31 / 180) / 380926 semicircles per Base 91 unit
+static unsigned long b91val[4] = {23601572L, 259358L, 2851L, 32L};
+// Constants for converting lat/lon to semicircles
+static long valtable[]  = {1193046471L, 119304647L, 11930465L, 1988411L,198841L, 19884L, 1988L, 199L, 20L, 2L};
+
+// Takes degrees and fractional minutes and returns 2^31/180 degrees
+// West and South values are negative
+long semicircles(char *degstr, char hemi)
+{
+	char dgt = 0, *p;
+	long ltemp = 0;
+	if (degstr[4] == '.') dgt++;		// Skip hundreds place if we know we're doing latitude
+	p = degstr;
+	for (;dgt<10; p++)
+	{
+		if (*p == '.') continue;
+		if (!isdigit(*p)) break;
+		ltemp += (*p & 0x0f) * valtable[dgt];
+		dgt++;
+	}
+	if (hemi) return -ltemp;
+	return ltemp;
+}
+
+// Converts semicircles to Base 91 units (must be properly biased first)
+// Non-reentrant use of ltemp, but we only call this function in one place
+void base91encode(long ltemp,char *s)
+{
+	// (2^31 / 180) / 380926 semicircles per Base 91 unit
+	unsigned char c;
+	
+	for (c=0; c<4; c++)
+	{
+		s[c] = '!';
+		while (ltemp >= b91val[c])
+		{
+			//reset_watchdog;
+			ltemp -= b91val[c];
+			s[c]++;
+		}
+	}
+}
+
 void APRS_init()
 {
     AFSK_init(&modem);

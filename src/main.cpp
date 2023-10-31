@@ -118,7 +118,10 @@ HardwareSerial SerialRF(SERIAL_RF_UART);
 
 bool fwUpdateProcess = false;
 
-time_t systemUptime = 0;
+#if defined(DOARD_TTWR)
+#else
+RTC_DATA_ATTR time_t systemUptime = 0;
+#endif
 time_t wifiUptime = 0;
 
 boolean KISS = false;
@@ -133,11 +136,12 @@ String lastPkgRaw = "";
 float dBV = 0;
 int mVrms = 0;
 
-cppQueue PacketBuffer(sizeof(AX25Msg), 5, IMPLEMENTATION);
+cppQueue PacketBuffer(sizeof(AX25Msg), 10, IMPLEMENTATION);
 
 statusType status;
 RTC_DATA_ATTR igateTLMType igateTLM;
-RTC_DATA_ATTR txQueueType txQueue[PKGTXSIZE];
+
+txQueueType *txQueue;
 
 extern RTC_DATA_ATTR uint8_t digiCount;
 
@@ -146,12 +150,10 @@ Configuration config;
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 TaskHandle_t taskOLEDDisplayHandle;
+TaskHandle_t taskGpsHandle;
+TaskHandle_t taskTNCHandle;
 
-TelemetryType Telemetry[TLMLISTSIZE];
-
-#if defined(USE_TNC)
-HardwareSerial SerialTNC(SERIAL_TNC_UART);
-#endif
+TelemetryType *Telemetry;
 
 #if defined(USE_GPS)
 TinyGPSPlus gps;
@@ -182,18 +184,26 @@ int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
 
+#if defined(BOARD_TTWR)
+bool psramBusy = false;
+#endif
+
 teTimeSync timeSyncFlag = T_SYNC_NONE;
 
 static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
 
-const char *lastTitle = "LAST HERT";
+const char *lastTitle = "LAST HEARD";
 
 int tlmList_Find(char *call) {
     int i;
     for (i = 0; i < TLMLISTSIZE; i++) {
-        if (strstr(Telemetry[i].callsign, call) != NULL)
+        if (strstr(Telemetry[i].callsign, call) != NULL) {
+#if defined(BOARD_TTWR)
+            psramBusy = false;
+#endif
             return i;
+        }
     }
     return -1;
 }
@@ -206,75 +216,155 @@ int tlmListOld() {
             minimum = Telemetry[i].time;
             ret = i;
         }
-        if (Telemetry[i].time > now())
+        if (Telemetry[i].time > time(NULL))
             Telemetry[i].time = 0;
     }
     return ret;
 }
 
-bool pkgTxUpdate(const char *info, int delay) {
-    char *ecs = strstr(info, ">");
-    if (ecs == NULL) return false;
-    // Replace
+TelemetryType getTlmList(int idx) {
+    TelemetryType ret;
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+    memcpy(&ret, &Telemetry[idx], sizeof(TelemetryType));
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+    return ret;
+}
+
+bool pkgTxSend() {
+    if (getReceive())
+        return false;
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+    char info[500];
     for (int i = 0; i < PKGTXSIZE; i++) {
         if (txQueue[i].Active) {
-            if (!(strncmp(&txQueue[i].Info[0], info, info - ecs))) {
-                strcpy(&txQueue[i].Info[0], info);
-                txQueue[i].Delay = delay;
-                txQueue[i].timeStamp = millis();
+            int decTime = millis() - txQueue[i].timeStamp;
+            if (decTime > txQueue[i].Delay) {
+                txQueue[i].Active = false;
+                memset(info, 0, sizeof(info));
+                strcpy(info, txQueue[i].Info);
+#if defined(BOARD_TTWR)
+                psramBusy = false;
+#endif
+                digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
+                status.txCount++;
+                adcActive(false);
+
+                APRS_setPreamble(APRS_PREAMBLE);
+                APRS_sendTNC2Pkt(String(info)); // Send packet to RF
+                log_d("TX->RF: %s\n", info);
+
+                for (int i = 0; i < 100; i++) {
+                    if (digitalRead(PTT_PIN))
+                        break;
+                    delay(50); // TOT 5sec
+                }
+
+                // delay(2000);
+                digitalWrite(POWER_PIN, 0); // set RF Power Low
+                adcActive(true);
+                
                 return true;
             }
         }
     }
+  
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+  
+    return false;
+}
+
+bool pkgTxDuplicate(AX25Msg ax25) {
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+    char callsign[12];
+    for (int i = 0; i < PKGTXSIZE; i++) {
+        if (txQueue[i].Active) {
+            if (ax25.src.ssid > 0)
+                sprintf(callsign, "%s-%d", ax25.src.call, ax25.src.ssid);
+            else
+                sprintf(callsign, "%s", ax25.src.call);
+            if (strncmp(&txQueue[i].Info[0], callsign, strlen(callsign)) >= 0) // Check duplicate src callsign
+            {
+                char *ecs1 = strstr(txQueue[i].Info, ":");
+                if (ecs1 == NULL)
+                    continue;
+                ;
+                if (strncmp(ecs1, (const char *)ax25.info, strlen(ecs1)) >= 0) { // Check duplicate aprs info
+                    txQueue[i].Active = false;
+#if defined(BOARD_TTWR)
+                    psramBusy = false;
+#endif
+                    return true;
+                }
+            }
+        }
+    }
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+    
+    return false;
+}
+
+bool pkgTxPush(const char *info, size_t len, int dly) {
+    char *ecs = strstr(info, ">");
+    if (ecs == NULL)
+        return false;
+
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+    // for (int i = 0; i < PKGTXSIZE; i++)
+    // {
+    //   if (txQueue[i].Active)
+    //   {
+    //     if ((strncmp(&txQueue[i].Info[0], info, info - ecs)==0)) //Check src callsign
+    //     {
+    //       // strcpy(&txQueue[i].Info[0], info);
+    //       memset(txQueue[i].Info, 0, sizeof(txQueue[i].Info));
+    //       memcpy(&txQueue[i].Info[0], info, len);
+    //       txQueue[i].Delay = dly;
+    //       txQueue[i].timeStamp = millis();
+    //       psramBusy = false;
+    //       return true;
+    //     }
+    //   }
+    // }
 
     // Add
     for (int i = 0; i < PKGTXSIZE; i++) {
         if (txQueue[i].Active == false) {
-            strcpy(&txQueue[i].Info[0], info);
-            txQueue[i].Delay = delay;
+            memset(txQueue[i].Info, 0, sizeof(txQueue[i].Info));
+            memcpy(&txQueue[i].Info[0], info, len);
+            txQueue[i].Delay = dly;
             txQueue[i].Active = true;
             txQueue[i].timeStamp = millis();
             break;
         }
     }
+
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+    
     return true;
-}
-
-bool pkgTxSend() {
-    for (int i = 0; i < PKGTXSIZE; i++) {
-        if (txQueue[i].Active) {
-            int decTime = millis() - txQueue[i].timeStamp;
-            if (decTime > txQueue[i].Delay) {
-#ifdef USE_RF
-                if (config.rf_power) {
-#if defined(BOARD_TTWR_PLUS_MOD)
-                    pinMode(POWER_PIN, OUTPUT);
-                    digitalWrite(POWER_PIN, HIGH);
-#else
-                    pinMode(POWER_PIN, OPEN_DRAIN);
-#endif
-                } else {
-                    pinMode(POWER_PIN, OUTPUT);
-                    digitalWrite(POWER_PIN, LOW);  // RF Power
-                }
-
-#endif
-                APRS_setPreamble(APRS_PREAMBLE);
-                APRS_setTail(APRS_TAIL);
-                APRS_sendTNC2Pkt(String(txQueue[i].Info));  // Send packet to RF
-                txQueue[i].Active = false;
-                igateTLM.TX++;
-#ifdef DEBUG_TNC
-                printTime();
-                Serial.println("TX->RF: " + String(txQueue[i].Info));
-                // lastPkg = true;
-                // lastPkgRaw = "TX->RF: " + String(txQueue[i].Info);
-#endif
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 void aprsTimeGet(uint8_t *buf) {
@@ -330,9 +420,6 @@ uint8_t *packetData;
 void aprs_msg_callback(struct AX25Msg *msg) {
     AX25Msg pkg;
     memcpy(&pkg, msg, sizeof(AX25Msg));
-#ifdef USE_KISS
-    kiss_messageCallback(ctx);
-#endif
     // Prevent multiline messages
     size_t crlf_pos = pkg.len;
     for (int i = 0; i < pkg.len; i++) {
@@ -346,7 +433,8 @@ void aprs_msg_callback(struct AX25Msg *msg) {
     pkg.len = crlf_pos;
 
     PacketBuffer.push(&pkg);
-//TODO processPacket();
+
+    status.rxCount++;
     
     aprsTimeGet(pkg.info);
 }
@@ -389,7 +477,12 @@ boolean APRSConnect() {
             cnt++;
             if (cnt > 50) return false;
         }
-        //
+        
+        if (strcmp("NOCALL", config.aprs_mycall) == 0) {
+            // config.igate_en = false;
+            return false;
+        }
+
         if (strlen(config.aprs_object) >= 3) {
             uint16_t passcode = aprsParse.passCode(config.aprs_object);
             login = "user " + String(config.aprs_object) + " pass " + String(passcode, DEC) + " vers ESP32IGate V" + String(VERSION) + " filter " + String(config.aprs_filter);
@@ -651,17 +744,27 @@ void setup()
 {
     // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
+#ifdef BOARD_HAS_PSRAM
+    pkgListInit();
+    Telemetry = (TelemetryType *)malloc(sizeof(TelemetryType) * TLMLISTSIZE);
+    txQueue = (txQueueType *)ps_malloc(sizeof(txQueueType) * PKGTXSIZE);
+    // TNC2Raw = (int *)ps_malloc(sizeof(int) * PKGTXSIZE);
+#else
+    pkgListInit();
+    Telemetry = (TelemetryType *)malloc(sizeof(TelemetryType) * TLMLISTSIZE);
+    txQueue = (txQueueType *)malloc(sizeof(txQueueType) * PKGTXSIZE);
+    // TNC2Raw = (int *)malloc(sizeof(int) * PKGTXSIZE);
+#endif
+
+    memset(Telemetry, 0, sizeof(TelemetryType) * TLMLISTSIZE);
+    memset(txQueue, 0, sizeof(txQueueType) * PKGTXSIZE);
+    // memset(TNC2Raw, 0, sizeof(TNC2Raw) * PKGTXSIZE);
+
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
     // Set up serial port
     Serial.setRxBufferSize(256);
     Serial.begin(SERIAL_DEBUG_BAUD);  // debug
-
-#if defined(USE_TNC)
-    SerialTNC.setRxBufferSize(500);
-    SerialTNC.begin(SERIAL_TNC_BAUD, SERIAL_8N1, SERIAL_TNC_RXPIN,
-                    SERIAL_TNC_TXPIN);
-#endif
 
 #if defined(USE_GPS)
     SerialGPS.setRxBufferSize(500);
@@ -674,7 +777,9 @@ void setup()
 #endif
 
     Serial.println();
+    log_d("Start APRS-ESP V%s", VERSION_FULL);
     Serial.println("Start APRS-ESP V" + String(VERSION_FULL));
+    log_d("Press and hold BOOT button for 3 sec to Factory Default config");
     Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
 
 #if defined(BOARD_TTWR_MOD)
@@ -701,7 +806,7 @@ void setup()
     setupPower();
 #endif
 
-#if defined(BOARD_TTWR_PLUS_MOD)
+#if defined(BOARD_TTWR_PLUS_MOD) || defined(BOARD_TTWR)
     // MIC Select
     pinMode(MIC_CH_SEL, OUTPUT);
     digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
@@ -887,11 +992,6 @@ int packet2Raw(String &tnc2, AX25Msg &Packet) {
     tnc2 += String(F(":"));
     tnc2 += String((const char *)Packet.info);
     tnc2 += String("\n");
-
-    // #ifdef DEBUG_TNC
-    //     Serial.printf("[%d] ", ++pkgTNC_count);
-    //     Serial.print(tnc2);
-    // #endif
 
     return tnc2.length();
 }
@@ -1194,7 +1294,7 @@ void loop()
                 if (config.tnc) {
                     String tnc2Raw = send_gps_location();
                     if (tnc2Raw.length() > 0) {
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
                         Serial.println("Manual TX: " + tnc2Raw);
@@ -1211,20 +1311,22 @@ void loop()
 #endif
 }
 
-String sendIsAckMsg(String toCallSign, int msgId) {
+String sendIsAckMsg(String toCallSign, char *msgId) {
     char str[300];
     char call[11];
     int i;
     memset(&call[0], 0, 11);
-    sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
     strcpy(&call[0], toCallSign.c_str());
     i = strlen(call);
     for (; i < 9; i++)
         call[i] = 0x20;
     memset(&str[0], 0, 300);
 
-    sprintf(str, "%s-%d>APESP1%s::%s:ack%d", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
-    //	client.println(str);
+    if (config.aprs_ssid > 0)
+        sprintf(str, "%s-%d>APESP1,%s::%s:ack%s", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
+    else
+        sprintf(str, "%s>APESP1,%s::%s:ack%s", config.aprs_mycall, VERSION, call, msgId);
+  
     return String(str);
 }
 
@@ -1236,24 +1338,21 @@ void sendIsPkg(char *raw) {
     if (aprsClient.connected())
         aprsClient.println(tnc2Raw); // Send packet to Inet
     if (config.tnc && config.tnc_digi)
-        pkgTxUpdate(str, 0);
+        pkgTxPush(str, strlen(str), 0);
 }
 
 void sendIsPkgMsg(char *raw) {
     char str[300];
     char call[11];
     int i;
-
     memset(&call[0], 0, 11);
-
     if (config.aprs_ssid == 0)
         sprintf(call, "%s", config.aprs_mycall);
     else
         sprintf(call, "%s-%d", config.aprs_mycall, config.aprs_ssid);
-
     i = strlen(call);
-
-    for (; i < 9; i++) call[i] = 0x20;
+    for (; i < 9; i++)
+        call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
         sprintf(str, "%s>APESP1::%s:%s", config.aprs_mycall, call, raw);
@@ -1261,14 +1360,10 @@ void sendIsPkgMsg(char *raw) {
         sprintf(str, "%s-%d>APESP1::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
-    
-    if (aprsClient.connected()) {
-        aprsClient.println(tnc2Raw);  // Send packet to Inet
-    }
-    
-    if (config.tnc && config.tnc_digi) {
-        pkgTxUpdate(str, 0);
-    }
+    if (aprsClient.connected())
+        aprsClient.println(tnc2Raw); // Send packet to Inet
+    if (config.tnc && config.tnc_digi)
+        pkgTxPush(str, strlen(str), 0);
     
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 }
@@ -1288,10 +1383,6 @@ void taskAPRS(void *pvParameters) {
     APRS_setPreamble(APRS_PREAMBLE);
     APRS_setTail(APRS_TAIL);
 
-#ifdef USE_KISS
-    kiss_init(&AX25, &modem, &Serial, 0);
-#endif
-
     sendTimer = millis() - (config.aprs_beacon * 60 * 1000) + 30000;
     igateTLM.TeleTimeout = millis() + 60000;  // 1Min
     AFSKInitAct = true;
@@ -1304,34 +1395,25 @@ void taskAPRS(void *pvParameters) {
         time(&timeStamp);
         vTaskDelay(10 / portTICK_PERIOD_MS);
         // serviceHandle();
+        
         if (now > (timeSlot + 10)) {
-            if (!digitalRead(RX_LED_PIN)) {  // RX State Fail
-                if (pkgTxSend()) {
-                    timeSlot = millis() + config.tx_timeslot;  // Tx Time Slot = 5sec.
+            // Transmit in timeslot if enabled
+            if (SQL_PIN > -1) { // Set SQL pin
+                if (!digitalRead(SQL_PIN)) { // RX State Fail
+                    if (pkgTxSend())
+                        timeSlot = millis() + config.tx_timeslot; // Tx Time Slot >2sec.
+                    else
+                        timeSlot = millis() + 3000;
                 } else {
-                    timeSlot = millis();
+                    timeSlot = millis() + 1500;
                 }
             } else {
-                timeSlot = millis() + 500;
+                if (pkgTxSend())
+                    timeSlot = millis() + config.tx_timeslot; // Tx Time Slot > 2sec.
+                else
+                    timeSlot = millis() + 3000;
             }
         }
-
-#ifdef USE_RF
-// if(digitalRead(SQL_PIN)==HIGH){
-// 	delay(10);
-// 	if(digitalRead(SQL_PIN)==LOW){
-// 		while(SerialRF.available()) SerialRF.read();
-// 		SerialRF.println("RSSI?");
-// 		delay(100);
-// 		String ret=SerialRF.readString();
-// 		Serial.println(ret);
-// 		if(ret.indexOf("RSSI=")>=0){
-// 			String sig=getValue(ret,'=',2);
-// 			Serial.printf("SIGNAL %s\n",sig.c_str());
-// 		}
-// 	}
-// }
-#endif
 
         bool sendByTime = false;
         if (config.aprs_beacon > 0) {   // it interval configured
@@ -1354,26 +1436,20 @@ void taskAPRS(void *pvParameters) {
 #endif
             if (AFSKInitAct == true) {
                 if (config.tnc) {
-                    String tnc2Raw = send_gps_location();
-                    if (tnc2Raw.length() > 0) {
+                    String rawData = send_gps_location();
+                    if (rawData.length() > 0) {
                         if (aprsClient.connected()) {
-                            aprsClient.println(tnc2Raw);  // Send packet to Inet
+                            aprsClient.println(rawData);  // Send packet to Inet
                         }
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
-                        // APRS_sendTNC2Pkt(tnc2Raw);       // Send packet to RF
-#ifdef DEBUG_TNC
-                        // Serial.println("TX: " + tnc2Raw);
-#endif
+                        
+                        char *rawP = (char *)malloc(rawData.length());
+                        memcpy(rawP, rawData.c_str(), rawData.length());
+                        // rawData.toCharArray(rawP, rawData.length());
+                        pkgTxPush(rawP, rawData.length(), 0);
+                        free(rawP);
                     }
                 }
             }
-            // send_gps_location();
-            //  APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
-            //  	APRS_setPath1("WIDE1", 1);
-            //  	APRS_setPreamble(APRS_PREAMBLE);
-            //  	APRS_setTail(APRS_TAIL);
-            // APRS_sendTNC2Pkt("HS5TQA-6>APESP1,TRACE2-2:=1343.76N/10026.06E&ESP32
-            // APRS Internet Gateway");
         }
 
         if (config.tnc_telemetry) {
@@ -1403,7 +1479,7 @@ void taskAPRS(void *pvParameters) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
                 }
                 if (config.tnc && config.tnc_digi) {
-                    pkgTxUpdate(rawTlm, 0);
+                    pkgTxPush(rawTlm, strlen(rawTlm), 0);
                 }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF
                 igateTLM.Sequence++;
@@ -1438,7 +1514,11 @@ void taskAPRS(void *pvParameters) {
                 }
                 
                 uint8_t type = pkgType((char *)incomingPacket.info);
-                pkgListUpdate(call, type);
+                
+                char *rawP = (char *)malloc(tnc2.length());
+                memcpy(rawP, tnc2.c_str(), tnc2.length());
+                pkgListUpdate(call, rawP, type, 0);
+                free(rawP);
 
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
@@ -1483,7 +1563,7 @@ void taskAPRS(void *pvParameters) {
                         }
                         String digiPkg;
                         packet2Raw(digiPkg, incomingPacket);
-                        pkgTxUpdate(digiPkg.c_str(), digiDelay);
+                        pkgTxPush(digiPkg.c_str(), digiPkg.length(), digiDelay);
                     }
                     else
                     {
@@ -1664,7 +1744,7 @@ void taskNetwork(void *pvParameters) {
                                         // Is adresse is in owner callsigns group?
                                         if (msg_call.startsWith(config.aprs_mycall)) {
                                             Serial.println("MSG to Owner group");
-                                            pkgTxUpdate(line.c_str(), 0);
+                                            pkgTxPush(line.c_str(), line.length(), 0);
                                             status.inet2rf++;
                                             igateTLM.INET2RF++;
                                             printTime();
@@ -1677,7 +1757,7 @@ void taskNetwork(void *pvParameters) {
                                                 if (pkgList[i].time > 0) {
                                                     if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
                                                         Serial.println("MSG to last heard");
-                                                        pkgTxUpdate(line.c_str(), 0);
+                                                        pkgTxPush(line.c_str(), line.length(), 0);
                                                         status.inet2rf++;
                                                         igateTLM.INET2RF++;
                                                         printTime();

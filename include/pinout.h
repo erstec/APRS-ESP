@@ -19,7 +19,7 @@
 //#define POWER_PIN           23
 #define POWER_PIN           25
 #define POWERDOWN_PIN       27
-#define SQL_PIN             33
+#define SQL_PIN             -1
 
 // Interface to the radio / radio module
 #define SPK_PIN             ADC1_CHANNEL_0  // Read ADC1_0 From PIN 36(VP)
@@ -44,12 +44,6 @@
 #define SERIAL_GPS_BAUD     9600
 #define SERIAL_GPS_RXPIN    16
 #define SERIAL_GPS_TXPIN    17
-
-// TNC UART
-#define SERIAL_TNC_UART     2
-#define SERIAL_TNC_BAUD     9600
-#define SERIAL_TNC_RXPIN    16
-#define SERIAL_TNC_TXPIN    17
 
 // I2C OLED
 #define OLED_WIDTH          128
@@ -101,12 +95,6 @@
 #define SERIAL_GPS_BAUD     9600
 #define SERIAL_GPS_RXPIN    15//16
 #define SERIAL_GPS_TXPIN    17
-
-// TNC UART
-#define SERIAL_TNC_UART     2
-#define SERIAL_TNC_BAUD     9600
-#define SERIAL_TNC_RXPIN    15//16
-#define SERIAL_TNC_TXPIN    17
 
 // I2C OLED
 #define OLED_WIDTH          128
@@ -168,12 +156,6 @@
 #define SERIAL_GPS_RXPIN    17
 #define SERIAL_GPS_TXPIN    15
 
-// TNC UART
-#define SERIAL_TNC_UART     2
-#define SERIAL_TNC_BAUD     9600
-#define SERIAL_TNC_RXPIN    15//16
-#define SERIAL_TNC_TXPIN    17
-
 // I2C OLED
 #define OLED_WIDTH          128
 #define OLED_HEIGHT         64
@@ -193,18 +175,24 @@
 #define BOARD_NAME          "T-TWR"
 
 // SA8x8 radio module
-//#define VBAT_PIN            35
-#define POWER_PIN           39
+#define VBAT_PIN            36
+#define POWER_PIN           38
 #define POWERDOWN_PIN       40
-#define SQL_PIN             42
+#define SQL_PIN             -1
 
 // Interface to the radio / radio module
-#define SPK_PIN             ADC1_GPIO10_CHANNEL
+#define SPK_PIN             1
 #define MIC_PIN             18
 #define PTT_PIN             41
-#define RX_LED_PIN          2
-#define TX_LED_PIN          1
+#define RX_LED_PIN          5
+#define TX_LED_PIN          -1
 #define RSSI_PIN            42
+
+#define MIC_CH_SEL          17
+
+#define PIXELS_PIN          42
+
+#define PMU_IRQ             4
 
 // DEBUG UART
 #define SERIAL_DEBUG_BAUD   115200
@@ -213,30 +201,24 @@
 #define SERIAL_RF_UART      1
 #define SERIAL_RF_BAUD      9600
 #define SERIAL_RF_RXPIN     48
-#define SERIAL_RF_TXPIN     47
+#define SERIAL_RF_TXPIN     39
 
 // GPS UART
 #define SERIAL_GPS_UART     2
 #define SERIAL_GPS_BAUD     9600
-#define SERIAL_GPS_RXPIN    17
-#define SERIAL_GPS_TXPIN    16
-
-// TNC UART
-#define SERIAL_TNC_UART     2
-#define SERIAL_TNC_BAUD     9600
-#define SERIAL_TNC_RXPIN    17
-#define SERIAL_TNC_TXPIN    16
+#define SERIAL_GPS_RXPIN    5
+#define SERIAL_GPS_TXPIN    6
 
 // I2C OLED
 #define OLED_WIDTH          128
 #define OLED_HEIGHT         64
-#define OLED_SDA_PIN        13
-#define OLED_SCL_PIN        14
-#define OLED_RST_PIN        21 // POWER ENABLE
+#define OLED_SDA_PIN        8
+#define OLED_SCL_PIN        9
+#define OLED_RST_PIN        -1 // POWER ENABLE
 
 // ROTARY ENCODER
 #define PIN_ROT_CLK         9
 #define PIN_ROT_DT          5
-#define PIN_ROT_BTN         7
+#define PIN_ROT_BTN         21
 
 #endif /* BOARD_TTWR */

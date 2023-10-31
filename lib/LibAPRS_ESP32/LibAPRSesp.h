@@ -37,4 +37,7 @@ void APRS_msgRetry();
 void APRS_printSettings();
 void APRS_sendTNC2Pkt(String raw);
 
+void base91encode(long ltemp,char *s);
+long semicircles(char *degstr, char hemi);
+
 int freeMemory();

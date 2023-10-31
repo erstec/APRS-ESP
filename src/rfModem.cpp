@@ -44,6 +44,7 @@ bool RF_Init(bool boot) {
 #elif defined(USE_SA818)
     Serial.println("SA818 Init");
 #elif defined(USE_SA868)
+    log_i("SA868 Init");
     Serial.println("SA868 Init");
 #elif defined(USE_SA828)
     Serial.println("SA828 Init");
@@ -58,8 +59,11 @@ bool RF_Init(bool boot) {
         pinMode(POWER_PIN, OUTPUT);
         digitalWrite(POWER_PIN, LOW);
         
+#if !defined(BOARD_TTWR)
         pinMode(SQL_PIN, INPUT_PULLUP);
+#endif
 
+        log_i("RF Modem powered up");
         Serial.println("RF Modem powered up");
 #if !defined(USE_SA828)
         SerialRF.println();
@@ -123,6 +127,7 @@ bool RF_Init(bool boot) {
             config.tone_tx, config.sql_level, config.tone_rx);
     SerialRF.println(str);
     Serial.println(str);
+    log_i("%s", str);
     delay(500);
     if (!rfAnswerCheck()) return false;
 

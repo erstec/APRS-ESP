@@ -31,7 +31,11 @@ void OledStartup() {
 #ifdef USE_SCREEN
 #if defined(USE_SCREEN_SSD1306)
     // Explicit Wire pins assignment
+#if defined(BOARD_TTWR)
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000L);
+#else
     Wire.setPins(OLED_SDA_PIN, OLED_SCL_PIN);
+#endif
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 init failed");
