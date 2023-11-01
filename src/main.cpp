@@ -821,7 +821,7 @@ void setup()
     setupPower();
 #endif
 
-#if defined(BOARD_TTWR_PLUS_MOD) || defined(BOARD_TTWR)
+#if defined(BOARD_TTWR)
     // MIC Select
     pinMode(MIC_CH_SEL, OUTPUT);
     digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32

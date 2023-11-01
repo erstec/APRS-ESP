@@ -198,9 +198,7 @@ inline static uint8_t sinSample(uint16_t i)
 #define I2S_INTERNAL
 #endif
 
-// #if !defined(NOSQL)
 // #define SQL
-// #endif
 
 #include "../../include/pinout.h"
 

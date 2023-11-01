@@ -51,9 +51,8 @@ bool RF_Init(bool boot) {
         pinMode(POWER_PIN, OUTPUT);
         digitalWrite(POWER_PIN, LOW);
         
-#if !defined(BOARD_TTWR)
-        pinMode(SQL_PIN, INPUT_PULLUP);
-#endif
+        if (SQL_PIN > -1)
+            pinMode(SQL_PIN, INPUT_PULLUP);
 
         log_i("RF Modem powered up");
         Serial.println("RF Modem powered up");
