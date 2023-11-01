@@ -45,14 +45,13 @@
 #define APRS_PREAMBLE	(350UL * 3)
 #define APRS_TAIL       (250UL)
 #elif defined(USE_SA868)
-// #define APRS_PREAMBLE	(350UL * 3) // My
-// #define APRS_TAIL       (250UL)
-// #define APRS_PREAMBLE	(350UL) // Stock2
-// #define APRS_TAIL       (50UL)
+#if defined(BOARD_TTWR)
+#define APRS_PREAMBLE	(300UL)
+#define APRS_TAIL       (100UL)
+#else
 #define APRS_PREAMBLE	(500UL) // Stock2 Adjusted
 #define APRS_TAIL       (100UL)
-// #define APRS_PREAMBLE	(300UL) // stock
-// #define APRS_TAIL       (0UL)
+#endif
 #else
 // #define APRS_PREAMBLE	(350UL)
 // #define APRS_TAIL       (0UL)

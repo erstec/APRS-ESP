@@ -1268,16 +1268,14 @@ void AFSK_TimerEnable(bool sts)
     timerAlarmDisable(timer);
 }
 
-void LED_Color(uint8_t r, uint8_t g, uint8_t b)
-{
-  strip.setPixelColor(0, strip.Color(r, g, b));
-  strip.show();
-}
-
 bool getTransmit()
 {
   bool ret=false;
-  if (digitalRead(PTT_PIN) == 0)
+  int ptt = digitalRead(PTT_PIN);
+#if defined(INVERT_PTT)
+  ptt = !ptt;
+#endif
+  if (ptt == 1)
     ret = true;
   if(hw_afsk_dac_isr) ret=true;
   return ret;
@@ -1286,7 +1284,11 @@ bool getTransmit()
 bool getReceive()
 {
   bool ret=false;
-  if (digitalRead(PTT_PIN) == 0) return true; //PTT Protection receive
+  int ptt = digitalRead(PTT_PIN);
+#if defined(INVERT_PTT)
+  ptt = !ptt;
+#endif
+  if (ptt == 1) return true; //PTT Protection receive
   if(AFSK_modem->hdlc.receiving==true) ret=true;
   return ret;
 }
@@ -1309,12 +1311,17 @@ void AFSK_hw_init(void)
   log_d("AFSK hardware Initialize");
   // pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
-  pinMode(17, OUTPUT); // MIC_SEL
+  pinMode(MIC_CH_SEL, OUTPUT); // MIC_SEL
   pinMode(18, OUTPUT); // ESP2MIC
-  pinMode(1, ANALOG);  // AUDIO2ESP
+  pinMode(SPK_PIN, ANALOG);  // AUDIO2ESP
 
-  digitalWrite(17, HIGH);
+  digitalWrite(MIC_CH_SEL, HIGH);
+
+#if defined(INVERT_PTT)
   digitalWrite(PTT_PIN, HIGH); // PTT not active
+#else
+  digitalWrite(PTT_PIN, LOW); // PTT not active
+#endif
 
   resultADC = (uint8_t *)malloc(TIMES * sizeof(uint8_t));
 
@@ -1387,7 +1394,11 @@ static void AFSK_txStart(Afsk *afsk)
     afsk->phaseInc = MARK_INC;
     afsk->phaseAcc = 0;
     afsk->bitstuffCount = 0;
+  #if defined(INVERT_PTT)
     digitalWrite(PTT_PIN, LOW);
+  #else
+    digitalWrite(PTT_PIN, HIGH);
+  #endif
     afsk->preambleLength = DIV_ROUND(custom_preamble * BITRATE, 4800);
     AFSK_DAC_IRQ_START();
     // LED_TX_ON();
@@ -1854,7 +1865,11 @@ void IRAM_ATTR sample_isr()
     // End of packet
     if (AFSK_modem->sending == false)
     {
+#if defined(INVERT_PTT)
       digitalWrite(PTT_PIN, HIGH);
+#else
+      digitalWrite(PTT_PIN, LOW);
+#endif
       AFSK_TimerEnable(false);
       // LED_TX_OFF();
     }

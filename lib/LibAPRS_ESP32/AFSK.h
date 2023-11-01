@@ -293,37 +293,6 @@ typedef struct Afsk
 #include <Adafruit_NeoPixel.h>
 extern Adafruit_NeoPixel strip;
 
-#if defined(TX_LED_PIN)
-
-#if defined(INVERT_LEDS)
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
-#else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
-#endif
-#else
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
-#else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
-#endif
-#endif
-
-#else
-
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
-#endif
-
-#endif
-
-#if defined(BOARD_TTWR)
-
 #define AFSK_DAC_IRQ_START()         \
     do                               \
     {                                \
@@ -336,25 +305,6 @@ extern Adafruit_NeoPixel strip;
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = false;     \
     } while (0)
-
-#else
-
-#define AFSK_DAC_IRQ_START()         \
-    do                               \
-    {                                \
-        extern bool hw_afsk_dac_isr; \
-        hw_afsk_dac_isr = true;      \
-        TX_LED_ON();\
-    } while (0)
-#define AFSK_DAC_IRQ_STOP()          \
-    do                               \
-    {                                \
-        extern bool hw_afsk_dac_isr; \
-        hw_afsk_dac_isr = false;     \
-        TX_LED_OFF();\
-    } while (0)
-
-#endif
 
 // Here's some macros for controlling the RX/TX LEDs
 // THE _INIT() functions writes to the DDRB register

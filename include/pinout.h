@@ -172,7 +172,7 @@
 
 #if defined(BOARD_TTWR)
 
-#define BOARD_NAME          "T-TWR"
+#define BOARD_NAME          "T-TWR-PLUS"
 
 // SA8x8 radio module
 #define VBAT_PIN            36
@@ -218,8 +218,8 @@
 #define OLED_RST_PIN        -1 // POWER ENABLE
 
 // ROTARY ENCODER
-#define PIN_ROT_CLK         9
-#define PIN_ROT_DT          5
+#define PIN_ROT_CLK         47
+#define PIN_ROT_DT          46
 #define PIN_ROT_BTN         21
 
 #endif /* BOARD_TTWR */
