@@ -58,14 +58,8 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(USE_SA818) || defined(USE_SA868) || defined(USE_SR_FRS)
+#if defined(USE_SA818) || defined(USE_SA868)
 #define USE_RF
-#endif
-
-#ifdef SR_FRS
-#ifndef USE_SA818
-#define USE_SA818
-#endif
 #endif
 
 // smart beaconing parameters

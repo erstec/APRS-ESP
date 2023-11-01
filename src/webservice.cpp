@@ -1435,11 +1435,8 @@ void handle_radio() {
         "<form accept-charset=\"UTF-8\" action=\"/radio\" "
         "class=\"form-horizontal\" id=\"radio_form\" method=\"post\">\n";
 
-#ifdef SR_FRS
-    webString += "<div>\n<h3>RF Module SR_FRS_1W</h3>\n";
-#else
     webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
-#endif
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
     webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
@@ -2160,9 +2157,7 @@ void handle_firmware() {
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SR_FRS)
-    webString += " <b>(MODEL: SR_FRS_1W)</b>";
-#elif defined(USE_SA818)
+#if defined(USE_SA818)
     webString += " <b>(MODEL: SA818)</b>";
 #elif defined(USE_SA868)
     webString += " <b>(MODEL: SA868)</b>";
@@ -2357,9 +2352,7 @@ void handle_configuration() {
         "jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SR_FRS)
-    webString += " <b>(MODEL:SR_FRS_1W)</b>";
-#elif defined(USE_SA818)
+#if defined(USE_SA818)
     webString += " <b>(MODEL:SA818)</b>";
 #elif defined(USE_SA868)
     webString += " <b>(MODEL:SA868)</b>";

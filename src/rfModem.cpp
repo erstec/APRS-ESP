@@ -35,9 +35,7 @@ bool rfAnswerCheck(void) {
 }
 
 bool RF_Init(bool boot) {
-#if defined(USE_SR_FRS)
-    Serial.println("SR_FRS Init");
-#elif defined(USE_SA818)
+#if defined(USE_SA818)
     Serial.println("SA818 Init");
 #elif defined(USE_SA868)
     log_i("SA868 Init");
@@ -76,20 +74,7 @@ bool RF_Init(bool boot) {
     }
     char str[100];
     if (config.sql_level > 8) config.sql_level = 8;
-#if defined(SR_FRS)
-    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%d,%01d,%d,0", config.band,
-            config.freq_tx + ((float)config.offset_tx / 1000000),
-            config.freq_rx + ((float)config.offset_rx / 1000000),
-            config.tone_rx, config.sql_level, config.tone_tx);
-    SerialRF.println(str);
-    delay(500);
-    // Module auto power save setting
-    SerialRF.println("AT+DMOAUTOPOWCONTR=1");
-    delay(500);
-    SerialRF.println("AT+DMOSETVOX=0");
-    delay(500);
-    SerialRF.println("AT+DMOSETMIC=1,0,0");
-#elif defined(USE_SA818)
+#if defined(USE_SA818)
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
             config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
