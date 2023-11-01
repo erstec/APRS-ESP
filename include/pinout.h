@@ -184,7 +184,8 @@
 #define SPK_PIN             1
 #define MIC_PIN             18
 #define PTT_PIN             41
-#define RX_LED_PIN          5
+#define INVERT_PTT
+#define RX_LED_PIN          -1
 #define TX_LED_PIN          -1
 #define RSSI_PIN            42
 

@@ -305,8 +305,8 @@ extern Adafruit_NeoPixel strip;
 #endif
 #else
 #if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
 #else
 #define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
 #define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
@@ -322,6 +322,23 @@ extern Adafruit_NeoPixel strip;
 
 #endif
 
+#if defined(BOARD_TTWR)
+
+#define AFSK_DAC_IRQ_START()         \
+    do                               \
+    {                                \
+        extern bool hw_afsk_dac_isr; \
+        hw_afsk_dac_isr = true;      \
+    } while (0)
+#define AFSK_DAC_IRQ_STOP()          \
+    do                               \
+    {                                \
+        extern bool hw_afsk_dac_isr; \
+        hw_afsk_dac_isr = false;     \
+    } while (0)
+
+#else
+
 #define AFSK_DAC_IRQ_START()         \
     do                               \
     {                                \
@@ -336,7 +353,8 @@ extern Adafruit_NeoPixel strip;
         hw_afsk_dac_isr = false;     \
         TX_LED_OFF();\
     } while (0)
-//#define AFSK_DAC_INIT()        do { DAC_DDR |= (DAC_PINS) ; PTT_DDR = 0b01000000;} while (0)
+
+#endif
 
 // Here's some macros for controlling the RX/TX LEDs
 // THE _INIT() functions writes to the DDRB register
@@ -345,8 +363,8 @@ extern Adafruit_NeoPixel strip;
 // to turn the pins on or off.
 
 #if defined(USE_NEOPIXEL)
-#define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 255, 0); strip.show();    // Green
-#define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define RX_LED_ON() strip.setPixelColor(0, 0, 255, 0); strip.show();    // Green
+#define RX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
 #else
 #define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH);
 #define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW);

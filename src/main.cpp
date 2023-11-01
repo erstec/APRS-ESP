@@ -95,8 +95,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #endif
 #else
 #if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
 #else
 #define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
 #define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
@@ -255,8 +255,9 @@ bool pkgTxSend() {
 #if defined(BOARD_TTWR)
                 psramBusy = false;
 #endif
-                digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
+                // digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
                 status.txCount++;
+                TX_LED_ON();
                 adcActive(false);
 
                 APRS_setPreamble(APRS_PREAMBLE);
@@ -264,13 +265,20 @@ bool pkgTxSend() {
                 log_d("TX->RF: %s\n", info);
 
                 for (int i = 0; i < 100; i++) {
-                    if (digitalRead(PTT_PIN))
+#if defined(INVERT_PTT)
+                    if (digitalRead(PTT_PIN) == 1) {
+#else
+                    if (digitalRead(PTT_PIN) == 0) {
+#endif
+                        Serial.println("PTT RELEASE DETECTED");
                         break;
+                    }
                     delay(50); // TOT 5sec
                 }
 
                 // delay(2000);
-                digitalWrite(POWER_PIN, 0); // set RF Power Low
+                TX_LED_OFF();
+                // digitalWrite(POWER_PIN, 0); // set RF Power Low
                 adcActive(true);
                 
                 return true;

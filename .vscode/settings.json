@@ -9,6 +9,7 @@
         "initializer_list": "cpp",
         "cmath": "cpp",
         "cstdlib": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "*.tpp": "cpp"
     }
 }

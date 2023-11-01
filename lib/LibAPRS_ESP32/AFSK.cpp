@@ -1,23 +1,14 @@
+#if !defined(BOARD_TTWR)
 
 #include <string.h>
 #include "AFSK.h"
 #include "Arduino.h"
 #include <Wire.h>
 #include <driver/adc.h>
-#if !defined(BOARD_TTWR)
 #include <driver/i2s.h>
-#endif
 #include "esp_adc_cal.h"
 #include "cppQueue.h"
 #include "fir_filter.h"
-
-#if defined(BOARD_TTWR)
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-
-#include "driver/sigmadelta.h"
-#endif
 
 extern "C"
 {
@@ -32,9 +23,6 @@ extern unsigned long custom_tail;
 int adcVal;
 
 bool input_HPF = false;
-#if defined(BOARD_TTWR)
-bool input_BPF = false;
-#endif
 
 static const adc_unit_t unit = ADC_UNIT_1;
 
@@ -43,13 +31,8 @@ bool hw_afsk_dac_isr = false;
 
 static filter_t bpf;
 static filter_t lpf;
-#if defined(BOARD_TTWR)
-static filter_t hpf;
-#endif
 
 Afsk *AFSK_modem;
-
-#if !defined(BOARD_TTWR)
 
 uint8_t CountOnesFromInteger(uint8_t value)
 {
@@ -1106,30 +1089,48 @@ void AFSK_Poll(bool isRF)
   }
 }
 
-bool getReceive() {
-    bool ret = false;
-    int pttPinState = digitalRead(PTT_PIN);
-#if defined(INVERT_PTT)
-    pttPinState = !pttPinState;
-#endif
-    if (pttPinState == 1) return true; //PTT Protection receive
-    if (AFSK_modem->hdlc.receiving == true) ret = true;
-    
-    return ret;
+#else
+
+#include <string.h>
+#include "AFSK.h"
+#include "Arduino.h"
+#include <Wire.h>
+#include <driver/adc.h>
+#include "esp_adc_cal.h"
+#include "cppQueue.h"
+#include "fir_filter.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+
+#include "driver/sigmadelta.h"
+
+extern "C"
+{
+#include "soc/syscon_reg.h"
+#include "soc/syscon_struct.h"
 }
 
-void adcActive(bool sts) {
-    // if (sts) {
-    //   //adc_init();
-    //   adc_digi_start();
-    //   hw_afsk_dac_isr = 0;
-    // } else {
-    //   adc_digi_stop();
-    //   //adc_digi_deinitialize();
-    // }
-}
+#define DEBUG_TNC
 
-#else // defined(BOARD_TTWR)
+extern unsigned long custom_preamble;
+extern unsigned long custom_tail;
+int adcVal;
+
+bool input_HPF = false;
+bool input_BPF = false;
+
+static const adc_unit_t unit = ADC_UNIT_1;
+
+void sample_isr();
+bool hw_afsk_dac_isr = false;
+
+static filter_t bpf;
+static filter_t lpf;
+static filter_t hpf;
+
+Afsk *AFSK_modem;
 
 #define ADC_RESULT_BYTE 4
 #define ADC_CONV_LIMIT_EN 0
@@ -1308,14 +1309,12 @@ void AFSK_hw_init(void)
   log_d("AFSK hardware Initialize");
   // pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
-//  pinMode(18, OUTPUT); // ESP2MIC
+  pinMode(17, OUTPUT); // MIC_SEL
+  pinMode(18, OUTPUT); // ESP2MIC
   pinMode(1, ANALOG);  // AUDIO2ESP
 
-#if defined(INVERT_PTT)
-  digitalWrite(PTT_PIN, HIGH);
-#else
-  digitalWrite(PTT_PIN, LOW);
-#endif
+  digitalWrite(17, HIGH);
+  digitalWrite(PTT_PIN, HIGH); // PTT not active
 
   resultADC = (uint8_t *)malloc(TIMES * sizeof(uint8_t));
 
@@ -1955,4 +1954,5 @@ void AFSK_Poll(bool isRF)
   }
 }
 
-#endif // defined(BOARD_TTWR)
+
+#endif
