@@ -31,18 +31,39 @@ boolean isValidNumber(String str) {
     return false;
 }
 
+static tm lastTime;
+
 void printTime() {
     char buf[3];
     struct tm tmstruct;
-    getLocalTime(&tmstruct, 0);
-    Serial.print("[");
-    sprintf(buf, "%02d", tmstruct.tm_hour);
-    Serial.print(buf);
-    Serial.print(":");
-    sprintf(buf, "%02d", tmstruct.tm_min);
-    Serial.print(buf);
-    Serial.print(":");
-    sprintf(buf, "%02d", tmstruct.tm_sec);
-    Serial.print(buf);
-    Serial.print("] ");
+    bool timeOk = true;
+    if (getLocalTime(&tmstruct, 0)) {
+        if (tmstruct.tm_hour > 25 || tmstruct.tm_min > 60 || tmstruct.tm_sec > 60) {
+            timeOk = false;
+        }
+    } 
+    if (timeOk) {
+        lastTime = tmstruct;
+        Serial.print("[");
+        sprintf(buf, "%02d", tmstruct.tm_hour);
+        Serial.print(buf);
+        Serial.print(":");
+        sprintf(buf, "%02d", tmstruct.tm_min);
+        Serial.print(buf);
+        Serial.print(":");
+        sprintf(buf, "%02d", tmstruct.tm_sec);
+        Serial.print(buf);
+        Serial.print("] ");
+    } else {
+        Serial.print("[");
+        sprintf(buf, "%02d", lastTime.tm_hour);
+        Serial.print(buf);
+        Serial.print(":");
+        sprintf(buf, "%02d", lastTime.tm_min);
+        Serial.print(buf);
+        Serial.print(":");
+        sprintf(buf, "%02d", lastTime.tm_sec);
+        Serial.print(buf);
+        Serial.print("] ");
+    }
 }
