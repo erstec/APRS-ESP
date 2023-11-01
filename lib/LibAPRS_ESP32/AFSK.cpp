@@ -228,7 +228,6 @@ void AFSK_hw_init(void)
 
 #if defined(TX_LED_PIN)
   pinMode(TX_LED_PIN, OUTPUT);
-  TX_LED_OFF();
 #endif
 
   pinMode(RX_LED_PIN, OUTPUT);
@@ -311,7 +310,6 @@ static void AFSK_txStart(Afsk *afsk)
     afsk->phaseInc = MARK_INC;
     afsk->phaseAcc = 0;
     afsk->bitstuffCount = 0;
-    TX_LED_ON();
 #if defined(INVERT_PTT)
     digitalWrite(PTT_PIN, LOW);
 #else
@@ -1088,6 +1086,18 @@ void AFSK_Poll(bool isRF)
 #endif
   }
 }
+
+bool getReceive() {
+  bool ret = false;
+  int ptt = digitalRead(PTT_PIN);
+#if defined(INVERT_PTT)
+  ptt = !ptt;
+#endif
+  if (ptt == 1) return true; //PTT Protection receive
+  if (AFSK_modem->hdlc.receiving == true) ret = true;
+  return ret;
+}
+
 
 #else
 

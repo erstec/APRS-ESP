@@ -258,7 +258,9 @@ bool pkgTxSend() {
                 // digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
                 status.txCount++;
                 TX_LED_ON();
+#if defined(BOARD_TTWR)
                 adcActive(false);
+#endif
 
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
@@ -279,7 +281,9 @@ bool pkgTxSend() {
                 // delay(2000);
                 TX_LED_OFF();
                 // digitalWrite(POWER_PIN, 0); // set RF Power Low
+#if defined(BOARD_TTWR)
                 adcActive(true);
+#endif
                 
                 return true;
             }
@@ -783,6 +787,9 @@ void setup()
 #ifndef USE_ROTARY
     pinMode(PIN_ROT_BTN, INPUT_PULLUP);
 #endif
+
+    TX_LED_OFF();
+    RX_LED_OFF();
 
     Serial.println();
     log_d("Start APRS-ESP V%s", VERSION_FULL);
