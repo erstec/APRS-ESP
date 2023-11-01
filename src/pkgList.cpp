@@ -100,8 +100,7 @@ void sortPkgDesc(pkgListType a[], int size) {
 uint16_t pkgType(const char *raw) {
     uint16_t type = 0;
     char packettype = 0;
-    const char *info_start, *body;
-    int paclen = strlen(raw);
+    const char *body;
 
     if (*raw == 0)
         return 0;
@@ -241,8 +240,8 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
             else
                 pkgList[i].audio_level = 0;
             len = strlen(raw);
-            if (len > 500)
-                len = 500;
+            if (len > sizeof(pkgList[i].raw))
+                len = sizeof(pkgList[i].raw);
             memcpy(pkgList[i].raw, raw, len);
             // SerialLOG.print("Update: ");
         }
@@ -266,8 +265,8 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
         // strcpy(pkgList[i].calsign, callsign);
         memcpy(pkgList[i].calsign, callsign, strlen(callsign));
         len = strlen(raw);
-        if (len > 500)
-            len = 500;
+        if (len > sizeof(pkgList[i].raw))
+            len = sizeof(pkgList[i].raw);
         memcpy(pkgList[i].raw, raw, len);
         // strcpy(pkgList[i].raw, raw);
         pkgList[i].calsign[10] = 0;
@@ -283,8 +282,8 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
 void pkgListInit() {
 #ifdef BOARD_HAS_PSRAM
     pkgList = (pkgListType *)ps_malloc(sizeof(pkgListType) * PKGLISTSIZE);
-    memset(pkgList, 0, sizeof(pkgListType) * PKGLISTSIZE);
 #else
     pkgList = (pkgListType *)malloc(sizeof(pkgListType) * PKGLISTSIZE);
 #endif
+    memset(pkgList, 0, sizeof(pkgListType) * PKGLISTSIZE);
 }
