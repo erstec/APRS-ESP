@@ -1227,15 +1227,7 @@ void loop()
                 Serial.println("TimeSync Flag Reset");
             }
         }
-#ifdef USE_RF
-#ifdef DEBUG_RF
-#ifdef USE_SA828
-        if (SerialRF.available()) {
-            Serial.print(SerialRF.readString());
-        }
-#endif
-#endif
-#endif
+
         if (AFSKInitAct == true) {
 #ifdef USE_RF
             AFSK_Poll(true);

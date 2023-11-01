@@ -1438,7 +1438,7 @@ void handle_radio() {
 #ifdef SR_FRS
     webString += "<div>\n<h3>RF Module SR_FRS_1W</h3>\n";
 #else
-    webString += "<div>\n<h3>RF Module SA818/SA828/SA868</h3>\n";
+    webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
 #endif
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
@@ -2162,8 +2162,6 @@ void handle_firmware() {
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
     webString += " <b>(MODEL: SR_FRS_1W)</b>";
-#elif defined(USE_SA828)
-    webString += " <b>(MODEL: SA828_1.5W)</b>";
 #elif defined(USE_SA818)
     webString += " <b>(MODEL: SA818)</b>";
 #elif defined(USE_SA868)
@@ -2361,8 +2359,6 @@ void handle_configuration() {
 #ifdef USE_RF
 #if defined(USE_SR_FRS)
     webString += " <b>(MODEL:SR_FRS_1W)</b>";
-#elif defined(USE_SA828)
-    webString += " <b>(MODEL:SA828_1.5W)</b>";
 #elif defined(USE_SA818)
     webString += " <b>(MODEL:SA818)</b>";
 #elif defined(USE_SA868)

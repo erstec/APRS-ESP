@@ -41,10 +41,7 @@
 #define USE_SCREEN
 #endif
 
-#if defined (USE_SA828)
-#define APRS_PREAMBLE	(350UL * 3)
-#define APRS_TAIL       (250UL)
-#elif defined(USE_SA868)
+#if defined(USE_SA868)
 #if defined(BOARD_TTWR)
 #define APRS_PREAMBLE	(300UL)
 #define APRS_TAIL       (100UL)
@@ -61,7 +58,7 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(USE_SA818) || defined(USE_SA868) || defined(USE_SA828) || defined(USE_SR_FRS)
+#if defined(USE_SA818) || defined(USE_SA868) || defined(USE_SR_FRS)
 #define USE_RF
 #endif
 
