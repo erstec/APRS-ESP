@@ -121,7 +121,7 @@ bool RF_Init(bool boot) {
 
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
-
+#endif
     // SerialRF.println(str);
     delay(500);
     if (!rfAnswerCheck()) return false;

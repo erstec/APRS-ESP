@@ -8,7 +8,6 @@
 */
 
 #include "pkgList.h"
-#include "parse_aprs.h"
 #include "main.h"
 
 pkgListType *pkgList;
