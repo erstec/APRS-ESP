@@ -311,8 +311,8 @@ extern Adafruit_NeoPixel strip;
 // to turn the pins on or off.
 
 #if defined(USE_NEOPIXEL)
-#define RX_LED_ON() strip.setPixelColor(0, 0, 255, 0); strip.show();    // Green
-#define RX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define RX_LED_ON() strip.setPixelColor(0, 0, 255, 0);  // Green
+#define RX_LED_OFF() strip.setPixelColor(0, 0, 0, 0);   // Off
 #else
 #define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH);
 #define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW);

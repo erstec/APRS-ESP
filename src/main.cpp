@@ -87,16 +87,16 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 
 #if defined(INVERT_LEDS)
 #if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
+#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0);   // Red
+#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0);   // Off
 #else
 #define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
 #define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
 #endif
 #else
 #if defined(USE_NEOPIXEL)
-#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0);  // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0);   // Off
 #else
 #define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
 #define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
@@ -106,8 +106,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #else
 
 #if defined(USE_NEOPIXEL)
-#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
+#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0);  // Red
+#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0);   // Off
 #endif
 
 #endif
@@ -1788,6 +1788,11 @@ void taskOLEDDisplay(void *pvParameters) {
 #if defined(USE_PMU)
         loopPMU();
 #endif
+
+#if defined(USE_NEOPIXEL)
+        strip.show();
+#endif
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

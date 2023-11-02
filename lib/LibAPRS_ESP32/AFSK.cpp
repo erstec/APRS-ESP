@@ -1,3 +1,10 @@
+
+static bool rx_att = false;
+
+void AFSK_setRxAtt(bool _rx_att) {
+  rx_att = _rx_att;
+}
+
 #if !defined(BOARD_TTWR)
 
 #include <string.h>
@@ -1140,8 +1147,6 @@ static filter_t bpf;
 static filter_t lpf;
 static filter_t hpf;
 
-static bool rx_att = false;
-
 Afsk *AFSK_modem;
 
 #define ADC_RESULT_BYTE 4
@@ -1400,10 +1405,6 @@ void AFSK_init(Afsk *afsk)
   filter_init(&hpf, hpf_an, FIR_BPF_N);
 
   AFSK_hw_init();
-}
-
-void AFSK_setRxAtt(bool _rx_att) {
-  rx_att = _rx_att;
 }
 
 static void AFSK_txStart(Afsk *afsk)
@@ -1990,6 +1991,5 @@ void AFSK_Poll(bool isRF)
     }
   }
 }
-
 
 #endif
