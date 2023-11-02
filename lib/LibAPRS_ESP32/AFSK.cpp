@@ -149,7 +149,7 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
 
   if (MODE == I2S_MODE_RX || MODE == I2S_MODE_TX)
   {
-    Serial.println("using I2S_MODE");
+    log_i("Using I2S_MODE");
     i2s_pin_config_t pin_config;
     pin_config.bck_io_num = PIN_I2S_BCLK;
     pin_config.ws_io_num = PIN_I2S_LRC;
@@ -175,11 +175,11 @@ void I2S_Init(i2s_mode_t MODE, i2s_bits_per_sample_t BPS)
 #if defined(CONFIG_IDF_TARGET_ESP32)
   else if (MODE == I2S_MODE_DAC_BUILT_IN || MODE == I2S_MODE_ADC_BUILT_IN)
   {
-    Serial.println("Using I2S DAC/ADC_builtin");
+    log_i("Using I2S_DAC/ADC_BUILTIN");
     // install and start i2s driver
     if (i2s_driver_install(I2S_NUM_0, &i2s_config, 5, &i2s_event_queue) != ESP_OK)
     {
-      Serial.println("ERROR: Unable to install I2S drives");
+      log_e("ERROR: Unable to install I2S drives");
     }
     // GPIO36, VP
     // init ADC pad
@@ -305,7 +305,7 @@ static void AFSK_txStart(Afsk *afsk)
   if (!afsk->sending)
   {
     fifo_flush(&AFSK_modem->txFifo);
-    // Serial.println("TX Start");
+    // log_i("TX Start");
     afsk->sending = true;
     afsk->phaseInc = MARK_INC;
     afsk->phaseAcc = 0;
@@ -601,7 +601,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
         hdlc_flag_count = 0;
         ret = false;
 #ifdef DEBUG_TNC
-        Serial.println("FIFO IS FULL");
+        log_e("FIFO IS FULL");
 #endif
       }
     }
@@ -620,7 +620,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
       hdlc_flag_count = 0;
       ret = false;
 #ifdef DEBUG_TNC
-      Serial.println("FIFO IS FULL");
+      log_e("FIFO IS FULL");
 #endif
     }
 
@@ -781,7 +781,7 @@ void AFSK_adc_isr(Afsk *afsk, int16_t currentSample)
         fifo_flush(&afsk->rxFifo);
         afsk->status = 0;
 #ifdef DEBUG_TNC
-        Serial.println("FIFO IS FULL");
+        log_e("FIFO IS FULL");
 #endif
       }
     }
@@ -1693,7 +1693,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
         hdlc_flag_count = 0;
         ret = false;
 #ifdef DEBUG_TNC
-        Serial.println("FIFO IS FULL");
+        log_e("FIFO IS FULL");
 #endif
       }
     }
@@ -1712,7 +1712,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
       hdlc_flag_count = 0;
       ret = false;
 #ifdef DEBUG_TNC
-      Serial.println("FIFO IS FULL");
+      log_e("FIFO IS FULL");
 #endif
     }
 
@@ -1855,7 +1855,7 @@ void AFSK_adc_isr(Afsk *afsk, int16_t currentSample)
         fifo_flush(&afsk->rxFifo);
         afsk->status = 0;
 #ifdef DEBUG_TNC
-        Serial.println("FIFO IS FULL");
+        log_e("FIFO IS FULL");
 #endif
       }
     }

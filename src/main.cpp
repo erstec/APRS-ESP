@@ -190,7 +190,6 @@ bool psramBusy = false;
 
 teTimeSync timeSyncFlag = T_SYNC_NONE;
 
-static long scrUpdTMO = 0;
 static long gpsUpdTMO = 0;
 
 const char *lastTitle = "LAST HEARD";
@@ -255,12 +254,13 @@ bool pkgTxSend() {
 #if defined(BOARD_TTWR)
                 psramBusy = false;
 #endif
-                // digitalWrite(POWER_PIN, config.rf_power); // RF Power LOW
+                digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
-                TX_LED_ON();
+                // TX_LED_ON();
 #if defined(BOARD_TTWR)
                 adcActive(false);
 #endif
+                TX_LED_ON();
 
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
@@ -272,7 +272,7 @@ bool pkgTxSend() {
 #else
                     if (digitalRead(PTT_PIN) == 0) {
 #endif
-                        Serial.println("PTT RELEASE DETECTED");
+                        log_i("PTT RELEASE DETECTED");
                         break;
                     }
                     delay(50); // TOT 5sec
@@ -280,7 +280,7 @@ bool pkgTxSend() {
 
                 // delay(2000);
                 TX_LED_OFF();
-                // digitalWrite(POWER_PIN, 0); // set RF Power Low
+                digitalWrite(POWER_PIN, 0); // RF Power Low
 #if defined(BOARD_TTWR)
                 adcActive(true);
 #endif
@@ -396,7 +396,7 @@ void aprsTimeGet(uint8_t *buf) {
     int hour = time.substring(2, 4).toInt();
     int min = time.substring(4, 6).toInt();
 
-    Serial.printf("APRS Time: %02d %02d:%02d\r\n", day, hour, min);
+    log_i("APRS Time: %02d %02d:%02d", day, hour, min);
 
     if (config.synctime && timeSyncFlag == T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
         // set internal rtc time
@@ -477,7 +477,7 @@ uint8_t popGwRaw(uint8_t *raw) {
 WiFiClient aprsClient;
 
 boolean APRSConnect() {
-    // Serial.println("Connect TCP Server");
+    log_i("Connect APRS-IS Server");
     String login = "";
     int cnt = 0;
     uint8_t con = aprsClient.connected();
@@ -512,7 +512,7 @@ boolean APRSConnect() {
         }
         aprsClient.println(login);
         // Serial.println(login);
-        // Serial.println("Success");
+        log_i("Success");
         delay(500);
     }
 
@@ -533,7 +533,7 @@ void setupPower()
     bool result = PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
     if (result == false) {
         while (1) {
-            Serial.println("PMU is not online...");
+            log_e("PMU is not online...");
             delay(500);
         }
     }
@@ -549,7 +549,7 @@ void setupPower()
 
     // Get the VSYS shutdown voltage
     uint16_t vol = PMU.getSysPowerDownVoltage();
-    Serial.printf("->  getSysPowerDownVoltage:%u\n", vol);
+    log_i("->  getSysPowerDownVoltage:%u", vol);
 
     // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
     PMU.setSysPowerDownVoltage(2600);
@@ -620,8 +620,6 @@ void setupPower()
     PMU.disableCPUSLDO();
     PMU.disableDLDO1();
     PMU.disableDLDO2();
-
-
 
     Serial.println("DCDC=======================================================================");
     Serial.printf("DC1  : %s   Voltage:%u mV \n",  PMU.isEnableDC1()  ? "+" : "-", PMU.getDC1Voltage());
@@ -780,8 +778,7 @@ void setup()
 
 #if defined(USE_GPS)
     SerialGPS.setRxBufferSize(500);
-    SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN,
-                    SERIAL_GPS_TXPIN);
+    SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
 #endif
 
 #ifndef USE_ROTARY
@@ -792,10 +789,8 @@ void setup()
     RX_LED_OFF();
 
     Serial.println();
-    log_d("Start APRS-ESP V%s", VERSION_FULL);
-    Serial.println("Start APRS-ESP V" + String(VERSION_FULL));
-    log_d("Press and hold BOOT button for 3 sec to Factory Default config");
-    Serial.println("Press and hold BOOT button for 3 sec to Factory Default config");
+    log_i("Start APRS-ESP V%s", VERSION_FULL);
+    log_i("Press and hold BOOT button for 3 sec to Factory Default config");
 
 #if defined(BOARD_TTWR_MOD)
     // +4.2V EN
@@ -844,14 +839,14 @@ void setup()
 #if defined(USE_PMU)
     if (PMU.isVbusIn()) {
         vbusIn = true;
-        Serial.println("Vbus In");
+        log_i("Vbus In");
         // PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
     }
 #endif
 
     // if SmartBeaconing - delay processing GPS data
     if (config.aprs_beacon == 0) {
-        Serial.println("SmartBeaconing, delayed GPS processing");
+        log_i("SmartBeaconing, delayed GPS processing");
         gpsUpdTMO = 30000;  // 30 sec
     }
 
@@ -897,31 +892,31 @@ String send_gps_location() {
     float _lon = 0.0;
 
     if (config.gps_mode == GPS_MODE_AUTO) {
-        Serial.println("GPS Mode: Auto");
+        log_i("GPS Mode: Auto");
         //if (/*age != (uint32_t)ULONG_MAX &&*/ gps.location.isValid() /*|| gotGpsFix*/) {
         if (gps.location.isValid()) {
             _lat = lat / 1000000.0;
             _lon = lon / 1000000.0;
             distance = 0;   // Reset counted distance
-            Serial.println("GPS Fix, using current location");
+            log_i("GPS Fix, using current location");
         } else {
             _lat = config.gps_lat;
             _lon = config.gps_lon;
-            Serial.println("No GPS Fix, using fixed location");
+            log_i("No GPS Fix, using fixed location");
         }
     } else if (config.gps_mode == GPS_MODE_FIXED) {
-        Serial.println("GPS Mode: Fixed Only");
+        log_i("GPS Mode: Fixed Only");
         _lat = config.gps_lat;
         _lon = config.gps_lon;
     } else if (config.gps_mode == GPS_MODE_GPS) {
-        Serial.println("GPS Mode: GPS Only");
+        log_i("GPS Mode: GPS Only");
         if (gps.location.isValid()) {
             _lat = lat / 1000000.0;
             _lon = lon / 1000000.0;
             distance = 0;   // Reset counted distance
-            Serial.println("GPS Fix, using current location");
+            log_i("GPS Fix, using current location");
         } else {
-            Serial.println("No GPS Fix, skipped");
+            log_i("No GPS Fix, skipped");
             return "";
         }
     }
@@ -1065,6 +1060,8 @@ uint8_t getBatteryPercentage() {
 #endif
 
 void printPeriodicDebug() {
+    char strtmp[256];
+    int stridx = 0;
 #if defined(ADC_BATTERY)
     if (config.wifi_mode == WIFI_OFF) {
         // batteryVoltage = (analogRead(ADC_BATTERY) * 2);
@@ -1079,45 +1076,32 @@ void printPeriodicDebug() {
 #if defined(USE_PMU)
     batteryPercentage = getBatteryPercentage();
 #endif
-    printTime();
+    printTime(strtmp);  // date/time is 10+1 symbols
+    stridx = 11;
+    strtmp[10] = ' ';
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    Serial.print("Bat: ");
+    stridx += sprintf(strtmp + stridx, "Bat: ");
 #endif
 #if defined(ADC_BATTERY)
-    Serial.print(batteryVoltage);
-    Serial.print("mV ");
+    stridx += sprintf(strtmp + stridx, "%d mV", batteryVoltage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    Serial.print(batteryPercentage);
-    Serial.print("%");
+    stridx += sprintf(strtmp + stridx, "%d%%", batteryPercentage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    Serial.print(", lat: ");
+    stridx += sprintf(strtmp + stridx, ", lat: ");
 #else
-    Serial.print("Lat: ");
+    stridx += sprintf(strtmp + stridx, "Lat: ");
 #endif
-    Serial.print(lat);
-    Serial.print(" lon: ");
-    Serial.print(lon);
-    Serial.print(" age: ");
-    Serial.print(age);
-    Serial.print(gps.location.isValid() ? ", valid" : ", invalid");
-    Serial.print(gps.location.isUpdated() ? ", updated" : ", not updated");
-    Serial.print(", dist: ");
-    Serial.println(distance);
+    stridx += sprintf(strtmp + stridx, "%d lon: %d age: %d, %s, %s, dist: %d", lat, lon, age, gps.location.isValid() ? "valid" : "invalid", gps.location.isUpdated() ? "updated" : "not updated", distance);
+
+    log_i("%s", strtmp);
 }
 
 bool gpsUnlock = false;
 
 void updateScreenAndGps(bool force) {
     // GpsUpdate();
-
-    // 1/sec
-    if ((millis() - scrUpdTMO > 1000) || force) {
-        scrUpdTMO = millis();
-
-        printPeriodicDebug();
-    }
 
     if (fwUpdateProcess) return;
 
@@ -1126,7 +1110,7 @@ void updateScreenAndGps(bool force) {
         if ((long)millis() - gpsUpdTMO < 0) {
             return;
         } else {
-            Serial.println("GPS Unlocked");
+            log_i("GPS Unlocked");
             gpsUnlock = true;
         }
     }
@@ -1148,36 +1132,33 @@ void loopPMU()
     pmu_flag = false;
     // Get PMU Interrupt Status Register
     uint32_t status = PMU.getIrqStatus();
-    Serial.print("STATUS => HEX:");
-    Serial.print(status, HEX);
-    Serial.print(" BIN:");
-    Serial.println(status, BIN);
+    log_i("STATUS => HEX:%x BIN:%b", status, status);
 
     // if (PMU.isPekeyShortPressIrq()) {
     //     volumeUp();
     // }
 
     if (PMU.isBatChagerStartIrq() || PMU.isBatteryConnect()) {
-        Serial.println("Battery Charging");
+        log_i("Battery Charging");
         PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
     }
 
     if (PMU.isBatChagerDoneIrq()) {
-        Serial.println("Battery Charging Done");
+        log_i("Battery Charging Done");
     }
 
     if (PMU.isBatRemoveIrq()) {
-        Serial.println("Battery Removed");
+        log_i("Battery Removed");
         PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
     }
 
     if (PMU.isVbusInsertIrq()) {
-        Serial.println("USB Detected");
+        log_i("USB Detected");
         vbusIn = true;
     }
 
     if (PMU.isVbusRemoveIrq()) {
-        Serial.println("USB Removed");
+        log_i("USB Removed");
         vbusIn = false;
     }
 
@@ -1224,7 +1205,7 @@ void loop()
             if (timeSyncFlag != T_SYNC_NONE && WiFi.status() != WL_CONNECTED) {
                 // Reset time sync flag
                 timeSyncFlag = T_SYNC_NONE;
-                Serial.println("TimeSync Flag Reset");
+                log_i("TimeSync Flag Reset");
             }
         }
 
@@ -1280,17 +1261,17 @@ void loop()
             {
                 if (config.wifi_mode == WIFI_OFF) {
                     config.wifi_mode = WIFI_AP_STA_FIX;
-                    Serial.println("WiFi ON");
+                    log_i("WiFi ON");
                 } else {
                     config.wifi_mode = WIFI_OFF;
-                    Serial.println("WiFi OFF");
+                    log_i("WiFi OFF");
                 }
                 btn_count = 0;
                 SaveConfig();
                 esp_restart();
             }
             else if (btn_count > 2000) {    // Config Default
-                Serial.println("Factory Default");
+                log_i("Factory Default");
                 btn_count = 0;
                 DefaultConfig();
                 SaveConfig();
@@ -1304,7 +1285,7 @@ void loop()
                         pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
 #ifdef DEBUG_TNC
-                        Serial.println("Manual TX: " + tnc2Raw);
+                        log_i("Manual TX: %s", tnc2Raw.c_str());
                     }
 #endif
                 }
@@ -1312,10 +1293,6 @@ void loop()
             btn_count = 0;
         }
     }
-
-#if defined(USE_PMU)
-    loopPMU();
-#endif
 }
 
 String sendIsAckMsg(String toCallSign, char *msgId) {
@@ -1381,7 +1358,7 @@ void taskAPRS(void *pvParameters) {
     //	long start, stop;
     // char *raw;
     // char *str;
-    Serial.println("Task <APRS> started");
+    log_i("Task <APRS> started");
     PacketBuffer.clean();
 
     APRS_init(config.rx_att);
@@ -1433,9 +1410,8 @@ void taskAPRS(void *pvParameters) {
         if (sendByTime || sendByFlag) {
             sendTimer = now;
             
-            Serial.print("Send by ");
-            if (sendByTime) Serial.println("Time");
-            if (sendByFlag) Serial.println("Flag");
+            if (sendByTime) log_i("Send by Time");
+            if (sendByFlag) log_i("Send by Flag");
 
             if (digiCount > 0) digiCount--;
 #ifdef USE_RF
@@ -1449,11 +1425,13 @@ void taskAPRS(void *pvParameters) {
                             aprsClient.println(rawData);  // Send packet to Inet
                         }
                         
-                        char *rawP = (char *)malloc(rawData.length());
-                        memcpy(rawP, rawData.c_str(), rawData.length());
-                        // rawData.toCharArray(rawP, rawData.length());
-                        pkgTxPush(rawP, rawData.length(), 0);
-                        free(rawP);
+                        // char *rawP = (char *)malloc(rawData.length());
+                        // memcpy(rawP, rawData.c_str(), rawData.length());
+                        // // rawData.toCharArray(rawP, rawData.length());
+                        // pkgTxPush(rawP, rawData.length(), 0);
+                        // free(rawP);
+
+                        pkgTxPush(rawData.c_str(), rawData.length(), 0);
                     }
                 }
             }
@@ -1509,7 +1487,7 @@ void taskAPRS(void *pvParameters) {
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
 #ifdef DEBUG_TNC                
-                Serial.println("RX->RF: " + tnc2);
+                log_i("RX->RF: %s", tnc2.c_str());
 #endif
 
                 // store to log
@@ -1522,10 +1500,11 @@ void taskAPRS(void *pvParameters) {
                 
                 uint8_t type = pkgType((char *)incomingPacket.info);
                 
-                char *rawP = (char *)malloc(tnc2.length());
-                memcpy(rawP, tnc2.c_str(), tnc2.length());
-                pkgListUpdate(call, rawP, type, 0);
-                free(rawP);
+                // char *rawP = (char *)malloc(tnc2.length());
+                // memcpy(rawP, tnc2.c_str(), tnc2.length());
+                // pkgListUpdate(call, rawP, type, 0);
+                // free(rawP);
+                pkgListUpdate(call, (char *)tnc2.c_str(), type, 0);
 
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
@@ -1538,9 +1517,7 @@ void taskAPRS(void *pvParameters) {
                         igateTLM.RF2INET++;
                         // igateTLM.TX++;
 #ifdef DEBUG
-                        printTime();
-                        Serial.print("RF->INET: ");
-                        Serial.println(tnc2);
+                        log_i("RF->INET: %s", tnc2.c_str());
 #endif
                     }
                 }
@@ -1595,7 +1572,7 @@ bool wifiConnected = false;
 
 void taskNetwork(void *pvParameters) {
     int c = 0;
-    Serial.println("Task <Network> started");
+    log_i("Task <Network> started");
 
     if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {  // AP=false
         // WiFi.mode(config.wifi_mode);
@@ -1608,22 +1585,20 @@ void taskNetwork(void *pvParameters) {
         WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass);  // Start HOTspot removing password
         // will disable security
         WiFi.softAPConfig(local_IP, gateway, subnet);
-        Serial.print("Access point running. IP address: ");
-        Serial.print(WiFi.softAPIP());
-        Serial.println("");
+        log_i("Access point running. IP address: %s", WiFi.softAPIP().toString().c_str());
         wiFiActive = true;
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(100);
-        Serial.println(F("WiFi Station Only mode"));
+        log_i("WiFi Station Only mode");
         wiFiActive = true;
     } else {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
         delay(100);
         // Serial.println(F("WiFi OFF. BT only mode"));
-        Serial.println(F("WiFi OFF All mode"));
+        log_i("WiFi OFF All mode");
         // SerialBT.begin("ESP32TNC");
         wiFiActive = false;
     }
@@ -1650,7 +1625,7 @@ void taskNetwork(void *pvParameters) {
                     AFSK_TimerEnable(false);
 #endif
                     wifiTTL = tw + 60000;
-                    Serial.println("WiFi connecting...");
+                    log_i("WiFi connecting...");
                     // udp.endPacket();
                     WiFi.disconnect();
                     WiFi.setTxPower((wifi_power_t)config.wifi_power);
@@ -1663,7 +1638,7 @@ void taskNetwork(void *pvParameters) {
                         // for (t = millis(); (millis() - t) < 1000; refresh());
                     }
                     if (c >= 30) {  // If it didn't connect within 1 min
-                        Serial.println("Failed. Will retry...");
+                        log_w("Failed. Will retry...");
                         WiFi.disconnect();
                         // WiFi.mode(WIFI_OFF);
                         delay(3000);
@@ -1678,9 +1653,7 @@ void taskNetwork(void *pvParameters) {
                         }
                     }
 
-                    Serial.println("WiFi connected");
-                    Serial.print("IP address: ");
-                    Serial.println(WiFi.localIP());
+                    log_i("WiFi connected. IP address: %s", WiFi.localIP().toString().c_str());
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
@@ -1694,7 +1667,7 @@ void taskNetwork(void *pvParameters) {
                     if (config.synctime) {
                         // Serial.println("Config NTP");
                         // setSyncProvider(getNtpTime);
-                        Serial.println("Setting up NTP");
+                        log_i("Setting up NTP");
                         configTime(3600 * config.timeZone, 0, config.ntpServer);
                         vTaskDelay(3000 / portTICK_PERIOD_MS);
                         time_t systemTime;
@@ -1715,9 +1688,7 @@ void taskNetwork(void *pvParameters) {
                         if (aprsClient.available()) {
                             String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
-                            printTime();
-                            Serial.print("APRS-IS: ");
-                            Serial.println(line);
+                            log_i("APRS-IS: %s", line.c_str());
 #endif
                             status.isCount++;
 
@@ -1731,9 +1702,9 @@ void taskNetwork(void *pvParameters) {
                                     msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
                                 }
 #ifdef DEBUG_IS
-                                Serial.printf("SRC_CALL: %s\r\n", src_call.c_str());
+                                log_i("SRC_CALL: %s", src_call.c_str());
                                 if (msg_call_idx > 0) {
-                                    Serial.printf("MSG_CALL: %s\r\n", msg_call.c_str());
+                                    log_i("MSG_CALL: %s", msg_call.c_str());
                                 }
 #endif
                                 status.allCount++;
@@ -1750,25 +1721,23 @@ void taskNetwork(void *pvParameters) {
                                     if (config.tnc && config.inet2rf && (msg_call != "")) {
                                         // Is adresse is in owner callsigns group?
                                         if (msg_call.startsWith(config.aprs_mycall)) {
-                                            Serial.println("MSG to Owner group");
+                                            log_i("MSG to Owner group");
                                             pkgTxPush(line.c_str(), line.length(), 0);
                                             status.inet2rf++;
                                             igateTLM.INET2RF++;
-                                            printTime();
 #ifdef DEBUG
-                                            Serial.print("INET->RF " + line);
+                                            log_i("INET->RF %s", line.c_str());
 #endif
                                         } else {
                                             // Is it a message for last heard stations?
                                             for (int i = 0; i < PKGLISTSIZE; i++) {
                                                 if (pkgList[i].time > 0) {
                                                     if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
-                                                        Serial.println("MSG to last heard");
+                                                        log_i("MSG to last heard");
                                                         pkgTxPush(line.c_str(), line.length(), 0);
                                                         status.inet2rf++;
                                                         igateTLM.INET2RF++;
-                                                        printTime();
-                                                        Serial.println("INET->RF " + line);
+                                                        log_i("INET->RF %s", line.c_str());
                                                     }
                                                 }
                                             }
@@ -1778,8 +1747,7 @@ void taskNetwork(void *pvParameters) {
                                     // Telemetry found
                                     igateTLM.DROP++;
                                     status.dropCount++;
-                                    Serial.print("INET Message TELEMETRY from ");
-                                    Serial.println(src_call);
+                                    log_i("INET Message TELEMETRY from %s", src_call.c_str());
                                 }
                             }
                         }
@@ -1787,7 +1755,7 @@ void taskNetwork(void *pvParameters) {
                 }
 
                 if (WiFi.status() != WL_CONNECTED && wifiConnected) {
-                    Serial.println("WiFi disconnected");
+                    log_w("WiFi disconnected");
                     wifiConnected = false;
                     WiFi.disconnect();
                     wifiTTL = 0;
@@ -1799,9 +1767,11 @@ void taskNetwork(void *pvParameters) {
 
 void taskOLEDDisplay(void *pvParameters) {
 
-    Serial.println("Task <OLEDDisplay> started");
+    log_i("Task <OLEDDisplay> started");
 
     for (;;) {
+        printPeriodicDebug();
+        
         if (fwUpdateProcess) {
             OledUpdateFWU();
             continue;
@@ -1815,6 +1785,9 @@ void taskOLEDDisplay(void *pvParameters) {
         OledUpdate(-1, false);
 #endif
 
+#if defined(USE_PMU)
+        loopPMU();
+#endif
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

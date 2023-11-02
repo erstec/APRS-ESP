@@ -15,6 +15,6 @@
 
 String getValue(String data, char separator, int index);
 boolean isValidNumber(String str);
-void printTime();
+void printTime(char *buf);
 
 #endif // HELPERS_H

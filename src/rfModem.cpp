@@ -19,24 +19,23 @@ unsigned long SA818_Timeout = 0;
 bool rfAnswerCheck(void) {
     if (SerialRF.available() > 0) {
         String ret = SerialRF.readString();
-        Serial.print("->" + ret);
+        log_i("->%s", ret.c_str());
         if (ret.indexOf(":0") > 0) {
             // SA818_Timeout = millis();
 #ifdef DEBUG
-            Serial.println("SA Answer OK");
+            log_i("SA Answer OK");
 #endif
             return true;
         }
         return false;
     } else {
-        Serial.println("SA Answer Error");
+        log_e("SA Answer Error");
         return false;
     }
 }
 
 bool RF_Init(bool boot) {
     log_i("SA818/SA868 Init");
-    Serial.println("SA818/SA868 Init");
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
@@ -51,7 +50,6 @@ bool RF_Init(bool boot) {
             pinMode(SQL_PIN, INPUT_PULLUP);
 
         log_i("RF Modem powered up");
-        Serial.println("RF Modem powered up");
 
         SerialRF.println();
         delay(500);
@@ -76,15 +74,14 @@ bool RF_Init(bool boot) {
             config.freq_rx + ((float)config.offset_rx / 1000000),
             config.tone_tx, config.sql_level, config.tone_rx);
     SerialRF.println(str);
-    Serial.println(str);
     log_i("%s", str);
     delay(500);
     if (!rfAnswerCheck()) return false;
     SerialRF.println("AT+SETFILTER=1,1,1");
-    Serial.println("AT+SETFILTER=1,1,1");
+    log_i("AT+SETFILTER=1,1,1");
 #if defined(USE_SA818)
     SerialRF.println("AT+SETTAIL=0");
-    Serial.println("AT+SETTAIL=0");
+    log_i("AT+SETTAIL=0");
     delay(500);
     if (!rfAnswerCheck()) return false;
 #endif
@@ -95,7 +92,7 @@ bool RF_Init(bool boot) {
     if (config.volume > 8) config.volume = 8;
 
     SerialRF.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
-    Serial.printf("AT+DMOSETVOLUME=%d\r\n", config.volume);
+    log_i("AT+DMOSETVOLUME=%d", config.volume);
     delay(500);
     if (!rfAnswerCheck()) return false;
 
@@ -108,7 +105,7 @@ void RF_Check() {
     }
 
     SerialRF.println("AT+DMOCONNECT");
-    Serial.println("AT+DMOCONNECT");
+    log_i("AT+DMOCONNECT");
     delay(100);
     if (rfAnswerCheck()) {
         SA818_Timeout = millis();

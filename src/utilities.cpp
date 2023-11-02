@@ -33,8 +33,7 @@ boolean isValidNumber(String str) {
 
 static struct tm lastTime;
 
-void printTime() {
-    char buf[3];
+void printTime(char *buf) {
     struct tm tmstruct;
     bool timeOk = true;
     if (getLocalTime(&tmstruct, 0)) {
@@ -43,27 +42,9 @@ void printTime() {
         }
     } 
     if (timeOk) {
+        snprintf(buf, 11, "[%02d:%02d:%02d]", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
         lastTime = tmstruct;
-        Serial.print("[");
-        sprintf(buf, "%02d", tmstruct.tm_hour);
-        Serial.print(buf);
-        Serial.print(":");
-        sprintf(buf, "%02d", tmstruct.tm_min);
-        Serial.print(buf);
-        Serial.print(":");
-        sprintf(buf, "%02d", tmstruct.tm_sec);
-        Serial.print(buf);
-        Serial.print("] ");
     } else {
-        Serial.print("[");
-        sprintf(buf, "%02d", lastTime.tm_hour);
-        Serial.print(buf);
-        Serial.print(":");
-        sprintf(buf, "%02d", lastTime.tm_min);
-        Serial.print(buf);
-        Serial.print(":");
-        sprintf(buf, "%02d", lastTime.tm_sec);
-        Serial.print(buf);
-        Serial.print("] ");
+        snprintf(buf, 11, "[%02d:%02d:%02d]", lastTime.tm_hour, lastTime.tm_min, lastTime.tm_sec);
     }
 }

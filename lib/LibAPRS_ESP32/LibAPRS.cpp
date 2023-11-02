@@ -376,7 +376,7 @@ void APRS_sendPkt(void *_buffer, size_t length)
 void APRS_sendTNC2Pkt(String raw)
 {
     ax25frame frame;
-    // Serial.println(raw);
+    // log_d("APRS_sendTNC2Pkt: %s", raw.c_str());
     ax25_encode(frame, (char *)raw.c_str(), raw.length());
     ax25sendFrame(&AX25, &frame);
 }

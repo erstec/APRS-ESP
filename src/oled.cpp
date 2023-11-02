@@ -38,11 +38,12 @@ void OledStartup() {
 #endif
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 init failed");
+        log_e("SSD1306 init failed");
     } else {
-        Serial.println("SSD1306 init ok");
+        log_i("SSD1306 init ok");
     }
 #elif defined(USE_SCREEN_SH1106)
+    log_i("SH1106 init");
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
 #endif
 

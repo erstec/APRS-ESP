@@ -1623,7 +1623,7 @@ void handle_system() {
             // Serial.println(server.arg(i));
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
-                    Serial.println("WEB Config NTP");
+                    log_i("WEB Config NTP");
                     strcpy(config.ntpServer, server.arg(i).c_str());
                     configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
@@ -1669,20 +1669,7 @@ void handle_system() {
                     settimeofday(&tv, &tz);
 
                     // Serial.println("Update TIME " + server.arg(i));
-                    Serial.print("Set New Time at ");
-                    Serial.print(dd);
-                    Serial.print("/");
-                    Serial.print(mm);
-                    Serial.print("/");
-                    Serial.print(yyyy);
-                    Serial.print(" ");
-                    Serial.print(hh);
-                    Serial.print(":");
-                    Serial.print(ii);
-                    Serial.print(":");
-                    Serial.print(ss);
-                    Serial.print(" ");
-                    Serial.println(timeStamp);
+                    log_i("Set New Time at %d/%d/%d %d:%d:%d %d", dd, mm, yyyy, hh, ii, ss, timeStamp);
                 }
                 break;
             }
@@ -2312,9 +2299,9 @@ void handle_configuration() {
         SPIFFS.end();
     } else if (server.hasArg("restoreConfig")) {
         HTTPUpload& upload = server.upload();
-        Serial.println(upload.filename);
-        Serial.println(upload.totalSize);
-        Serial.println(upload.status);
+        log_d("Upload file name: %s", upload.filename.c_str()); 
+        log_d("Upload file size: %d", upload.totalSize);
+        log_d("Upload file status: %d", upload.status);
         // if (upload.totalSize != (sizeof(Configuration) + 1)) {
         //     Serial.println("Upload file size error!");
         //     server.send(500, "text/plain", "Upload file size error!");
@@ -2339,7 +2326,7 @@ void handle_configuration() {
         // //}
 
         if (upload.totalSize == 0) {
-            Serial.println("Upload file size error!");
+            log_e("Upload file size error!");
             server.send(500, "text/plain", "Upload file size error!");
             return;
         }
@@ -2348,15 +2335,15 @@ void handle_configuration() {
         filenameJson = "config.json";    // override filename
         if (!filenameJson.startsWith("/")) 
             filenameJson = "/" + filenameJson;
-        Serial.print("handleFileUpload Name: "); Serial.println(filenameJson);
+        log_d("handleFileUpload Name: %s", filenameJson.c_str());
         SPIFFS.begin(true);
         // SPIFFS.remove(filenameJson);
         fsUploadFile = SPIFFS.open(filenameJson, "w");
         filenameJson = String();
-        Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+        log_d("handleFileUpload Data: %d", upload.currentSize);
         if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
         if (fsUploadFile) fsUploadFile.close();
-        Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+        log_d("handleFileUpload Size: %d", upload.totalSize);
         SPIFFS.end();
 
         LoadReConfig();
@@ -2638,7 +2625,7 @@ void webService() {
         []() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
-                Serial.printf("Firmware Update FILE: %s\r\n", upload.filename.c_str());
+                log_i("Firmware Update FILE: %s", upload.filename.c_str());
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
                                                            // available size
                     Update.printError(Serial);
@@ -2664,13 +2651,13 @@ void webService() {
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
                 /* flashing firmware to ESP*/                
-                // Serial.print("Firmware Update Data: "); Serial.println(upload.totalSize);
+                // log_i("Firmware Update Data: %d", upload.currentSize);
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     Update.printError(Serial);
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_END) {
-                Serial.print("Firmware Update Size: "); Serial.println(upload.totalSize);
+                log_i("Firmware Update Size: %d", upload.totalSize);
                 if (Update.end(true)) {  // true to set the size to the current
                                          // progress
                     delay(3);

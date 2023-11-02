@@ -28,25 +28,24 @@ void SaveConfig(bool storeBackup) {
     uint8_t chkSum = 0;
     byte *ptr;
     ptr = (byte *)&config;
-    Serial.println("Saving config to EEPROM...");
+    log_i("Saving config to EEPROM...");
     EEPROM.writeBytes(1, ptr, sizeof(Configuration));
     chkSum = checkSum(ptr, sizeof(Configuration));
     EEPROM.write(0, chkSum);
     EEPROM.commit();
 #ifdef DEBUG
-    Serial.print("Save EEPROM ChkSUM=");
-    Serial.println(chkSum, HEX);
+    log_i("Save EEPROM ChkSUM=%0Xh", chkSum);
 #endif
     
     if (!storeBackup) return;
 
-    Serial.println("Saving config Backup to SPIFFS...");
+    log_i("Saving config Backup to SPIFFS...");
     SPIFFS.begin(true);
 
     // '.bin' file
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
-        Serial.println("Failed to open config file for writing");
+        log_e("Failed to open config file for writing");
         SPIFFS.end();
         return;
     }
@@ -57,7 +56,7 @@ void SaveConfig(bool storeBackup) {
     // '.json' file
     File f_json = SPIFFS.open("/config.json", "w");
     if (!f_json) {
-        Serial.println("Failed to open config file for writing");
+        log_e("Failed to open config file for writing");
         SPIFFS.end();
         return;
     }
@@ -129,7 +128,7 @@ void SaveConfig(bool storeBackup) {
 }
 
 void DefaultConfig() {
-    Serial.println("Applying Factory Default configuration!");
+    log_i("Applying Factory Default configuration!");
     sprintf(config.aprs_mycall, "MYCALL");
     config.aprs_ssid = 15;
     sprintf(config.aprs_host, "rotate.aprs2.net");
@@ -198,10 +197,10 @@ void DefaultConfig() {
 void LoadConfig() {
     byte *ptr;
 
-    Serial.println("Loading config from EEPROM...");
+    log_i("Loading config from EEPROM...");
 
     if (!EEPROM.begin(EEPROM_SIZE)) {
-        Serial.println(F("failed to initialise EEPROM"));  // delay(100000);
+        log_e("failed to initialise EEPROM");
         ESP.restart();
     }
 
@@ -214,7 +213,7 @@ void LoadConfig() {
 
     if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
         DefaultConfig();
-        Serial.println("Restoring Factory Default config");
+        log_i("Restoring Factory Default config");
         while (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
 #ifndef USE_ROTARY
             bootPin2 = digitalRead(PIN_ROT_BTN);
@@ -226,23 +225,23 @@ void LoadConfig() {
     ptr = (byte *)&config;
     EEPROM.readBytes(1, ptr, sizeof(Configuration));
     uint8_t chkSum = checkSum(ptr, sizeof(Configuration));
-    Serial.printf("EEPROM Check %0Xh=%0Xh(%dByte)\r\n", EEPROM.read(0), chkSum, sizeof(Configuration));
+    log_i("EEPROM Check %0Xh=%0Xh(%dByte)", EEPROM.read(0), chkSum, sizeof(Configuration));
 
     // If EEPROM is corrupted, then restore from backup
     if (EEPROM.read(0) != chkSum) {
         // Restore from backup
-        Serial.println("Config EEPROM CRC Error! Trying restore from backup...");
+        log_w("Config EEPROM CRC Error! Trying restore from backup...");
         if (!LoadReConfig()) {
             // If backup is corrupted, then restore factory defaults
             DefaultConfig();
-            Serial.println("Config EEPROM CRC Error! Restoring Factory Default config");
+            log_e("Config EEPROM CRC Error! Restoring Factory Default config");
         }
     } else {
         // If EEPORM is OK, then check Backup
         SPIFFS.begin(true);
         File f = SPIFFS.open("/config.bin", "r");
         if (!f) {
-            Serial.println("Failed to open config file for reading");
+            log_w("Config SPIFFS File Error! Trying restore from EEPROM...");
             SPIFFS.end();
             esp_restart();
         }
@@ -263,18 +262,18 @@ void LoadConfig() {
         ptr = (byte *)&tmpConfig;
 
         uint8_t chkSum3 = checkSum(ptr, sizeof(Configuration));
-        Serial.printf("SPIFFS Check %0Xh=%0Xh(%dByte)\r\n", chkSum2, chkSum3, sizeof(Configuration));
+        log_i("SPIFFS Check %0Xh=%0Xh(%dByte)", chkSum2, chkSum3, sizeof(Configuration));
 
         if (chkSum2 != chkSum3) {
             validSPIFFScfg = false;
         }
 
         if (!validSPIFFScfg) {
-            Serial.println("SPIFFS Config File Error! Reparing...");
+            log_w("SPIFFS Config File Error! Reparing...");
             SPIFFS.begin(true);
             File f = SPIFFS.open("/config.bin", "w");
             if (!f) {
-                Serial.println("Failed to open SPIFFS config file for writing");
+                log_e("Failed to open SPIFFS config file for writing");
                 SPIFFS.end();
                 esp_restart();
             }
@@ -290,7 +289,7 @@ void LoadConfig() {
     SPIFFS.begin(true);
     File f_json = SPIFFS.open("/config.json", "r");
     if (!f_json) {
-        Serial.println("Config JSON file not found! Trying to convert BIN to JSON...");
+        log_w("Config JSON file not found! Trying to convert BIN to JSON...");
         SPIFFS.end();
         LoadReConfig();
     } else {
@@ -366,11 +365,11 @@ Configuration jsonToBinConfig(JsonObject obj) {
 
 bool LoadReConfig() {
     // JSON to BIN conversion
-    Serial.println("Trying to load JSON config from SPIFFS...");
+    log_i("Trying to load JSON config from SPIFFS...");
     SPIFFS.begin(true);
     File f_json = SPIFFS.open("/config.json", "r");
     if (!f_json) {
-        Serial.println("Failed to open config file for reading");
+        log_e("Failed to open config file for reading");
         SPIFFS.end();
         return false;
     }
@@ -378,8 +377,7 @@ bool LoadReConfig() {
     DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, f_json);
     if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        log_e("deserializeJson() failed: %s", error.c_str());
         f_json.close();
         SPIFFS.end();
         return false;
@@ -390,11 +388,11 @@ bool LoadReConfig() {
     Configuration tmpConfig = jsonToBinConfig(doc.as<JsonObject>());
 
     // Save BIN config to SPIFFS
-    Serial.println("Saving converted BIN config to SPIFFS...");
+    log_i("Saving converted BIN config to SPIFFS...");
     SPIFFS.begin(true);
     File f = SPIFFS.open("/config.bin", "w");
     if (!f) {
-        Serial.println("Failed to open config file for writing");
+        log_e("Failed to open config file for writing");
         SPIFFS.end();
         return false;
     }
