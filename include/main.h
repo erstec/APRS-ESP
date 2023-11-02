@@ -44,7 +44,7 @@
 #if defined(BOARD_TTWR)
 #define APRS_PREAMBLE	(300UL)
 #define APRS_TAIL       (100UL)
-#elif defined(BOARD_ESP32DR)
+#else
 #define APRS_PREAMBLE	(500UL) // Stock2 Adjusted
 #define APRS_TAIL       (100UL)
 #endif
