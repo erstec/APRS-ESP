@@ -115,6 +115,7 @@ void SaveConfig(bool storeBackup) {
     doc["sql_level"] = config.sql_level;
     doc["rf_power"] = config.rf_power;
     doc["volume"] = config.volume;
+    doc["rx_att"] = config.rx_att;
 #endif
     doc["timeZone"] = config.timeZone;
     doc["ntpServer"] = config.ntpServer;
@@ -185,6 +186,7 @@ void DefaultConfig() {
     config.rf_power = LOW;
     config.volume = 4;
     config.input_hpf = false;
+    config.rx_att = false;
 #endif
     input_HPF = config.input_hpf;
     config.timeZone = 0;
@@ -353,6 +355,7 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.sql_level = obj["sql_level"];
     tmpConfig.rf_power = obj["rf_power"];
     tmpConfig.volume = obj["volume"];
+    tmpConfig.rx_att = obj["rx_att"];
 #endif
     tmpConfig.timeZone = obj["timeZone"];
     strcpy(tmpConfig.ntpServer, obj["ntpServer"]);

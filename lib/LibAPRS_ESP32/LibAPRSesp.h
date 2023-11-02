@@ -8,7 +8,7 @@
 #include "AFSK.h"
 #include "AX25.h"
 
-void APRS_init();
+void APRS_init(bool rx_att);
 void APRS_poll(void);
 
 void APRS_setCallsign(char *call, int ssid);

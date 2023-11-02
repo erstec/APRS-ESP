@@ -94,8 +94,9 @@ void base91encode(long ltemp,char *s)
 	}
 }
 
-void APRS_init()
+void APRS_init(bool _rx_att = false)
 {
+    AFSK_setRxAtt(_rx_att);
     AFSK_init(&modem);
     ax25_init(&AX25, aprs_msg_callback);
 }

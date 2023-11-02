@@ -324,6 +324,7 @@ extern Afsk *AFSK_modem;
 
 
 void AFSK_init(Afsk *afsk);
+void AFSK_setRxAtt(bool _rx_att);
 void AFSK_transmit(char *buffer, size_t size);
 void AFSK_poll(Afsk *afsk);
 

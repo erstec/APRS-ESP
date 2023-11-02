@@ -1421,6 +1421,17 @@ void handle_radio() {
                         config.tone_rx = server.arg(i).toInt();
                 }
             }
+
+            if (server.argName(i) == "rx_att") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i))) {
+                        if (server.arg(i).toInt())
+                            config.rx_att = true;
+                        else
+                            config.rx_att = false;
+                    }
+                }
+            }
         }
         // config.noise=noiseEn;
         // config.agc=agcEn;
@@ -1528,6 +1539,18 @@ void handle_radio() {
         ">LOW</option></select></div>\n";
     webString += "</div>\n";
 
+    if (config.rx_att) {
+        cmSelSqlT = "selected";
+    } else {
+        cmSelSqlF = "selected";
+    }
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX ATT (default 11, T-TWR-PLUS 2.5)</label>\n";
+    webString +=
+        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">\n<option value=\"1\" " +
+        cmSelSqlT + ">2.5dB</option>\n<option value=\"0\" " + cmSelSqlF + ">11dB</option></select></div>\n";
+    webString += "</div>\n";
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
     webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" value=\"" +
@@ -1573,8 +1596,7 @@ void handle_radio() {
     webString += "</form></div>\n";
 
     webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
+    server.send(200, "text/html", webString);  // send to someones browser when asked
     delay(100);
     webString.clear();
 }

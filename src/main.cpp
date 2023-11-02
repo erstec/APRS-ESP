@@ -1384,7 +1384,7 @@ void taskAPRS(void *pvParameters) {
     Serial.println("Task <APRS> started");
     PacketBuffer.clean();
 
-    APRS_init();
+    APRS_init(config.rx_att);
     APRS_setCallsign(config.aprs_mycall, config.aprs_ssid);
     APRS_setPath1(config.aprs_path, 1);
     APRS_setPreamble(APRS_PREAMBLE);

@@ -1140,6 +1140,8 @@ static filter_t bpf;
 static filter_t lpf;
 static filter_t hpf;
 
+static bool rx_att = false;
+
 Afsk *AFSK_modem;
 
 #define ADC_RESULT_BYTE 4
@@ -1187,7 +1189,13 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
   {
     uint8_t unit = GET_UNIT(channel[i]);
     uint8_t ch = channel[i] & 0x7;
-    adc_pattern[i].atten = ADC_ATTEN_DB_11;
+    if (!rx_att) {
+      adc_pattern[i].atten = ADC_ATTEN_DB_11; // STOCK
+    } else {
+      adc_pattern[i].atten = ADC_ATTEN_DB_2_5; // 2633 for T-TWR-PLUS with replced R22
+      //adc_pattern[i].atten = ADC_ATTEN_DB_6; // 1800
+      //adc_pattern[i].atten = ADC_ATTEN_DB_0;
+    }
     adc_pattern[i].channel = ch;
     adc_pattern[i].unit = unit;
     adc_pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH; // 11 data bits limit
@@ -1392,6 +1400,10 @@ void AFSK_init(Afsk *afsk)
   filter_init(&hpf, hpf_an, FIR_BPF_N);
 
   AFSK_hw_init();
+}
+
+void AFSK_setRxAtt(bool _rx_att) {
+  rx_att = _rx_att;
 }
 
 static void AFSK_txStart(Afsk *afsk)
