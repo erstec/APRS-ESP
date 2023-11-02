@@ -31,7 +31,7 @@ boolean isValidNumber(String str) {
     return false;
 }
 
-static tm lastTime;
+static struct tm lastTime;
 
 void printTime() {
     char buf[3];

@@ -35,12 +35,8 @@ bool rfAnswerCheck(void) {
 }
 
 bool RF_Init(bool boot) {
-#if defined(USE_SA818)
-    Serial.println("SA818 Init");
-#elif defined(USE_SA868)
-    log_i("SA868 Init");
-    Serial.println("SA868 Init");
-#endif
+    log_i("SA818/SA868 Init");
+    Serial.println("SA818/SA868 Init");
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
@@ -73,26 +69,8 @@ bool RF_Init(bool boot) {
     }
     char str[100];
     if (config.sql_level > 8) config.sql_level = 8;
-#if defined(USE_SA818)
+
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
-            config.band,
-            config.freq_tx + ((float)config.offset_tx / 1000000),
-            config.freq_rx + ((float)config.offset_rx / 1000000),
-            config.tone_tx, config.sql_level, config.tone_rx);
-    SerialRF.println(str);
-    Serial.println(str);
-    delay(500);
-    if (!rfAnswerCheck()) return false;
-    SerialRF.println("AT+SETTAIL=0");
-    Serial.println("AT+SETTAIL=0");
-    delay(500);
-    if (!rfAnswerCheck()) return false;
-    SerialRF.println("AT+SETFILTER=1,1,1");
-    Serial.println("AT+SETFILTER=1,1,1");
-#elif defined(USE_SA868)
-    sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
-    // sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
-            // config.rf_power == 1 ? 0 : 1,   // 0: High power, 1: Low power
             config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
             config.freq_rx + ((float)config.offset_rx / 1000000),
@@ -102,9 +80,13 @@ bool RF_Init(bool boot) {
     log_i("%s", str);
     delay(500);
     if (!rfAnswerCheck()) return false;
-
     SerialRF.println("AT+SETFILTER=1,1,1");
     Serial.println("AT+SETFILTER=1,1,1");
+#if defined(USE_SA818)
+    SerialRF.println("AT+SETTAIL=0");
+    Serial.println("AT+SETTAIL=0");
+    delay(500);
+    if (!rfAnswerCheck()) return false;
 #endif
     // SerialRF.println(str);
     delay(500);

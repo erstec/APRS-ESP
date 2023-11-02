@@ -41,26 +41,17 @@
 #define USE_SCREEN
 #endif
 
-#if defined(USE_SA868)
 #if defined(BOARD_TTWR)
 #define APRS_PREAMBLE	(300UL)
 #define APRS_TAIL       (100UL)
-#else
+#elif defined(BOARD_ESP32DR)
 #define APRS_PREAMBLE	(500UL) // Stock2 Adjusted
-#define APRS_TAIL       (100UL)
-#endif
-#else
-// #define APRS_PREAMBLE	(350UL)
-// #define APRS_TAIL       (0UL)
-#define APRS_PREAMBLE	(500UL)
 #define APRS_TAIL       (100UL)
 #endif
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#if defined(USE_SA818) || defined(USE_SA868)
 #define USE_RF
-#endif
 
 // smart beaconing parameters
 #define APRS_SB_FAST_SPEED      100         // At this speed or above, beacons will be transmitted at the Fast Rate
