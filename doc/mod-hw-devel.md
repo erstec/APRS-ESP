@@ -30,7 +30,6 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Remove Mic pull-up Resistor R2 (Pic. 1, marked)
 - Detach and remove (unsolder) Speaker (Pic. 2, marked)
 - Remove Speaker to AMP resistor RF1 (Pic. 2, marked)
-- Remove Green LED resistor (marked)
 - If you want to use HIGH RF power remove battery protection cirquit (Pic. 3, marked) and short two marked pads with piece of wire.
 
 ### Wiring / Audio Adapter Board

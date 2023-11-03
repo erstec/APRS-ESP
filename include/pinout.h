@@ -180,10 +180,10 @@
 #define MIC_PIN             18
 #define PTT_PIN             41
 #define INVERT_PTT
-#define RX_LED_PIN          -1
-#define TX_LED_PIN          -1
-// #define RX_LED_PIN          1
-// #define TX_LED_PIN          1
+// #define RX_LED_PIN          -1
+// #define TX_LED_PIN          -1
+#define RX_LED_PIN          1
+#define TX_LED_PIN          1
 #define INVERT_LEDS
 // #define RSSI_PIN            42
 
