@@ -256,12 +256,10 @@ bool pkgTxSend() {
 #endif
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
-                // TX_LED_ON();
+                TX_LED_ON();
 #if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
-                TX_LED_ON();
-
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
                 log_d("TX->RF: %s\n", info);
@@ -1090,13 +1088,13 @@ void printPeriodicDebug() {
     stridx = 11;
     strtmp[10] = ' ';
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, "Bat: ");
+    stridx += sprintf(strtmp + stridx, "Bat:");
 #endif
 #if defined(ADC_BATTERY)
-    stridx += sprintf(strtmp + stridx, "%d mV", batteryVoltage);
+    stridx += sprintf(strtmp + stridx, " %d mV", batteryVoltage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, "%d%%", batteryPercentage);
+    stridx += sprintf(strtmp + stridx, " %d%%", batteryPercentage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
     stridx += sprintf(strtmp + stridx, ", lat: ");
