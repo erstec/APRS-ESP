@@ -77,14 +77,15 @@ bool RF_Init(bool boot) {
     log_i("%s", str);
     delay(500);
     if (!rfAnswerCheck()) return false;
+
     SerialRF.println("AT+SETFILTER=1,1,1");
     log_i("AT+SETFILTER=1,1,1");
-#if defined(USE_SA818)
-    SerialRF.println("AT+SETTAIL=0");
-    log_i("AT+SETTAIL=0");
     delay(500);
     if (!rfAnswerCheck()) return false;
-#endif
+
+    SerialRF.println("AT+SETTAIL=0");
+    log_i("AT+SETTAIL=0");
+
     // SerialRF.println(str);
     delay(500);
     if (!rfAnswerCheck()) return false;

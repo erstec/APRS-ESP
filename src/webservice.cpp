@@ -2166,11 +2166,7 @@ void handle_firmware() {
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SA818)
-    webString += " <b>(MODEL: SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL: SA868)</b>";
-#endif
+    webString += " <b>(MODEL: SA818/868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
@@ -2361,11 +2357,7 @@ void handle_configuration() {
         "jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SA818)
-    webString += " <b>(MODEL:SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL:SA868)</b>";
-#endif
+    webString += " <b>(MODEL:SA818/SA868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
