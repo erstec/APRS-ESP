@@ -41,7 +41,7 @@
 #define USE_SCREEN
 #endif
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 #define APRS_PREAMBLE	(300UL)
 #define APRS_TAIL       (100UL)
 #else
@@ -214,7 +214,7 @@ typedef enum {
 extern teTimeSync timeSyncFlag;
 extern long TimeSyncPeriod;
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
 extern bool psramBusy;
 #endif
 

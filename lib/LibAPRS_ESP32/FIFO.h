@@ -11,7 +11,7 @@
 #define RB_ATOMIC_START do { uint32_t _savedIS = xt_rsil(1) ;
 #define RB_ATOMIC_END xt_wsr_ps(_savedIS) ;} while(0);
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 typedef struct FIFOBuffer
 {
   uint16_t *begin;
@@ -37,7 +37,7 @@ inline bool fifo_isfull(const FIFOBuffer *f) {
   return ((f->head == f->begin) && (f->tail == f->end)) || (f->tail == f->head - 1);
 }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 inline void fifo_push(FIFOBuffer *f, uint16_t c) {
 #else
 inline void fifo_push(FIFOBuffer *f, unsigned char c) {
@@ -51,7 +51,7 @@ inline void fifo_push(FIFOBuffer *f, unsigned char c) {
   }
 }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 inline uint16_t fifo_pop(FIFOBuffer *f) {
 #else
 inline unsigned char fifo_pop(FIFOBuffer *f) {
@@ -68,7 +68,7 @@ inline unsigned char fifo_pop(FIFOBuffer *f) {
 }
 
 inline void fifo_flush(FIFOBuffer *f) {
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
   f->head = f->tail = f->begin;
 #else
   f->head = f->tail;
@@ -95,7 +95,7 @@ inline bool fifo_isfull_locked(const FIFOBuffer *f) {
   return result;
 }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 inline void fifo_push_locked(FIFOBuffer *f, uint16_t c) {
 #else
 inline void fifo_push_locked(FIFOBuffer *f, unsigned char c) {
@@ -107,7 +107,7 @@ inline void fifo_push_locked(FIFOBuffer *f, unsigned char c) {
   RB_ATOMIC_END
 }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 inline uint16_t fifo_pop_locked(FIFOBuffer *f) {
 #else
 inline unsigned char fifo_pop_locked(FIFOBuffer *f) {
@@ -121,7 +121,7 @@ inline unsigned char fifo_pop_locked(FIFOBuffer *f) {
   return c;
 }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
 inline void fifo_init(FIFOBuffer *f, uint16_t *buffer, size_t size) {
 #else
 inline void fifo_init(FIFOBuffer *f, unsigned char *buffer, size_t size) {

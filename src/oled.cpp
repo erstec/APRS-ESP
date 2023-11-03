@@ -72,7 +72,7 @@ void OledStartup() {
 void OledUpdate(int batData, bool usbPlugged) {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
-    if (AFSK_modem->hdlc.receiving) return;
+    // if (AFSK_modem->hdlc.receiving) return;
 
     char buf[24];
 

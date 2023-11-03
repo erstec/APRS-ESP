@@ -23,6 +23,7 @@ jobs:
           - board: esp32dev-sa868
           - board: esp32dev-t-twr-mod
           - board: lilygo-t-twr-plus
+          - board: lilygo-t-twr-v1
     uses: ./.github/workflows/build_esp32.yml
     with:
       board: ${{ matrix.board }}
