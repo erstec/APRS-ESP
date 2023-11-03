@@ -175,8 +175,8 @@
 #define SQL_PIN             -1
 
 // Interface to the radio / radio module
-#define SPK_PIN             1
-// #define SPK_PIN             2
+// #define SPK_PIN             1
+#define SPK_PIN             2
 #define MIC_PIN             18
 #define PTT_PIN             41
 #define INVERT_PTT

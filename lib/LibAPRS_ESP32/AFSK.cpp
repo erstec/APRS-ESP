@@ -1159,13 +1159,13 @@ static bool check_valid_data(const adc_digi_output_data_t *data);
 #if defined(BOARD_TTWR)
 static uint16_t adc1_chan_mask = BIT(0);
 #elif defined(BOARD_TTWR_V1)
-static uint16_t adc1_chan_mask = BIT(0);
+static uint16_t adc1_chan_mask = BIT(1);
 #endif
 static uint16_t adc2_chan_mask = 0;
 #if defined(BOARD_TTWR)
 static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_0};
 #elif defined(BOARD_TTWR_V1)
-static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_0};
+static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_1};
 #endif
 static const char *TAG = "--(TAG ADC DMA)--";
 #define ADC_OUTPUT_TYPE ADC_DIGI_OUTPUT_FORMAT_TYPE2
@@ -1197,7 +1197,6 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
   dig_cfg.pattern_num = channel_num;
 
   log_d("adc_digi_controller");
-  int i = 0;
   for (int i = 0; i < channel_num; i++)
   {
     uint8_t unit = GET_UNIT(channel[i]);
@@ -1210,7 +1209,7 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
       //adc_pattern[i].atten = ADC_ATTEN_DB_6; // 1800
       //adc_pattern[i].atten = ADC_ATTEN_DB_0;
     }
-  #else
+  #elif defined(BOARD_TTWR_V1)
     adc_pattern[i].atten = ADC_ATTEN_DB_0; // 33k
   #endif
     adc_pattern[i].channel = ch;
@@ -1237,7 +1236,7 @@ static bool check_valid_data(const adc_digi_output_data_t *data)
 #if defined(BOARD_TTWR)
   if (data->type2.channel > 0)
 #elif defined(BOARD_TTWR_V1)
-  if (data->type2.channel > 0)
+  if (data->type2.channel > 1)
 #endif
   // if (data->type2.channel > SOC_ADC_CHANNEL_NUM(unit))
     return false;
@@ -1948,8 +1947,6 @@ void AFSK_Poll(bool isRF)
 {
   int mV;
   int x = 0;
-  size_t writeByte;
-  int16_t adc;
 
   if (!hw_afsk_dac_isr)
   {
