@@ -46,5 +46,5 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Configure using WiFi AP mode. Don't forget to set your callsign and SSID, frequency, etc.
 
 ## Connecting GPS Module
-- You can use any GPS module with UART interface. 3.3V powered are preferable. I'm using NEO-6M module. Baudrate is 9600bps.
-- Connect GPS module to the board using 3V3, GND, TX (IO18) and RX (IO17) pads.
+- You can use any GPS module with UART interface. 3.3V powered are preferable. I'm using NEO-6M module. Baudrate should be set to 9600 bps.
+- Connect GPS module to the board using 3V3, GND, TX (IO16) and RX (IO17) pads.
