@@ -18,6 +18,25 @@ String webString;
 
 bool defaultSetting = false;
 
+String getType(uint32_t type) {
+    String typeStr = "";
+    
+    if (type & FILTER_ALL) typeStr += "All ";
+    if (type & FILTER_OBJECT) typeStr += "Obj ";
+    if (type & FILTER_ITEM) typeStr += "Itm ";
+    if (type & FILTER_MESSAGE) typeStr += "Msg ";
+    if (type & FILTER_WX) typeStr += "WX ";
+    if (type & FILTER_TELEMETRY) typeStr += "Tlm ";
+    if (type & FILTER_QUERY) typeStr += "Qry ";
+    if (type & FILTER_STATUS) typeStr += "Sts ";
+    if (type & FILTER_POSITION) typeStr += "Pos ";
+    if (type & FILTER_BUOY) typeStr += "Buo ";
+    if (type & FILTER_MICE) typeStr += "Mic ";
+    if (type & FILTER_THIRDPARTY) typeStr += "3rd";
+
+    return typeStr;
+}
+
 void serviceHandle() { server.handleClient(); }
 void setHTML(byte page) {
     webString = "<html><head>\n";
@@ -45,7 +64,7 @@ void setHTML(byte page) {
         "}\n"
         ".L1{"
         "text-align: center;"
-        "width: 33%;"
+        "width: 50%;"
         "margin: 1px;"
         "background: darkgray;"
         "color: white;"
@@ -581,18 +600,22 @@ void setHTML(byte page) {
         
         webString += "<span>&nbsp;</span>\n";
         
-        webString += "<div class=\"L1\">LAST STATION</div>";
-        webString += "<table border=\"0\" width=\"200\">";
+        webString += "<div class=\"L1\">LAST STATIONS</div>";
+        webString += "<table border=\"0\" width=\"400\">";
         sort(pkgList, PKGLISTSIZE);
 
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 // time_t tm = pkgList[i].time;
                 localtime_r(&pkgList[i].time, &tmstruct);
                 sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
                 String str = String(strTime);
-                webString += "<tr><td align=\"left\">" + String(pkgList[i].calsign) + "</td><td align=\"right\">" + str + "</td></tr>";
+                webString += "<tr><td align=\"left\">" + str + 
+                        "</td><td align=\"center\">" + String(pkgList[i].calsign) + 
+                        "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") + 
+                        "</td><td align=\"right\">" + getType(pkgList[i].type) + "</td></tr>";
             }
         }
         webString += "</table>";
@@ -603,6 +626,7 @@ void setHTML(byte page) {
         webString += "<table border=\"0\" width=\"200\">";
         sortPkgDesc(pkgList, PKGLISTSIZE);
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 webString += "<tr><td align=\"left\">" +

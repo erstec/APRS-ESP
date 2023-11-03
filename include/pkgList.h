@@ -28,6 +28,7 @@ void sort(pkgListType a[], int size);
 void sortPkgDesc(pkgListType a[], int size);
 int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel);
 uint16_t pkgType(const char *raw);
+pkgListType getPkgList(int idx);
 
 void pkgListInit();
 

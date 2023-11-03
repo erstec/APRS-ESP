@@ -1706,6 +1706,19 @@ void taskNetwork(void *pvParameters) {
                                 if (msg_call_idx > 0) {
                                     log_i("MSG_CALL: %s", msg_call.c_str());
                                 }
+                                
+                                char raw[500];
+                                memset(&raw[0], 0, sizeof(raw));
+                                start_val = line.indexOf(":", 10); // Search of info in ax25
+                                if (start_val > 5)
+                                {
+                                    String info = line.substring(start_val + 1);
+                                    // info.toCharArray(&raw[0], info.length(), 0);
+                                    memcpy(raw, info.c_str(), info.length());
+                                    uint16_t type = pkgType(&raw[0]);
+                                    log_d("Type: %d", type);
+                                    pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
+                                }
 #endif
                                 status.allCount++;
                                 // igateTLM.RX++;
