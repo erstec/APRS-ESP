@@ -1563,7 +1563,7 @@ void handle_radio() {
         ">LOW</option></select></div>\n";
     webString += "</div>\n";
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
     if (config.rx_att) {
         cmSelSqlT = "selected";
     } else {

@@ -49,7 +49,7 @@ void sort(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -65,7 +65,7 @@ void sort(pkgListType a[], int size) {
             }
         }
     }
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
 }
@@ -76,7 +76,7 @@ void sortPkgDesc(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -92,7 +92,7 @@ void sortPkgDesc(pkgListType a[], int size) {
             }
         }
     }
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
 }
@@ -189,13 +189,13 @@ uint16_t pkgType(const char *raw) {
 
 pkgListType getPkgList(int idx) {
     pkgListType ret;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
 #endif
     memcpy(&ret, &pkgList[idx], sizeof(pkgListType));
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
     
@@ -217,7 +217,7 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
     // strncpy(callsign, call, sz);
     memcpy(callsign, call, sz);
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -225,7 +225,7 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
 
     int i = pkgList_Find(callsign, type);
     if (i > PKGLISTSIZE) {
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
         psramBusy = false;
 #endif
         return -1;
@@ -248,7 +248,7 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
     } else {
         i = pkgListOld(); // Search free in array
         if (i > PKGLISTSIZE || i < 0) {
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
             psramBusy = false;
 #endif
             return -1;
@@ -272,7 +272,7 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
         pkgList[i].calsign[10] = 0;
         // SerialLOG.print("NEW: ");
     }
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
     

@@ -34,6 +34,7 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 
 *Ready to use*
 - LilyGO T-TWR Plus (Rev. 2.0)
+- LilyGO T-TWR V1 (need additional hardware modifications, read [here](doc/mod-hw-devel.md))
 
 ### Details
 * Development based on PlatformIO / Visual Studio Code IDE

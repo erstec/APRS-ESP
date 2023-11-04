@@ -90,8 +90,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0);   // Red
 #define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0);   // Off
 #else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
+#define TX_LED_ON() if (TX_LED_PIN > -1) digitalWrite(TX_LED_PIN, LOW);
+#define TX_LED_OFF() if (TX_LED_PIN > -1) digitalWrite(TX_LED_PIN, HIGH);
 #endif
 #else
 #if defined(USE_NEOPIXEL)
@@ -184,7 +184,7 @@ int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
 bool psramBusy = false;
 #endif
 
@@ -198,7 +198,7 @@ int tlmList_Find(char *call) {
     int i;
     for (i = 0; i < TLMLISTSIZE; i++) {
         if (strstr(Telemetry[i].callsign, call) != NULL) {
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
             psramBusy = false;
 #endif
             return i;
@@ -223,13 +223,13 @@ int tlmListOld() {
 
 TelemetryType getTlmList(int idx) {
     TelemetryType ret;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
 #endif
     memcpy(&ret, &Telemetry[idx], sizeof(TelemetryType));
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
     return ret;
@@ -238,7 +238,7 @@ TelemetryType getTlmList(int idx) {
 bool pkgTxSend() {
     if (getReceive())
         return false;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -251,17 +251,15 @@ bool pkgTxSend() {
                 txQueue[i].Active = false;
                 memset(info, 0, sizeof(info));
                 strcpy(info, txQueue[i].Info);
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
                 psramBusy = false;
 #endif
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
-                // TX_LED_ON();
-#if defined(BOARD_TTWR)
+                TX_LED_ON();
+#if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
-                TX_LED_ON();
-
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
                 log_d("TX->RF: %s\n", info);
@@ -281,7 +279,7 @@ bool pkgTxSend() {
                 // delay(2000);
                 TX_LED_OFF();
                 digitalWrite(POWER_PIN, 0); // RF Power Low
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(true);
 #endif
                 
@@ -290,7 +288,7 @@ bool pkgTxSend() {
         }
     }
   
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
   
@@ -298,7 +296,7 @@ bool pkgTxSend() {
 }
 
 bool pkgTxDuplicate(AX25Msg ax25) {
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -318,7 +316,7 @@ bool pkgTxDuplicate(AX25Msg ax25) {
                 ;
                 if (strncmp(ecs1, (const char *)ax25.info, strlen(ecs1)) >= 0) { // Check duplicate aprs info
                     txQueue[i].Active = false;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
                     psramBusy = false;
 #endif
                     return true;
@@ -326,7 +324,7 @@ bool pkgTxDuplicate(AX25Msg ax25) {
             }
         }
     }
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
     
@@ -338,7 +336,7 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
     if (ecs == NULL)
         return false;
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
@@ -372,7 +370,7 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
         }
     }
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
 #endif
     
@@ -802,6 +800,16 @@ void setup()
     digitalWrite(23, HIGH);
 #endif
 
+#if defined(BOARD_TTWR_V1)
+    // +4.2V EN
+    pinMode(15, OUTPUT);
+    digitalWrite(15, HIGH);
+
+    // OLED EN
+    pinMode(21, OUTPUT);
+    digitalWrite(21, HIGH);
+#endif
+
 #if defined(ADC_BATTERY)
     // Battery Voltage
     pinMode(ADC_BATTERY, INPUT);
@@ -816,7 +824,7 @@ void setup()
     setupPower();
 #endif
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
     // MIC Select
     pinMode(MIC_CH_SEL, OUTPUT);
     digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32
@@ -1080,13 +1088,13 @@ void printPeriodicDebug() {
     stridx = 11;
     strtmp[10] = ' ';
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, "Bat: ");
+    stridx += sprintf(strtmp + stridx, "Bat:");
 #endif
 #if defined(ADC_BATTERY)
-    stridx += sprintf(strtmp + stridx, "%d mV", batteryVoltage);
+    stridx += sprintf(strtmp + stridx, " %d mV", batteryVoltage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, "%d%%", batteryPercentage);
+    stridx += sprintf(strtmp + stridx, " %d%%", batteryPercentage);
 #endif
 #if defined(ADC_BATTERY) || defined(USE_PMU)
     stridx += sprintf(strtmp + stridx, ", lat: ");

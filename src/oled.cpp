@@ -31,7 +31,7 @@ void OledStartup() {
 #ifdef USE_SCREEN
 #if defined(USE_SCREEN_SSD1306)
     // Explicit Wire pins assignment
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000L);
 #else
     Wire.setPins(OLED_SDA_PIN, OLED_SCL_PIN);
@@ -72,7 +72,7 @@ void OledStartup() {
 void OledUpdate(int batData, bool usbPlugged) {
 #ifdef USE_SCREEN
     if (AFSK_modem->sending) return;
-    if (AFSK_modem->hdlc.receiving) return;
+    // if (AFSK_modem->hdlc.receiving) return;
 
     char buf[24];
 

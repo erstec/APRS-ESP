@@ -5,7 +5,7 @@ void AFSK_setRxAtt(bool _rx_att) {
   rx_att = _rx_att;
 }
 
-#if !defined(BOARD_TTWR)
+#if !defined(BOARD_TTWR_PLUS) && !defined(BOARD_TTWR_V1)
 
 #include <string.h>
 #include "AFSK.h"
@@ -1156,9 +1156,17 @@ static bool check_valid_data(const adc_digi_output_data_t *data);
 
 #define TIMES 1920
 #define GET_UNIT(x) ((x >> 3) & 0x1)
+#if defined(BOARD_TTWR_PLUS)
 static uint16_t adc1_chan_mask = BIT(0);
+#elif defined(BOARD_TTWR_V1)
+static uint16_t adc1_chan_mask = BIT(1);
+#endif
 static uint16_t adc2_chan_mask = 0;
+#if defined(BOARD_TTWR_PLUS)
 static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_0};
+#elif defined(BOARD_TTWR_V1)
+static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_1};
+#endif
 static const char *TAG = "--(TAG ADC DMA)--";
 #define ADC_OUTPUT_TYPE ADC_DIGI_OUTPUT_FORMAT_TYPE2
 
@@ -1189,11 +1197,11 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
   dig_cfg.pattern_num = channel_num;
 
   log_d("adc_digi_controller");
-  int i = 0;
   for (int i = 0; i < channel_num; i++)
   {
     uint8_t unit = GET_UNIT(channel[i]);
     uint8_t ch = channel[i] & 0x7;
+#if defined(BOARD_TTWR_PLUS)
     if (!rx_att) {
       adc_pattern[i].atten = ADC_ATTEN_DB_11; // STOCK
     } else {
@@ -1201,6 +1209,9 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
       //adc_pattern[i].atten = ADC_ATTEN_DB_6; // 1800
       //adc_pattern[i].atten = ADC_ATTEN_DB_0;
     }
+  #elif defined(BOARD_TTWR_V1)
+    adc_pattern[i].atten = ADC_ATTEN_DB_0; // 33k
+  #endif
     adc_pattern[i].channel = ch;
     adc_pattern[i].unit = unit;
     adc_pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH; // 11 data bits limit
@@ -1217,10 +1228,19 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
 static bool check_valid_data(const adc_digi_output_data_t *data)
 {
   const unsigned int unit = data->type2.unit;
-  if (unit > 0)
+
+  if (unit > 0) // only ACD1 are used
+  //if (unit > 2)
     return false;
+
+#if defined(BOARD_TTWR_PLUS)
   if (data->type2.channel > 0)
+#elif defined(BOARD_TTWR_V1)
+  if (data->type2.channel > 1)
+#endif
+  // if (data->type2.channel > SOC_ADC_CHANNEL_NUM(unit))
     return false;
+
   return true;
 }
 #endif
@@ -1334,11 +1354,21 @@ void AFSK_hw_init(void)
   log_d("AFSK hardware Initialize");
   // pinMode(RSSI_PIN, INPUT_PULLUP);
   pinMode(PTT_PIN, OUTPUT);
-  pinMode(MIC_CH_SEL, OUTPUT); // MIC_SEL
-  pinMode(18, OUTPUT); // ESP2MIC
+  pinMode(MIC_PIN, OUTPUT); // ESP2MIC
   pinMode(SPK_PIN, ANALOG);  // AUDIO2ESP
 
-  digitalWrite(MIC_CH_SEL, HIGH);
+#if defined(TX_LED_PIN)
+  if (TX_LED_PIN > -1) pinMode(TX_LED_PIN, OUTPUT);
+#endif
+
+#if defined(RX_LED_PIN)
+  pinMode(RX_LED_PIN, OUTPUT);
+#endif
+
+  if (MIC_CH_SEL > -1) {
+    pinMode(MIC_CH_SEL, OUTPUT); // MIC_SEL
+    digitalWrite(MIC_CH_SEL, HIGH);
+  }
 
 #if defined(INVERT_PTT)
   digitalWrite(PTT_PIN, HIGH); // PTT not active
@@ -1917,8 +1947,6 @@ void AFSK_Poll(bool isRF)
 {
   int mV;
   int x = 0;
-  size_t writeByte;
-  int16_t adc;
 
   if (!hw_afsk_dac_isr)
   {

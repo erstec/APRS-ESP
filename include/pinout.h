@@ -28,7 +28,7 @@
 #define PTT_PIN             32
 #define RX_LED_PIN          2
 #define TX_LED_PIN          4
-#define RSSI_PIN            33
+// #define RSSI_PIN            33
 
 // DEBUG UART
 #define SERIAL_DEBUG_BAUD   115200
@@ -110,12 +110,12 @@
 
 #endif /* BOARD_TTWR_MOD */
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
 
 #define BOARD_NAME          "T-TWR-PLUS"
 
 // SA8x8 radio module
-#define VBAT_PIN            36
+// #define VBAT_PIN            36
 #define POWER_PIN           38
 #define POWERDOWN_PIN       40
 #define SQL_PIN             -1
@@ -127,7 +127,7 @@
 #define INVERT_PTT
 #define RX_LED_PIN          -1
 #define TX_LED_PIN          -1
-#define RSSI_PIN            42
+// #define RSSI_PIN            42
 
 #define MIC_CH_SEL          17
 
@@ -162,4 +162,66 @@
 #define PIN_ROT_DT          46
 #define PIN_ROT_BTN         21
 
-#endif /* BOARD_TTWR */
+#endif /* BOARD_TTWR_PLUS */
+
+#if defined(BOARD_TTWR_V1)
+
+#define BOARD_NAME          "T-TWR-V1"
+
+// SA8x8 radio module
+// #define VBAT_PIN            36
+#define POWER_PIN           39
+#define POWERDOWN_PIN       40
+#define SQL_PIN             -1
+
+// Interface to the radio / radio module
+// #define SPK_PIN             1
+#define SPK_PIN             2
+#define MIC_PIN             18
+#define PTT_PIN             41
+#define INVERT_PTT
+// #define RX_LED_PIN          -1
+// #define TX_LED_PIN          -1
+#define RX_LED_PIN          1
+#define TX_LED_PIN          1
+#define INVERT_LEDS
+// #define RSSI_PIN            42
+
+#define MIC_CH_SEL          -1
+
+// #define PIXELS_PIN          42
+
+// #define PMU_IRQ             4
+
+// ADC
+// #define ADC_BATTERY         6
+// #define BATT_OFFSET         (2) // mV
+
+// DEBUG UART
+#define SERIAL_DEBUG_BAUD   115200
+
+// RF UART
+#define SERIAL_RF_UART      1
+#define SERIAL_RF_BAUD      9600
+#define SERIAL_RF_RXPIN     48
+#define SERIAL_RF_TXPIN     47
+
+// GPS UART
+#define SERIAL_GPS_UART     2
+#define SERIAL_GPS_BAUD     9600
+#define SERIAL_GPS_RXPIN    17
+#define SERIAL_GPS_TXPIN    16
+
+// I2C OLED
+#define OLED_WIDTH          128
+#define OLED_HEIGHT         64
+#define OLED_SDA_PIN        13
+#define OLED_SCL_PIN        14
+#define OLED_RST_PIN        -1 // POWER ENABLE
+
+// ROTARY ENCODER
+#define PIN_ROT_CLK         9
+#define PIN_ROT_DT          5
+#define PIN_ROT_BTN         7
+
+#endif /* BOARD_TTWR_V1 */
