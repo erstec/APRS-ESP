@@ -110,7 +110,7 @@
 
 #endif /* BOARD_TTWR_MOD */
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
 
 #define BOARD_NAME          "T-TWR-PLUS"
 
@@ -162,7 +162,7 @@
 #define PIN_ROT_DT          46
 #define PIN_ROT_BTN         21
 
-#endif /* BOARD_TTWR */
+#endif /* BOARD_TTWR_PLUS */
 
 #if defined(BOARD_TTWR_V1)
 

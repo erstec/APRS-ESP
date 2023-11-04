@@ -257,7 +257,7 @@ bool pkgTxSend() {
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
                 TX_LED_ON();
-#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
+#if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
                 APRS_setPreamble(APRS_PREAMBLE);
@@ -279,7 +279,7 @@ bool pkgTxSend() {
                 // delay(2000);
                 TX_LED_OFF();
                 digitalWrite(POWER_PIN, 0); // RF Power Low
-#if defined(BOARD_TTWR) || defined(BOARD_TTWR_V1)
+#if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(true);
 #endif
                 
@@ -824,7 +824,7 @@ void setup()
     setupPower();
 #endif
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
     // MIC Select
     pinMode(MIC_CH_SEL, OUTPUT);
     digitalWrite(MIC_CH_SEL, HIGH);  // LOW - MIC / HIGH - ESP32

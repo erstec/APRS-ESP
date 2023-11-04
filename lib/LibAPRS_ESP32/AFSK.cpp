@@ -5,7 +5,7 @@ void AFSK_setRxAtt(bool _rx_att) {
   rx_att = _rx_att;
 }
 
-#if !defined(BOARD_TTWR) && !defined(BOARD_TTWR_V1)
+#if !defined(BOARD_TTWR_PLUS) && !defined(BOARD_TTWR_V1)
 
 #include <string.h>
 #include "AFSK.h"
@@ -1156,13 +1156,13 @@ static bool check_valid_data(const adc_digi_output_data_t *data);
 
 #define TIMES 1920
 #define GET_UNIT(x) ((x >> 3) & 0x1)
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
 static uint16_t adc1_chan_mask = BIT(0);
 #elif defined(BOARD_TTWR_V1)
 static uint16_t adc1_chan_mask = BIT(1);
 #endif
 static uint16_t adc2_chan_mask = 0;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
 static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_0};
 #elif defined(BOARD_TTWR_V1)
 static adc_channel_t channel[1] = {(adc_channel_t)ADC1_CHANNEL_1};
@@ -1201,7 +1201,7 @@ static void continuous_adc_init(uint16_t adc1_chan_mask, uint16_t adc2_chan_mask
   {
     uint8_t unit = GET_UNIT(channel[i]);
     uint8_t ch = channel[i] & 0x7;
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
     if (!rx_att) {
       adc_pattern[i].atten = ADC_ATTEN_DB_11; // STOCK
     } else {
@@ -1233,7 +1233,7 @@ static bool check_valid_data(const adc_digi_output_data_t *data)
   //if (unit > 2)
     return false;
 
-#if defined(BOARD_TTWR)
+#if defined(BOARD_TTWR_PLUS)
   if (data->type2.channel > 0)
 #elif defined(BOARD_TTWR_V1)
   if (data->type2.channel > 1)
