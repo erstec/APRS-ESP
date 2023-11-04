@@ -8,10 +8,11 @@
 */
 
 #include "pkgList.h"
-#include "parse_aprs.h"
 #include "main.h"
 
-pkgListType pkgList[PKGLISTSIZE];
+pkgListType *pkgList;
+
+extern int mVrms;
 
 char pkgList_Find(char *call) {
     char i;
@@ -21,9 +22,18 @@ char pkgList_Find(char *call) {
     return -1;
 }
 
+int pkgList_Find(char *call, uint16_t type) {
+    int i;
+    for (i = 0; i < PKGLISTSIZE; i++) {
+        if ((strstr(pkgList[i].calsign, call) != NULL) && (pkgList[i].type == type))
+            return i;
+    }
+    return -1;
+}
+
 char pkgListOld() {
     char i, ret = 0;
-    time_t minimum = pkgList[0].time;
+    time_t minimum = time(NULL) + 86400;
     for (i = 1; i < PKGLISTSIZE; i++) {
         if (pkgList[(int)i].time < minimum) {
             minimum = pkgList[(int)i].time;
@@ -39,6 +49,11 @@ void sort(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].time < a[o + 1].time) {
@@ -50,6 +65,9 @@ void sort(pkgListType a[], int size) {
             }
         }
     }
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
 }
 
 void sortPkgDesc(pkgListType a[], int size) {
@@ -58,6 +76,11 @@ void sortPkgDesc(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].pkg < a[o + 1].pkg) {
@@ -69,89 +92,198 @@ void sortPkgDesc(pkgListType a[], int size) {
             }
         }
     }
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
 }
 
-uint8_t pkgType(const char *raw) {
-    uint8_t type = 0;
+uint16_t pkgType(const char *raw) {
+    uint16_t type = 0;
     char packettype = 0;
     const char *body;
-    // const char *info_start;
-    // int paclen = strlen(raw);
-    // info_start = (char*)strchr(raw, ':');
-    // if (info_start == NULL) return 0;
-    // info_start=0;
+
+    if (*raw == 0)
+        return 0;
+
     packettype = (char)raw[0];
     body = &raw[1];
 
     switch (packettype) {
-    case '=':
-    case '/':
-    case '@':
-        if (strchr(body, 'r') != NULL) {
-            if (strchr(body, 'g') != NULL) {
-                if (strchr(body, 't') != NULL) {
-                    if (strchr(body, 'P') != NULL) {
-                        type = PKG_WX;
+        case '$': // NMEA
+            type |= FILTER_POSITION;
+            break;
+        case 0x27: /* ' */
+        case 0x60: /* ` */
+            type |= FILTER_POSITION;
+            type |= FILTER_MICE;
+            break;
+        case '!':
+        case '=':
+            type |= FILTER_POSITION;
+            if (body[18] == '_' || body[10] == '_') {
+                type |= FILTER_WX;
+                break;
+            }
+        case '/':
+        case '@':
+            type |= FILTER_POSITION;
+            if (body[25] == '_' || body[16] == '_') {
+                type |= FILTER_WX;
+                break;
+            }
+            if (strchr(body, 'r') != NULL) {
+                if (strchr(body, 'g') != NULL) {
+                    if (strchr(body, 't') != NULL) {
+                        if (strchr(body, 'P') != NULL) {
+                            type |= FILTER_WX;
+                        }
                     }
                 }
             }
-        }
-        break;
-    case ':':
-        type = PKG_MESSAGE;
-        if (body[9] == ':' &&
-            (memcmp(body + 9, ":PARM.", 6) == 0 ||
-             memcmp(body + 9, ":UNIT.", 6) == 0 ||
-             memcmp(body + 9, ":EQNS.", 6) == 0 ||
-             memcmp(body + 9, ":BITS.", 6) == 0))
-        {
-            type = PKG_TELEMETRY;
-        }
-        break;
-    case '>':
-        type = PKG_STATUS;
-        break;
-    case '?':
-        type = PKG_QUERY;
-        break;
-    case ';':
-        type = PKG_OBJECT;
-        break;
-    case ')':
-        type = PKG_ITEM;
-        break;
-    case 'T':
-        type = PKG_TELEMETRY;
-        break;
-    case '#': /* Peet Bros U-II Weather Station */
-    case '*': /* Peet Bros U-I  Weather Station */
-    case '_': /* Weather report without position */
-        type = PKG_WX;
-        break;
-    default:
-        type = 0;
-        break;
+            break;
+        case ':':
+            if (body[9] == ':' &&
+                (memcmp(body + 10, "PARM", 4) == 0 ||
+                memcmp(body + 10, "UNIT", 4) == 0 ||
+                memcmp(body + 10, "EQNS", 4) == 0 ||
+                memcmp(body + 10, "BITS", 4) == 0)) {
+                    type |= FILTER_TELEMETRY;
+            } else {
+                type |= FILTER_MESSAGE;
+            }
+            break;
+        case '{': // User defind
+        case '<': // statcapa
+        case '>':
+            type |= FILTER_STATUS;
+            break;
+        case '?':
+            type |= FILTER_QUERY;
+            break;
+        case ';':
+            if (body[28] == '_')
+                type |= FILTER_WX;
+            else
+                type |= FILTER_OBJECT;
+            break;
+        case ')':
+            type |= FILTER_ITEM;
+            break;
+        case '}':
+            type |= FILTER_THIRDPARTY;
+            break;
+        case 'T':
+            type |= FILTER_TELEMETRY;
+            break;
+        case '#': /* Peet Bros U-II Weather Station */
+        case '*': /* Peet Bros U-I  Weather Station */
+        case '_': /* Weather report without position */
+            type |= FILTER_WX;
+            break;
+        default:
+            type = 0;
+            break;
     }
     return type;
 }
 
-void pkgListUpdate(char *call, uint8_t type) {
-    char i = pkgList_Find(call);
-    time_t now;
-    time(&now);
-    if (i != 255) {  // Found call in old pkg
-        pkgList[(uint)i].time = now;
-        pkgList[(uint)i].pkg++;
-        pkgList[(uint)i].type = type;
-        // Serial.print("Update: ");
-    } else {
-        i = pkgListOld();
-        pkgList[(uint)i].time = now;
-        pkgList[(uint)i].pkg = 1;
-        pkgList[(uint)i].type = type;
-        strcpy(pkgList[(uint)i].calsign, call);
-        // strcpy(pkgList[(uint)i].ssid, &ssid[0]);
-        pkgList[(uint)i].calsign[10] = 0;
-        // Serial.print("NEW: ");
+pkgListType getPkgList(int idx) {
+    pkgListType ret;
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+    memcpy(&ret, &pkgList[idx], sizeof(pkgListType));
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+    
+    return ret;
+}
+
+int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
+    size_t len;
+    if (*call == 0)
+        return -1;
+    if (*raw == 0)
+        return -1;
+
+    char callsign[11];
+    size_t sz = strlen(call);
+    memset(callsign, 0, 11);
+    if (sz > 10)
+        sz = 10;
+    // strncpy(callsign, call, sz);
+    memcpy(callsign, call, sz);
+
+#if defined(BOARD_TTWR)
+    while (psramBusy)
+        delay(1);
+    psramBusy = true;
+#endif
+
+    int i = pkgList_Find(callsign, type);
+    if (i > PKGLISTSIZE) {
+#if defined(BOARD_TTWR)
+        psramBusy = false;
+#endif
+        return -1;
     }
+    if (i > -1) { // Found call in old pkg
+        if (channel == pkgList[i].channel) {
+            pkgList[i].time = time(NULL);
+            pkgList[i].pkg++;
+            pkgList[i].type = type;
+            if (channel == 0)
+                pkgList[i].audio_level = (int16_t)mVrms;
+            else
+                pkgList[i].audio_level = 0;
+            len = strlen(raw);
+            if (len > sizeof(pkgList[i].raw))
+                len = sizeof(pkgList[i].raw);
+            memcpy(pkgList[i].raw, raw, len);
+            // SerialLOG.print("Update: ");
+        }
+    } else {
+        i = pkgListOld(); // Search free in array
+        if (i > PKGLISTSIZE || i < 0) {
+#if defined(BOARD_TTWR)
+            psramBusy = false;
+#endif
+            return -1;
+        }
+        // memset(&pkgList[i], 0, sizeof(pkgListType));
+        pkgList[i].channel = channel;
+        pkgList[i].time = time(NULL);
+        pkgList[i].pkg = 1;
+        pkgList[i].type = type;
+        if (channel == 0)
+            pkgList[i].audio_level = (int16_t)mVrms;
+        else
+            pkgList[i].audio_level = 0;
+        // strcpy(pkgList[i].calsign, callsign);
+        memcpy(pkgList[i].calsign, callsign, strlen(callsign));
+        len = strlen(raw);
+        if (len > sizeof(pkgList[i].raw))
+            len = sizeof(pkgList[i].raw);
+        memcpy(pkgList[i].raw, raw, len);
+        // strcpy(pkgList[i].raw, raw);
+        pkgList[i].calsign[10] = 0;
+        // SerialLOG.print("NEW: ");
+    }
+#if defined(BOARD_TTWR)
+    psramBusy = false;
+#endif
+    
+    return i;
+}
+
+void pkgListInit() {
+#ifdef BOARD_HAS_PSRAM
+    pkgList = (pkgListType *)ps_malloc(sizeof(pkgListType) * PKGLISTSIZE);
+#else
+    pkgList = (pkgListType *)malloc(sizeof(pkgListType) * PKGLISTSIZE);
+#endif
+    memset(pkgList, 0, sizeof(pkgListType) * PKGLISTSIZE);
 }

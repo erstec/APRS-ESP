@@ -65,6 +65,7 @@ typedef struct Config_Struct {
     uint8_t sql_level;
     bool rf_power;
     uint8_t volume;
+    bool rx_att;
 #endif
     int8_t timeZone;
     char ntpServer[50];

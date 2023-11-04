@@ -18,6 +18,25 @@ String webString;
 
 bool defaultSetting = false;
 
+String getType(uint32_t type) {
+    String typeStr = "";
+    
+    if (type & FILTER_ALL) typeStr += "All ";
+    if (type & FILTER_OBJECT) typeStr += "Obj ";
+    if (type & FILTER_ITEM) typeStr += "Itm ";
+    if (type & FILTER_MESSAGE) typeStr += "Msg ";
+    if (type & FILTER_WX) typeStr += "WX ";
+    if (type & FILTER_TELEMETRY) typeStr += "Tlm ";
+    if (type & FILTER_QUERY) typeStr += "Qry ";
+    if (type & FILTER_STATUS) typeStr += "Sts ";
+    if (type & FILTER_POSITION) typeStr += "Pos ";
+    if (type & FILTER_BUOY) typeStr += "Buo ";
+    if (type & FILTER_MICE) typeStr += "Mic ";
+    if (type & FILTER_THIRDPARTY) typeStr += "3rd";
+
+    return typeStr;
+}
+
 void serviceHandle() { server.handleClient(); }
 void setHTML(byte page) {
     webString = "<html><head>\n";
@@ -45,7 +64,7 @@ void setHTML(byte page) {
         "}\n"
         ".L1{"
         "text-align: center;"
-        "width: 33%;"
+        "width: 50%;"
         "margin: 1px;"
         "background: darkgray;"
         "color: white;"
@@ -575,24 +594,28 @@ void setHTML(byte page) {
                      String(status.inet2rf) + "</td></tr>";
         webString += "<tr><td>DROP</td><td align=\"right\">" +
                      String(status.dropCount) + "</td></tr>";
-        webString += "<tr><td>ERROR</td><td align=\"right\">" +
-                     String(status.errorCount) + "</td></tr>";
+        // webString += "<tr><td>ERROR</td><td align=\"right\">" +
+        //              String(status.errorCount) + "</td></tr>";
         webString += "</table>";
         
         webString += "<span>&nbsp;</span>\n";
         
-        webString += "<div class=\"L1\">LAST STATION</div>";
-        webString += "<table border=\"0\" width=\"200\">";
+        webString += "<div class=\"L1\">LAST STATIONS</div>";
+        webString += "<table border=\"0\" width=\"400\">";
         sort(pkgList, PKGLISTSIZE);
 
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 // time_t tm = pkgList[i].time;
                 localtime_r(&pkgList[i].time, &tmstruct);
                 sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
                 String str = String(strTime);
-                webString += "<tr><td align=\"left\">" + String(pkgList[i].calsign) + "</td><td align=\"right\">" + str + "</td></tr>";
+                webString += "<tr><td align=\"left\">" + str + 
+                        "</td><td align=\"center\">" + String(pkgList[i].calsign) + 
+                        "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") + 
+                        "</td><td align=\"right\">" + getType(pkgList[i].type) + "</td></tr>";
             }
         }
         webString += "</table>";
@@ -603,6 +626,7 @@ void setHTML(byte page) {
         webString += "<table border=\"0\" width=\"200\">";
         sortPkgDesc(pkgList, PKGLISTSIZE);
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 webString += "<tr><td align=\"left\">" +
@@ -1421,6 +1445,17 @@ void handle_radio() {
                         config.tone_rx = server.arg(i).toInt();
                 }
             }
+
+            if (server.argName(i) == "rx_att") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i))) {
+                        if (server.arg(i).toInt())
+                            config.rx_att = true;
+                        else
+                            config.rx_att = false;
+                    }
+                }
+            }
         }
         // config.noise=noiseEn;
         // config.agc=agcEn;
@@ -1435,11 +1470,8 @@ void handle_radio() {
         "<form accept-charset=\"UTF-8\" action=\"/radio\" "
         "class=\"form-horizontal\" id=\"radio_form\" method=\"post\">\n";
 
-#ifdef SR_FRS
-    webString += "<div>\n<h3>RF Module SR_FRS_1W</h3>\n";
-#else
-    webString += "<div>\n<h3>RF Module SA818/SA828/SA868</h3>\n";
-#endif
+    webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
     webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
@@ -1531,6 +1563,20 @@ void handle_radio() {
         ">LOW</option></select></div>\n";
     webString += "</div>\n";
 
+#if defined(BOARD_TTWR)
+    if (config.rx_att) {
+        cmSelSqlT = "selected";
+    } else {
+        cmSelSqlF = "selected";
+    }
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX ATT (default 11, T-TWR-PLUS 2.5)</label>\n";
+    webString +=
+        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">\n<option value=\"1\" " +
+        cmSelSqlT + ">2.5dB</option>\n<option value=\"0\" " + cmSelSqlF + ">11dB</option></select></div>\n";
+    webString += "</div>\n";
+#endif
+
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
     webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" value=\"" +
@@ -1576,8 +1622,7 @@ void handle_radio() {
     webString += "</form></div>\n";
 
     webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
+    server.send(200, "text/html", webString);  // send to someones browser when asked
     delay(100);
     webString.clear();
 }
@@ -1604,7 +1649,7 @@ void handle_system() {
             // Serial.println(server.arg(i));
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
-                    Serial.println("WEB Config NTP");
+                    log_i("WEB Config NTP");
                     strcpy(config.ntpServer, server.arg(i).c_str());
                     configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
@@ -1650,20 +1695,7 @@ void handle_system() {
                     settimeofday(&tv, &tz);
 
                     // Serial.println("Update TIME " + server.arg(i));
-                    Serial.print("Set New Time at ");
-                    Serial.print(dd);
-                    Serial.print("/");
-                    Serial.print(mm);
-                    Serial.print("/");
-                    Serial.print(yyyy);
-                    Serial.print(" ");
-                    Serial.print(hh);
-                    Serial.print(":");
-                    Serial.print(ii);
-                    Serial.print(":");
-                    Serial.print(ss);
-                    Serial.print(" ");
-                    Serial.println(timeStamp);
+                    log_i("Set New Time at %d/%d/%d %d:%d:%d %d", dd, mm, yyyy, hh, ii, ss, timeStamp);
                 }
                 break;
             }
@@ -2097,7 +2129,7 @@ void handle_test() {
     }
     if (server.hasArg("sendBeacon")) {
         String tnc2Raw = send_gps_location();
-        if (config.tnc && tnc2Raw.length() > 0) pkgTxUpdate(tnc2Raw.c_str(), 0);
+        if (config.tnc && tnc2Raw.length() > 0) pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
     } else if (server.hasArg("sendRaw")) {
         for (uint8_t i = 0; i < server.args(); i++) {
@@ -2105,7 +2137,7 @@ void handle_test() {
                 if (server.arg(i) != "") {
                     String tnc2Raw = server.arg(i);
                     if (config.tnc) {
-                        pkgTxUpdate(tnc2Raw.c_str(), 0);
+                        pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
                         // APRS_sendTNC2Pkt(server.arg(i)); // Send packet to RF
                         // Serial.println("Send RAW: " + tnc2Raw);
                     }
@@ -2160,15 +2192,7 @@ void handle_firmware() {
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SR_FRS)
-    webString += " <b>(MODEL: SR_FRS_1W)</b>";
-#elif defined(USE_SA828)
-    webString += " <b>(MODEL: SA828_1.5W)</b>";
-#elif defined(USE_SA818)
-    webString += " <b>(MODEL: SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL: SA868)</b>";
-#endif
+    webString += " <b>(MODEL: SA818/868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
@@ -2297,9 +2321,9 @@ void handle_configuration() {
         SPIFFS.end();
     } else if (server.hasArg("restoreConfig")) {
         HTTPUpload& upload = server.upload();
-        Serial.println(upload.filename);
-        Serial.println(upload.totalSize);
-        Serial.println(upload.status);
+        log_d("Upload file name: %s", upload.filename.c_str()); 
+        log_d("Upload file size: %d", upload.totalSize);
+        log_d("Upload file status: %d", upload.status);
         // if (upload.totalSize != (sizeof(Configuration) + 1)) {
         //     Serial.println("Upload file size error!");
         //     server.send(500, "text/plain", "Upload file size error!");
@@ -2324,7 +2348,7 @@ void handle_configuration() {
         // //}
 
         if (upload.totalSize == 0) {
-            Serial.println("Upload file size error!");
+            log_e("Upload file size error!");
             server.send(500, "text/plain", "Upload file size error!");
             return;
         }
@@ -2333,15 +2357,15 @@ void handle_configuration() {
         filenameJson = "config.json";    // override filename
         if (!filenameJson.startsWith("/")) 
             filenameJson = "/" + filenameJson;
-        Serial.print("handleFileUpload Name: "); Serial.println(filenameJson);
+        log_d("handleFileUpload Name: %s", filenameJson.c_str());
         SPIFFS.begin(true);
         // SPIFFS.remove(filenameJson);
         fsUploadFile = SPIFFS.open(filenameJson, "w");
         filenameJson = String();
-        Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+        log_d("handleFileUpload Data: %d", upload.currentSize);
         if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
         if (fsUploadFile) fsUploadFile.close();
-        Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+        log_d("handleFileUpload Size: %d", upload.totalSize);
         SPIFFS.end();
 
         LoadReConfig();
@@ -2359,15 +2383,7 @@ void handle_configuration() {
         "jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SR_FRS)
-    webString += " <b>(MODEL:SR_FRS_1W)</b>";
-#elif defined(USE_SA828)
-    webString += " <b>(MODEL:SA828_1.5W)</b>";
-#elif defined(USE_SA818)
-    webString += " <b>(MODEL:SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL:SA868)</b>";
-#endif
+    webString += " <b>(MODEL:SA818/SA868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
@@ -2627,7 +2643,7 @@ void webService() {
         []() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
-                Serial.printf("Firmware Update FILE: %s\r\n", upload.filename.c_str());
+                log_i("Firmware Update FILE: %s", upload.filename.c_str());
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
                                                            // available size
                     Update.printError(Serial);
@@ -2653,13 +2669,13 @@ void webService() {
                 }
             } else if (upload.status == UPLOAD_FILE_WRITE) {
                 /* flashing firmware to ESP*/                
-                // Serial.print("Firmware Update Data: "); Serial.println(upload.totalSize);
+                // log_i("Firmware Update Data: %d", upload.currentSize);
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     Update.printError(Serial);
                     delay(3);
                 }
             } else if (upload.status == UPLOAD_FILE_END) {
-                Serial.print("Firmware Update Size: "); Serial.println(upload.totalSize);
+                log_i("Firmware Update Size: %d", upload.totalSize);
                 if (Update.end(true)) {  // true to set the size to the current
                                          // progress
                     delay(3);

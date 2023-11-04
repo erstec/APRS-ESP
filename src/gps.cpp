@@ -119,12 +119,7 @@ void GpsUpdate() {
                 && timeSyncFlag == T_SYNC_NONE
                 && WiFi.status() != WL_CONNECTED) {
                 if (gps.time.hour() != 0 && gps.time.minute() != 0 && gps.time.second() != 0) {
-                    Serial.print("GPS Time: ");
-                    Serial.print(gps.time.hour());
-                    Serial.print(":");
-                    Serial.print(gps.time.minute());
-                    Serial.print(":");
-                    Serial.println(gps.time.second());
+                    log_d("GPS Time: %02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
 
                     timeval tv;
                     tv.tv_sec = gps.time.hour() * 3600 + gps.time.minute() * 60 + gps.time.second();

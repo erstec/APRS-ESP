@@ -12,18 +12,24 @@
 
 #include <Arduino.h>
 
-typedef struct pkgListStruct {
-    time_t time;
-    char calsign[11];
-    char ssid[5];
-    unsigned int pkg;
-    uint8_t type;
-    uint8_t symbol;
+typedef struct {
+	time_t time;
+	char calsign[11];
+	char ssid[5];
+	bool channel;
+	unsigned int pkg;
+	uint16_t type;
+	uint8_t symbol;
+	int16_t audio_level;
+	char raw[500];
 } pkgListType;
 
 void sort(pkgListType a[], int size);
 void sortPkgDesc(pkgListType a[], int size);
-void pkgListUpdate(char *call, uint8_t type);
-uint8_t pkgType(const char *raw);
+int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel);
+uint16_t pkgType(const char *raw);
+pkgListType getPkgList(int idx);
+
+void pkgListInit();
 
 #endif // PKGLIST_H

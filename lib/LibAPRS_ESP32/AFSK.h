@@ -158,31 +158,49 @@ inline static uint8_t sinSample(uint16_t i)
 
 #define CPU_FREQ F_CPU
 
+#if defined(BOARD_TTWR)
+#define CONFIG_AFSK_RX_BUFLEN 350
+#define CONFIG_AFSK_TX_BUFLEN 350
+#else
 #define CONFIG_AFSK_RX_BUFLEN 50
 #define CONFIG_AFSK_TX_BUFLEN 50
+#endif
 #define CONFIG_AFSK_RXTIMEOUT 0
 #define CONFIG_AFSK_PREAMBLE_LEN 350UL
 #define CONFIG_AFSK_TRAILER_LEN 50UL
+#if defined(BOARD_TTWR)
+#define CONFIG_AFSK_DAC_SAMPLERATE 48000
+#define SAMPLERATE 9600
+#else
 #define CONFIG_AFSK_DAC_SAMPLERATE 38400
 #define SAMPLERATE 38400
+#endif
 #define BITRATE 1200
+#if defined(BOARD_TTWR)
+#define SAMPLESPERBIT (CONFIG_AFSK_DAC_SAMPLERATE / BITRATE)
+#else
 #define SAMPLESPERBIT (SAMPLERATE / BITRATE)
+#endif
 #define BIT_STUFF_LEN 5
 #define MARK_FREQ 1200
 #define SPACE_FREQ 2200
+#if defined(BOARD_TTWR)
+#define PHASE_BITS 8                                    // 8 How much to increment phase counter each sample
+#define PHASE_INC 1                                     // 1 Nudge by an eigth of a sample each adjustment
+#define PHASE_MAX ((SAMPLERATE / BITRATE) * PHASE_BITS) // Resolution of our phase counter = 64
+#define PHASE_THRESHOLD (PHASE_MAX / 2)                 // Target transition point of our phase window
+#else
 #define PHASE_BITS 32                           // How much to increment phase counter each sample
 #define PHASE_INC 4                            // Nudge by an eigth of a sample each adjustment
 #define PHASE_MAX (SAMPLESPERBIT * PHASE_BITS) // Resolution of our phase counter = 64
 #define PHASE_THRESHOLD (PHASE_MAX / 2)        // Target transition point of our phase window
 
 #define I2S_INTERNAL
-
-#if !defined(NOSQL)
-#define SQL
 #endif
 
-#include "../../include/pinout.h"
+// #define SQL
 
+#include "../../include/pinout.h"
 
 #ifdef I2S_INTERNAL
 #include "driver/i2s.h"
@@ -235,19 +253,31 @@ typedef struct Afsk
     uint16_t phaseAcc; // Phase accumulator
     uint16_t phaseInc; // Phase increment per sample
 
-    FIFOBuffer txFifo;                    // FIFO for transmit data
+    FIFOBuffer txFifo;                     // FIFO for transmit data
+#if defined(BOARD_TTWR)
+    uint16_t txBuf[CONFIG_AFSK_TX_BUFLEN]; // Actial data storage for said FIFO
+#else
     unsigned char txBuf[CONFIG_AFSK_TX_BUFLEN]; // Actial data storage for said FIFO
+#endif
 
     volatile bool sending; // Set when modem is sending
 
-    FIFOBuffer rxFifo;                    // FIFO for received data
+    FIFOBuffer rxFifo;                     // FIFO for received data
+#if defined(BOARD_TTWR)
+    uint16_t rxBuf[CONFIG_AFSK_RX_BUFLEN]; // Actual data storage for said FIFO
+#else
     unsigned char rxBuf[CONFIG_AFSK_RX_BUFLEN]; // Actual data storage for said FIFO
+#endif
 
     int iirX[2]; // IIR Filter X cells
     int iirY[2]; // IIR Filter Y cells
 
     uint16_t sampledBits; // Bits sampled by the demodulator (at ADC speed)
-    int16_t currentPhase;  // Current phase of the demodulator
+#if defined(BOARD_TTWR)
+    int8_t currentPhase;  // Current phase of the demodulator
+#else
+    int16_t currentPhase; // Current phase of the demodulator
+#endif
     uint8_t actualBits;   // Actual found bits at correct bitrate
 
     volatile int status; // Status of the modem, 0 means OK
@@ -261,50 +291,18 @@ typedef struct Afsk
 #include <Adafruit_NeoPixel.h>
 extern Adafruit_NeoPixel strip;
 
-#if defined(TX_LED_PIN)
-
-#if defined(INVERT_LEDS)
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 255, 0, 0); strip.show(); // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 0, 0); strip.show(); // Off
-#else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, LOW);
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, HIGH);
-#endif
-#else
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH); strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
-#else
-#define TX_LED_ON() digitalWrite(TX_LED_PIN, HIGH);
-#define TX_LED_OFF() digitalWrite(TX_LED_PIN, LOW);
-#endif
-#endif
-
-#else
-
-#if defined(USE_NEOPIXEL)
-#define TX_LED_ON() strip.setPixelColor(0, 255, 0, 0); strip.show();    // Red
-#define TX_LED_OFF() strip.setPixelColor(0, 0, 0, 0); strip.show();     // Off
-#endif
-
-#endif
-
 #define AFSK_DAC_IRQ_START()         \
     do                               \
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = true;      \
-        TX_LED_ON();\
     } while (0)
 #define AFSK_DAC_IRQ_STOP()          \
     do                               \
     {                                \
         extern bool hw_afsk_dac_isr; \
         hw_afsk_dac_isr = false;     \
-        TX_LED_OFF();\
     } while (0)
-//#define AFSK_DAC_INIT()        do { DAC_DDR |= (DAC_PINS) ; PTT_DDR = 0b01000000;} while (0)
 
 // Here's some macros for controlling the RX/TX LEDs
 // THE _INIT() functions writes to the DDRB register
@@ -313,8 +311,8 @@ extern Adafruit_NeoPixel strip;
 // to turn the pins on or off.
 
 #if defined(USE_NEOPIXEL)
-#define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH); strip.setPixelColor(0, 0, 255, 0); strip.show();    // Green
-#define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW); strip.setPixelColor(0, 0, 0, 0); strip.show();      // Off
+#define RX_LED_ON() strip.setPixelColor(0, 0, 255, 0);  // Green
+#define RX_LED_OFF() strip.setPixelColor(0, 0, 0, 0);   // Off
 #else
 #define RX_LED_ON() digitalWrite(RX_LED_PIN, HIGH);
 #define RX_LED_OFF() digitalWrite(RX_LED_PIN, LOW);
@@ -326,12 +324,30 @@ extern Afsk *AFSK_modem;
 
 
 void AFSK_init(Afsk *afsk);
+void AFSK_setRxAtt(bool _rx_att);
 void AFSK_transmit(char *buffer, size_t size);
 void AFSK_poll(Afsk *afsk);
+
+bool getReceive();
+
+#if defined(BOARD_TTWR)
+bool getTransmit();
+#endif
 
 void afsk_putchar(char c);
 int afsk_getchar(void);
 void AFSK_Poll(bool isRF);
 void AFSK_TimerEnable(bool sts);
+
+void adcActive(bool sts);
+
+#if defined(BOARD_TTWR)
+uint8_t AFSK_dac_isr(Afsk *afsk);
+esp_err_t adc_init();
+void afskSetHPF(bool val);
+void afskSetBPF(bool val);
+// int IRAM_ATTR
+int read_adc_dma(uint32_t *ret_num, uint8_t *result);
+#endif
 
 #endif

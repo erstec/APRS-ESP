@@ -24,7 +24,7 @@ extern Configuration config;
 extern TaskHandle_t taskNetworkHandle;
 extern TaskHandle_t taskAPRSHandle;
 extern time_t systemUptime;
-extern pkgListType pkgList[PKGLISTSIZE];
+extern pkgListType *pkgList;
 
 #ifdef __cplusplus
 extern "C" {
