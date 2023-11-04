@@ -18,6 +18,25 @@ String webString;
 
 bool defaultSetting = false;
 
+String getType(uint32_t type) {
+    String typeStr = "";
+    
+    if (type & FILTER_ALL) typeStr += "All ";
+    if (type & FILTER_OBJECT) typeStr += "Obj ";
+    if (type & FILTER_ITEM) typeStr += "Itm ";
+    if (type & FILTER_MESSAGE) typeStr += "Msg ";
+    if (type & FILTER_WX) typeStr += "WX ";
+    if (type & FILTER_TELEMETRY) typeStr += "Tlm ";
+    if (type & FILTER_QUERY) typeStr += "Qry ";
+    if (type & FILTER_STATUS) typeStr += "Sts ";
+    if (type & FILTER_POSITION) typeStr += "Pos ";
+    if (type & FILTER_BUOY) typeStr += "Buo ";
+    if (type & FILTER_MICE) typeStr += "Mic ";
+    if (type & FILTER_THIRDPARTY) typeStr += "3rd";
+
+    return typeStr;
+}
+
 void serviceHandle() { server.handleClient(); }
 void setHTML(byte page) {
     webString = "<html><head>\n";
@@ -45,7 +64,7 @@ void setHTML(byte page) {
         "}\n"
         ".L1{"
         "text-align: center;"
-        "width: 33%;"
+        "width: 50%;"
         "margin: 1px;"
         "background: darkgray;"
         "color: white;"
@@ -581,18 +600,22 @@ void setHTML(byte page) {
         
         webString += "<span>&nbsp;</span>\n";
         
-        webString += "<div class=\"L1\">LAST STATION</div>";
-        webString += "<table border=\"0\" width=\"200\">";
+        webString += "<div class=\"L1\">LAST STATIONS</div>";
+        webString += "<table border=\"0\" width=\"400\">";
         sort(pkgList, PKGLISTSIZE);
 
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 // time_t tm = pkgList[i].time;
                 localtime_r(&pkgList[i].time, &tmstruct);
                 sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
                 String str = String(strTime);
-                webString += "<tr><td align=\"left\">" + String(pkgList[i].calsign) + "</td><td align=\"right\">" + str + "</td></tr>";
+                webString += "<tr><td align=\"left\">" + str + 
+                        "</td><td align=\"center\">" + String(pkgList[i].calsign) + 
+                        "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") + 
+                        "</td><td align=\"right\">" + getType(pkgList[i].type) + "</td></tr>";
             }
         }
         webString += "</table>";
@@ -603,6 +626,7 @@ void setHTML(byte page) {
         webString += "<table border=\"0\" width=\"200\">";
         sortPkgDesc(pkgList, PKGLISTSIZE);
         for (int i = 0; i < PKGLISTSIZE; i++) {
+            if (i > 20) break;
             if (pkgList[i].time > 0) {
                 pkgList[i].calsign[10] = 0;
                 webString += "<tr><td align=\"left\">" +
@@ -1539,6 +1563,7 @@ void handle_radio() {
         ">LOW</option></select></div>\n";
     webString += "</div>\n";
 
+#if defined(BOARD_TTWR)
     if (config.rx_att) {
         cmSelSqlT = "selected";
     } else {
@@ -1550,6 +1575,7 @@ void handle_radio() {
         "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">\n<option value=\"1\" " +
         cmSelSqlT + ">2.5dB</option>\n<option value=\"0\" " + cmSelSqlF + ">11dB</option></select></div>\n";
     webString += "</div>\n";
+#endif
 
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
@@ -2166,11 +2192,7 @@ void handle_firmware() {
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SA818)
-    webString += " <b>(MODEL: SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL: SA868)</b>";
-#endif
+    webString += " <b>(MODEL: SA818/868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
@@ -2361,11 +2383,7 @@ void handle_configuration() {
         "jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
 #ifdef USE_RF
-#if defined(USE_SA818)
-    webString += " <b>(MODEL:SA818)</b>";
-#elif defined(USE_SA868)
-    webString += " <b>(MODEL:SA868)</b>";
-#endif
+    webString += " <b>(MODEL:SA818/SA868)</b>";
 #else
     webString += " <b>(MODEL: Simple)</b>";
 #endif
