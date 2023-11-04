@@ -30,16 +30,6 @@ IF EXIST %FILENAME% IF x%FILENAME:update=%==x%FILENAME% (
     echo Trying to flash update %FILENAME%, but first erasing and writing system information"
 	%PYTHON% -m esptool --baud 921600 erase_flash
 	%PYTHON% -m esptool --baud 921600 write_flash 0x00 %FILENAME%
-    
-    @REM Account for S3 board's different OTA partition
-    IF x%FILENAME:s3=%==x%FILENAME% IF x%FILENAME:v3=%==x%FILENAME% (
-        %PYTHON% -m esptool --baud 921600 write_flash 0x260000 bleota.bin
-	) else (
-        %PYTHON% -m esptool --baud 921600 write_flash 0x260000 bleota-s3.bin
-    )
-    for %%f in (spiffs-*.bin) do (
-        %PYTHON% -m esptool --baud 921600 write_flash 0x300000 %%f
-    )
 ) else (
     echo "Invalid file: %FILENAME%"
 	goto HELP

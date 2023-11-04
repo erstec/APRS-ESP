@@ -21,12 +21,21 @@ jobs:
         include:
           - board: esp32dev-sa818-868
           - board: esp32dev-t-twr-mod
-          - board: lilygo-t-twr-plus
-          - board: lilygo-t-twr-v1
     uses: ./.github/workflows/build_esp32.yml
     with:
       board: ${{ matrix.board }}
-  
+
+  build-esp32-s3:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - board: lilygo-t-twr-plus
+          - board: lilygo-t-twr-v1
+    uses: ./.github/workflows/build_esp32_s3.yml
+    with:
+      board: ${{ matrix.board }}
+
   build-native:
     runs-on: ubuntu-latest
     steps:
@@ -53,7 +62,7 @@ jobs:
   gather-artifacts:
     runs-on: ubuntu-latest
     needs:
-      [build-esp32, build-native]
+      [build-esp32, build-esp32-s3, build-native]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

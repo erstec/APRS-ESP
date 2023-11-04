@@ -1226,7 +1226,7 @@ void loop()
 #ifdef USE_GPS
             // if (SerialGPS.available()) {
             //     String gpsData = SerialGPS.readStringUntil('\n');
-            //     Serial.print(gpsData);
+            //     log_d("%s", gpsData.c_str());
             // }
 #endif
         }
