@@ -1,4 +1,4 @@
-# FW and HW is tested and stable.
+# FW and HW are tested and stable
 
 Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https://github.com/erstec/APRS-ESP/discussions/new), by e-mail or via Discord.
 
@@ -8,7 +8,7 @@ APRS-ESP32 is a APRS AFSK1200 Tracker + Digipeater + Internet Gateway implemente
 
 APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to work standalone, without any USB connection.
 
-Also this project can work on LilyGo T-TWR Plus hardware without any modifications or on LilyGo T-TWR V1 with some HW mods.
+**Also this project can work on LilyGo T-TWR Plus hardware without any modifications or on LilyGo T-TWR V1 with some HW mods.**
 
 ## Features
 ### FW
