@@ -33,7 +33,7 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 - PCB (Gerber and Eagle), BOMs in /hardware folder
 
 *Ready to use*
-- LilyGO T-TWR Plus (Rev. 2.0)
+- LilyGO T-TWR Plus (Rev. 2.0) / First batches have wrong resistor onboard, use 2.5dB attenuation with them, default is 11dB (can be selected on Radio tab)
 - LilyGO T-TWR V1 (need additional hardware modifications, read [here](doc/mod-hw-devel.md))
 
 ### Details
