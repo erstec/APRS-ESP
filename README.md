@@ -4,19 +4,23 @@ Feel free to ask [Me](https://github.com/erstec) by creating [Discussion](https:
 
 # APRS-ESP32 Project
 
-APRS-ESP32 is a APRS AFSK1200 Tracker + Digipeater + Internet Gateway + TNC built-in that is implemented for Espressif ESP32 MCU.
+APRS-ESP32 is a APRS AFSK1200 Tracker + Digipeater + Internet Gateway implemented for Espressif ESP32/ESP323S3 MCUs.
 
 APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to work standalone, without any USB connection.
+
+Also this project can work on LilyGo T-TWR Plus hardware without any modifications or on LilyGo T-TWR V1 with some HW mods.
 
 ## Features
 ### FW
 - IGate
 - Digipeater
-- Position beaconing (periodical)
+- Tracker
+- Fixed Position beaconing (periodical)
 - Item beaconing (periodical)
-- SmartBeaconing
-- OLED display operation states and etc.
-- All parameters changeable via WEB interface
+- SmartBeaconing functionality
+- OLED display operation states
+- Confiruration Backup and Restore in JSON file format
+- All parameters can be changed via WEB interface or by downloading configuration JSON, editing it and reuploading back to device.
 
 ### HW
 *Self built*
@@ -36,7 +40,7 @@ APRS-ESP32 is a small interface board with SA8x8 RF Module on it designed to wor
 * Development based on PlatformIO / Visual Studio Code IDE
 * Support Bell202 1200bps AFSK modulation
 * Software modem for decoding and encoding
-* Using USB serial for host connection and power supply (modem can work in LOW Power mode only! DON'T SET MODEM POWER TO HIGH)
+* Using USB serial for host connection and power supply
 * DC barrel socker for powering board (5.5x2.1mm with pin positive, 7-40V DC)
 * XT60 socket for powering from 2S-6S LiPo battery
 * Support Wi-Fi connection to APRS-IS
@@ -93,12 +97,10 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - For USB option use script device-update.bat (Windows) or device-update.sh (Linux). Script is self explanatory if you run it without arguments. Also it requires Python 3 and esp-tool library, you can install it using `pip install esptool`
 - **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
 
-
 ## NOTE
 * Short Press of BOOT button >100 ms) - TX Position
 * Long press of BOOT button (10 sec) - Turn WiFi ON/OFF
 * Very Long press of BOOT button (20 sec) - Reset Configuration to Factory Default
-
 
 # COPYRIGHT NOTICE
 Firmware part uses ideas and code snippets from:
