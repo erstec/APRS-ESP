@@ -184,9 +184,7 @@ int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
 
-#if defined(BOARD_HAS_PSRAM)
 bool psramBusy = false;
-#endif
 
 teTimeSync timeSyncFlag = T_SYNC_NONE;
 
@@ -198,9 +196,7 @@ int tlmList_Find(char *call) {
     int i;
     for (i = 0; i < TLMLISTSIZE; i++) {
         if (strstr(Telemetry[i].callsign, call) != NULL) {
-#if defined(BOARD_HAS_PSRAM)
             psramBusy = false;
-#endif
             return i;
         }
     }
@@ -223,26 +219,20 @@ int tlmListOld() {
 
 TelemetryType getTlmList(int idx) {
     TelemetryType ret;
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     memcpy(&ret, &Telemetry[idx], sizeof(TelemetryType));
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
     return ret;
 }
 
 bool pkgTxSend() {
     if (getReceive())
         return false;
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     char info[500];
     for (int i = 0; i < PKGTXSIZE; i++) {
         if (txQueue[i].Active) {
@@ -251,9 +241,7 @@ bool pkgTxSend() {
                 txQueue[i].Active = false;
                 memset(info, 0, sizeof(info));
                 strcpy(info, txQueue[i].Info);
-#if defined(BOARD_HAS_PSRAM)
                 psramBusy = false;
-#endif
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
                 TX_LED_ON();
@@ -288,19 +276,15 @@ bool pkgTxSend() {
         }
     }
   
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
   
     return false;
 }
 
 bool pkgTxDuplicate(AX25Msg ax25) {
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     char callsign[12];
     for (int i = 0; i < PKGTXSIZE; i++) {
         if (txQueue[i].Active) {
@@ -316,17 +300,13 @@ bool pkgTxDuplicate(AX25Msg ax25) {
                 ;
                 if (strncmp(ecs1, (const char *)ax25.info, strlen(ecs1)) >= 0) { // Check duplicate aprs info
                     txQueue[i].Active = false;
-#if defined(BOARD_HAS_PSRAM)
                     psramBusy = false;
-#endif
                     return true;
                 }
             }
         }
     }
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
     
     return false;
 }
@@ -336,11 +316,9 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
     if (ecs == NULL)
         return false;
 
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     // for (int i = 0; i < PKGTXSIZE; i++)
     // {
     //   if (txQueue[i].Active)
@@ -370,9 +348,7 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
         }
     }
 
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
     
     return true;
 }
@@ -1505,6 +1481,8 @@ void taskAPRS(void *pvParameters) {
                 } else {
                     sprintf(call, "%s", incomingPacket.src.call);
                 }
+
+                log_d("Call: %s", call);
                 
                 uint8_t type = pkgType((char *)incomingPacket.info);
                 
