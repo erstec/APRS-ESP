@@ -1563,6 +1563,7 @@ void handle_radio() {
         ">LOW</option></select></div>\n";
     webString += "</div>\n";
 
+#if defined(BOARD_TTWR)
     if (config.rx_att) {
         cmSelSqlT = "selected";
     } else {
@@ -1574,6 +1575,7 @@ void handle_radio() {
         "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">\n<option value=\"1\" " +
         cmSelSqlT + ">2.5dB</option>\n<option value=\"0\" " + cmSelSqlF + ">11dB</option></select></div>\n";
     webString += "</div>\n";
+#endif
 
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
