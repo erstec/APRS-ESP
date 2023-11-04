@@ -37,7 +37,7 @@ For me it took about 2 hours to make all modifications, but I have all required 
 - Solder one side of each wire to the pads of the Audio Adapter Board, as shown on the picture.
 - Optional: you can cover Audio Adapter PCB with heatshrink tube to protect it from touching with fingers, as it will temporary breaks audio routing.
 - Take prepared and assembled Audio Adapter Board, apply double sided tape to the bottom side of the board, align it and stick to the top of ESP32 MCU shield.
-- Measure and cut each wire to required length. Solder other side of each wire to the pads, as shown on the picture. Black - to GND. Red - to 3V3. Yellow to 18. Blue to ESP32 pad IO1. White - to Mic + pad and Orange to SA868 module pad 3 (marked).
+- Measure and cut each wire to required length. Solder other side of each wire to the pads, as shown on the picture. Black - to GND. Red - to 3V3. Yellow to 18. Blue to ESP32 pad IO2. White - to Mic + pad and Orange to SA868 module pad 3 (marked).
 
 ### Programming
 - Connect USB cable. DON'T INSTALL BATTERY AT THIS MOMENT!
