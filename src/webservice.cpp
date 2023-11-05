@@ -18,25 +18,6 @@ String webString;
 
 bool defaultSetting = false;
 
-String getType(uint32_t type) {
-    String typeStr = "";
-    
-    if (type & FILTER_ALL) typeStr += "All ";
-    if (type & FILTER_OBJECT) typeStr += "Obj ";
-    if (type & FILTER_ITEM) typeStr += "Itm ";
-    if (type & FILTER_MESSAGE) typeStr += "Msg ";
-    if (type & FILTER_WX) typeStr += "WX ";
-    if (type & FILTER_TELEMETRY) typeStr += "Tlm ";
-    if (type & FILTER_QUERY) typeStr += "Qry ";
-    if (type & FILTER_STATUS) typeStr += "Sts ";
-    if (type & FILTER_POSITION) typeStr += "Pos ";
-    if (type & FILTER_BUOY) typeStr += "Buo ";
-    if (type & FILTER_MICE) typeStr += "Mic ";
-    if (type & FILTER_THIRDPARTY) typeStr += "3rd";
-
-    return typeStr;
-}
-
 void serviceHandle() { server.handleClient(); }
 void setHTML(byte page) {
     webString = "<html><head>\n";
@@ -615,7 +596,7 @@ void setHTML(byte page) {
                 webString += "<tr><td align=\"left\">" + str + 
                         "</td><td align=\"center\">" + String(pkgList[i].calsign) + 
                         "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") + 
-                        "</td><td align=\"right\">" + getType(pkgList[i].type) + "</td></tr>";
+                        "</td><td align=\"right\">" + pkgGetType(pkgList[i].type) + "</td></tr>";
             }
         }
         webString += "</table>";

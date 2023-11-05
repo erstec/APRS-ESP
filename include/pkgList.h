@@ -32,4 +32,6 @@ pkgListType getPkgList(int idx);
 
 void pkgListInit();
 
+String pkgGetType(uint32_t type);
+
 #endif // PKGLIST_H

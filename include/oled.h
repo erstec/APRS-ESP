@@ -15,3 +15,4 @@
 void OledStartup();
 void OledUpdate(int batData, bool usbPlugged);
 void OledUpdateFWU();
+void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout);
