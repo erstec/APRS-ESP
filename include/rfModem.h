@@ -12,7 +12,7 @@
 
 #include <Arduino.h>
 
-bool RF_Init(bool boot);
+bool RF_Init(bool boot, bool showOled);
 void RF_Check();
 
 #endif // RF_MODEM_H

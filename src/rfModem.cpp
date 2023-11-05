@@ -35,7 +35,7 @@ bool rfAnswerCheck(void) {
     }
 }
 
-bool RF_Init(bool boot) {
+bool RF_Init(bool boot, bool showOled = false) {
     log_i("SA818/SA868 Init");
 #ifdef USE_SCREEN
     OledPostStartup("RF Init...");
@@ -73,7 +73,7 @@ bool RF_Init(bool boot) {
     if (config.sql_level > 8) config.sql_level = 8;
 
 #ifdef USE_SCREEN
-    OledPostStartup("RF Init... 1/4");
+    if (showOled) OledPostStartup("RF Init... 1/4");
 #endif
 
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
@@ -87,7 +87,7 @@ bool RF_Init(bool boot) {
     if (!rfAnswerCheck()) return false;
 
 #ifdef USE_SCREEN
-    OledPostStartup("RF Init... 2/4");
+    if (showOled) OledPostStartup("RF Init... 2/4");
 #endif
 
     SerialRF.println("AT+SETFILTER=1,1,1");
@@ -96,7 +96,7 @@ bool RF_Init(bool boot) {
     if (!rfAnswerCheck()) return false;
 
 #ifdef USE_SCREEN
-    OledPostStartup("RF Init... 3/4");
+    if (showOled) OledPostStartup("RF Init... 3/4");
 #endif
 
     SerialRF.println("AT+SETTAIL=0");
@@ -107,7 +107,7 @@ bool RF_Init(bool boot) {
     if (!rfAnswerCheck()) return false;
 
 #ifdef USE_SCREEN
-    OledPostStartup("RF Init... 4/4");
+    if (showOled) OledPostStartup("RF Init... 4/4");
 #endif
 
     if (config.volume > 8) config.volume = 8;

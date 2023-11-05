@@ -838,11 +838,12 @@ void setup()
     strip.show();
 #endif
 
+    OledPostStartup("Load Config...");
     LoadConfig();
 
 #ifdef USE_RF
     // RF SHOULD BE Initialized or there is no reason to startup at all
-    while (!RF_Init(true)) {};
+    while (!RF_Init(true, true)) {};
 #endif
 
 #if defined(USE_PMU)
