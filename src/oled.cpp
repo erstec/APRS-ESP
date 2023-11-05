@@ -71,12 +71,19 @@ void OledStartup() {
     sprintf(buf, "Boot...");
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
     display.print(buf);
-    sprintf(buf, "RF init...");
+
+    display.display();
+#endif
+}
+
+void OledPostStartup(String customMsg) {
+    char buf[16];
+    sprintf(buf, customMsg.c_str());
+    display.fillRect(0, CHAR_HEIGHT * 4, display.width(), CHAR_HEIGHT * 5, BLACK);
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 4);
     display.print(buf);
 
     display.display();
-#endif
 }
 
 // draw rectangle box with message
@@ -346,9 +353,12 @@ void OledUpdateFWU() {
 }
 
 // add message to show in rectangle box for timeout seconds
-void OledPushMsg(String caption, char *msg, char *msg2 = "", uint8_t timeout = 3) {
+void OledPushMsg(String caption, char *msg, char *msg2 = NULL, uint8_t timeout = 3) {
     strncpy(msgBox.caption, caption.c_str(), sizeof(msgBox.caption));
     strncpy(msgBox.msg, msg, sizeof(msgBox.msg));
-    strncpy(msgBox.msg2, msg2, sizeof(msgBox.msg2));
+    if (msg2 != NULL) 
+        strncpy(msgBox.msg2, msg2, sizeof(msgBox.msg2));
+    else
+        memset(msgBox.msg2, 0, sizeof(msgBox.msg2));
     msgBox.timeout = timeout;
 }

@@ -10,6 +10,7 @@
 #include "rfModem.h"
 #include "config.h"
 #include "main.h"
+#include "oled.h"
 
 extern HardwareSerial SerialRF;
 extern Configuration config;
@@ -36,6 +37,9 @@ bool rfAnswerCheck(void) {
 
 bool RF_Init(bool boot) {
     log_i("SA818/SA868 Init");
+#ifdef USE_SCREEN
+    OledPostStartup("RF Init...");
+#endif
     if (boot) {
         SerialRF.begin(SERIAL_RF_BAUD, SERIAL_8N1, SERIAL_RF_RXPIN, SERIAL_RF_TXPIN);
         
@@ -68,6 +72,10 @@ bool RF_Init(bool boot) {
     char str[100];
     if (config.sql_level > 8) config.sql_level = 8;
 
+#ifdef USE_SCREEN
+    OledPostStartup("RF Init... 1/4");
+#endif
+
     sprintf(str, "AT+DMOSETGROUP=%01d,%0.4f,%0.4f,%04d,%01d,%04d", 
             config.band,
             config.freq_tx + ((float)config.offset_tx / 1000000),
@@ -78,10 +86,18 @@ bool RF_Init(bool boot) {
     delay(500);
     if (!rfAnswerCheck()) return false;
 
+#ifdef USE_SCREEN
+    OledPostStartup("RF Init... 2/4");
+#endif
+
     SerialRF.println("AT+SETFILTER=1,1,1");
     log_i("AT+SETFILTER=1,1,1");
     delay(500);
     if (!rfAnswerCheck()) return false;
+
+#ifdef USE_SCREEN
+    OledPostStartup("RF Init... 3/4");
+#endif
 
     SerialRF.println("AT+SETTAIL=0");
     log_i("AT+SETTAIL=0");
@@ -89,6 +105,10 @@ bool RF_Init(bool boot) {
     // SerialRF.println(str);
     delay(500);
     if (!rfAnswerCheck()) return false;
+
+#ifdef USE_SCREEN
+    OledPostStartup("RF Init... 4/4");
+#endif
 
     if (config.volume > 8) config.volume = 8;
 
