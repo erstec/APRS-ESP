@@ -15,6 +15,8 @@
 #include "gps.h"
 #include "main.h"
 
+#include <Fonts/FreeSans9pt7b.h>
+
 #if defined(USE_SCREEN_SSD1306)
 #include <Adafruit_SSD1306.h>
 extern Adafruit_SSD1306 display;
@@ -26,6 +28,14 @@ extern Adafruit_SH1106 display;
 extern TinyGPSPlus gps;
 extern Configuration config;
 extern WiFiClient aprsClient;
+
+static struct {
+    char caption[16];
+    char msg[16];
+    char msg2[16];
+    uint8_t timeout;
+    // time_t time;
+} msgBox;
 
 void OledStartup() {
 #ifdef USE_SCREEN
@@ -61,12 +71,44 @@ void OledStartup() {
     sprintf(buf, "Boot...");
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 2);
     display.print(buf);
-    sprintf(buf, "RF init...");
+
+    display.display();
+#endif
+}
+
+void OledPostStartup(String customMsg) {
+    char buf[16];
+    sprintf(buf, customMsg.c_str());
+    display.fillRect(0, CHAR_HEIGHT * 4, display.width(), CHAR_HEIGHT * 5, BLACK);
     display.setCursor(display.width() / 2 - strlen(buf) * CHAR_WIDTH / 2, CHAR_HEIGHT * 4);
     display.print(buf);
 
     display.display();
-#endif
+}
+
+// draw rectangle box with message
+static void OledDrawMsg() {
+    if (msgBox.timeout > 0) {
+        display.fillRect(10 - 2, 5 - 2, display.width() - 20 + 2, display.height() - 10 + 2, BLACK);
+        display.drawRect(10, 5, display.width() - 20, display.height() - 10, WHITE);
+        // caption
+        display.setCursor(display.width() / 2 - strlen(msgBox.caption) * CHAR_WIDTH / 2, 10);
+        display.print(msgBox.caption);
+        // message
+        display.setFont(&FreeSans9pt7b);
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds(msgBox.msg, 0, 0, &x1, &y1, &w, &h);
+        if (w > display.width() - 10 - 10) w = display.width();
+        display.setCursor(display.width() / 2 - w / 2, 36);
+        display.print(msgBox.msg);
+        // second message line
+        display.setFont();
+        display.setCursor(display.width() / 2 - strlen(msgBox.msg2) * CHAR_WIDTH / 2, 45);
+        display.print(msgBox.msg2);
+
+        msgBox.timeout--;
+    }
 }
 
 void OledUpdate(int batData, bool usbPlugged) {
@@ -256,6 +298,8 @@ void OledUpdate(int batData, bool usbPlugged) {
     for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
         display.print(" ");
     }
+
+    OledDrawMsg();
     
     display.display();
 #endif
@@ -307,4 +351,15 @@ void OledUpdateFWU() {
 
     display.display();
 #endif
+}
+
+// add message to show in rectangle box for timeout seconds
+void OledPushMsg(String caption, char *msg, char *msg2 = NULL, uint8_t timeout = 3) {
+    strncpy(msgBox.caption, caption.c_str(), sizeof(msgBox.caption));
+    strncpy(msgBox.msg, msg, sizeof(msgBox.msg));
+    if (msg2 != NULL) 
+        strncpy(msgBox.msg2, msg2, sizeof(msgBox.msg2));
+    else
+        memset(msgBox.msg2, 0, sizeof(msgBox.msg2));
+    msgBox.timeout = timeout;
 }

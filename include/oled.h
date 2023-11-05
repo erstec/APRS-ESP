@@ -13,5 +13,7 @@
 #define CHAR_HEIGHT 8
 
 void OledStartup();
+void OledPostStartup(String customMsg);
 void OledUpdate(int batData, bool usbPlugged);
 void OledUpdateFWU();
+void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout);

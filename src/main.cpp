@@ -58,9 +58,6 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #ifdef USE_SCREEN
 #include "Wire.h"
 #include "Adafruit_GFX.h"
-#include <Fonts/FreeSansBold9pt7b.h>
-#include <Fonts/FreeSerifItalic9pt7b.h>
-// #include <Fonts/Seven_Segment24pt7b.h>
 #if defined(USE_SCREEN_SSD1306)
 #include "Adafruit_SSD1306.h"
 #elif defined(USE_SCREEN_SH1106)
@@ -245,6 +242,10 @@ bool pkgTxSend() {
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
                 TX_LED_ON();
+                String _empty = "";
+                String _msg = "TX RF";
+                OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
+                OledUpdate(0, false); // force update otherwise it will be shown only after TX
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
@@ -813,11 +814,12 @@ void setup()
     strip.show();
 #endif
 
+    OledPostStartup("Load Config...");
     LoadConfig();
 
 #ifdef USE_RF
     // RF SHOULD BE Initialized or there is no reason to startup at all
-    while (!RF_Init(true)) {};
+    while (!RF_Init(true, true)) {};
 #endif
 
 #if defined(USE_PMU)
@@ -1492,6 +1494,9 @@ void taskAPRS(void *pvParameters) {
                 // free(rawP);
                 pkgListUpdate(call, (char *)tnc2.c_str(), type, 0);
 
+                String msgType = "Type: " + pkgGetType(type);
+                OledPushMsg("RF RX", call, (char *)msgType.c_str(), 3);
+
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
                     int ret = igateProcess(incomingPacket);
@@ -1704,6 +1709,9 @@ void taskNetwork(void *pvParameters) {
                                     uint16_t type = pkgType(&raw[0]);
                                     log_d("Type: %d", type);
                                     pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
+
+                                    String msgType = "Type: " + pkgGetType(type);
+                                    OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
                                 }
 #endif
                                 status.allCount++;

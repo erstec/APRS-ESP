@@ -275,3 +275,22 @@ void pkgListInit() {
 #endif
     memset(pkgList, 0, sizeof(pkgListType) * PKGLISTSIZE);
 }
+
+String pkgGetType(uint32_t type) {
+    String typeStr = "";
+    
+    if (type & FILTER_ALL) typeStr += "All ";
+    if (type & FILTER_OBJECT) typeStr += "Obj ";
+    if (type & FILTER_ITEM) typeStr += "Itm ";
+    if (type & FILTER_MESSAGE) typeStr += "Msg ";
+    if (type & FILTER_WX) typeStr += "WX ";
+    if (type & FILTER_TELEMETRY) typeStr += "Tlm ";
+    if (type & FILTER_QUERY) typeStr += "Qry ";
+    if (type & FILTER_STATUS) typeStr += "Sts ";
+    if (type & FILTER_POSITION) typeStr += "Pos ";
+    if (type & FILTER_BUOY) typeStr += "Buo ";
+    if (type & FILTER_MICE) typeStr += "Mic ";
+    if (type & FILTER_THIRDPARTY) typeStr += "3rd";
+
+    return typeStr;
+}
