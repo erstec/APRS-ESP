@@ -49,11 +49,9 @@ void sort(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].time < a[o + 1].time) {
@@ -65,9 +63,7 @@ void sort(pkgListType a[], int size) {
             }
         }
     }
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
 }
 
 void sortPkgDesc(pkgListType a[], int size) {
@@ -76,11 +72,9 @@ void sortPkgDesc(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].pkg < a[o + 1].pkg) {
@@ -92,9 +86,7 @@ void sortPkgDesc(pkgListType a[], int size) {
             }
         }
     }
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
 }
 
 uint16_t pkgType(const char *raw) {
@@ -189,15 +181,11 @@ uint16_t pkgType(const char *raw) {
 
 pkgListType getPkgList(int idx) {
     pkgListType ret;
-#if defined(BOARD_HAS_PSRAM)
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
     memcpy(&ret, &pkgList[idx], sizeof(pkgListType));
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
     
     return ret;
 }
@@ -211,23 +199,21 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
 
     char callsign[11];
     size_t sz = strlen(call);
-    memset(callsign, 0, 11);
-    if (sz > 10)
-        sz = 10;
+    memset(callsign, 0, sizeof(callsign));
+    if (sz > (sizeof(callsign) - 1))
+        sz = sizeof(callsign) - 1;
     // strncpy(callsign, call, sz);
     memcpy(callsign, call, sz);
 
-#if defined(BOARD_HAS_PSRAM)
+    log_d("call: %s, callsign: %s, sz: %d", call, callsign, sz);
+
     while (psramBusy)
         delay(1);
     psramBusy = true;
-#endif
 
     int i = pkgList_Find(callsign, type);
     if (i > PKGLISTSIZE) {
-#if defined(BOARD_HAS_PSRAM)
         psramBusy = false;
-#endif
         return -1;
     }
     if (i > -1) { // Found call in old pkg
@@ -244,13 +230,13 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
                 len = sizeof(pkgList[i].raw);
             memcpy(pkgList[i].raw, raw, len);
             // SerialLOG.print("Update: ");
+
+            log_d("Update: %s, i: %d", pkgList[i].calsign, i);
         }
     } else {
         i = pkgListOld(); // Search free in array
         if (i > PKGLISTSIZE || i < 0) {
-#if defined(BOARD_HAS_PSRAM)
             psramBusy = false;
-#endif
             return -1;
         }
         // memset(&pkgList[i], 0, sizeof(pkgListType));
@@ -263,18 +249,20 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
         else
             pkgList[i].audio_level = 0;
         // strcpy(pkgList[i].calsign, callsign);
+        memset(pkgList[i].calsign, 0, sizeof(pkgList[i].calsign));
         memcpy(pkgList[i].calsign, callsign, strlen(callsign));
+        pkgList[i].calsign[sizeof(callsign) - 1] = 0;
         len = strlen(raw);
         if (len > sizeof(pkgList[i].raw))
             len = sizeof(pkgList[i].raw);
+        memset(pkgList[i].raw, 0, sizeof(pkgList[i].raw));
         memcpy(pkgList[i].raw, raw, len);
         // strcpy(pkgList[i].raw, raw);
-        pkgList[i].calsign[10] = 0;
         // SerialLOG.print("NEW: ");
+
+        log_d("NEW: %s, i: %d", pkgList[i].calsign, i);
     }
-#if defined(BOARD_HAS_PSRAM)
     psramBusy = false;
-#endif
     
     return i;
 }

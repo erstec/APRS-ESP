@@ -214,9 +214,7 @@ typedef enum {
 extern teTimeSync timeSyncFlag;
 extern long TimeSyncPeriod;
 
-#if defined(BOARD_HAS_PSRAM)
 extern bool psramBusy;
-#endif
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
