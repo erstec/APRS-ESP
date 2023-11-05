@@ -99,6 +99,7 @@ static void OledDrawMsg() {
         int16_t x1, y1;
         uint16_t w, h;
         display.getTextBounds(msgBox.msg, 0, 0, &x1, &y1, &w, &h);
+        if (w > display.width() - 10 - 10) w = display.width();
         display.setCursor(display.width() / 2 - w / 2, 36);
         display.print(msgBox.msg);
         // second message line
