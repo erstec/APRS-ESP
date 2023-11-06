@@ -85,7 +85,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - Adjust settings (if needed) in `main.h` and `pinout.h`
 - Select correct Target
 - Connect USB cable to the ESP32 module
-- Build and Upload using PlatforIO buttons
+- Build and Upload using PlatformIO buttons
 - Search WiFi for AP SSID APRS-ESP32, Password: aprs-esp32
 - Open a browser and go to address http://192.168.4.1
 - Make all required configuration
