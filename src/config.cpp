@@ -120,6 +120,14 @@ void SaveConfig(bool storeBackup) {
     doc["ntpServer"] = config.ntpServer;
     doc["gps_mode"] = config.gps_mode;
 
+    doc["sb_fast_speed"] = config.sb_fast_speed;
+    doc["sb_fast_rate"] = config.sb_fast_rate;
+    doc["sb_slow_speed"] = config.sb_slow_speed;
+    doc["sb_slow_rate"] = config.sb_slow_rate;
+    doc["sb_turn_min"] = config.sb_turn_min;
+    doc["sb_turn_slope"] = config.sb_turn_slope;
+    doc["sb_turn_time"] = config.sb_turn_time;
+
     serializeJsonPretty(doc, Serial);
     serializeJsonPretty(doc, f_json);
     f_json.close();
@@ -191,6 +199,15 @@ void DefaultConfig() {
     config.timeZone = 0;
     sprintf(config.ntpServer, "pool.ntp.org");
     config.gps_mode = GPS_MODE_FIXED;    // 0 - Auto, 1 - GPS only, 2 - Fixed only
+
+    config.sb_fast_speed = APRS_SB_FAST_SPEED;
+    config.sb_fast_rate = APRS_SB_FAST_RATE;
+    config.sb_slow_speed = APRS_SB_SLOW_SPEED;
+    config.sb_slow_rate = APRS_SB_SLOW_RATE;
+    config.sb_turn_min = APRS_SB_MIN_TURN_ANGLE;
+    config.sb_turn_slope = APRS_SB_TURN_SLOPE;
+    config.sb_turn_time = APRS_SB_MIN_TURN_TIME;
+
     SaveConfig();
 }
 
@@ -359,6 +376,14 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.timeZone = obj["timeZone"];
     strcpy(tmpConfig.ntpServer, obj["ntpServer"]);
     tmpConfig.gps_mode = obj["gps_mode"];
+
+    tmpConfig.sb_fast_speed = obj["sb_fast_speed"];
+    tmpConfig.sb_fast_rate = obj["sb_fast_rate"];
+    tmpConfig.sb_slow_speed = obj["sb_slow_speed"];
+    tmpConfig.sb_slow_rate = obj["sb_slow_rate"];
+    tmpConfig.sb_turn_min = obj["sb_turn_min"];
+    tmpConfig.sb_turn_slope = obj["sb_turn_slope"];
+    tmpConfig.sb_turn_time = obj["sb_turn_time"];
 
     return tmpConfig;
 }

@@ -851,6 +851,50 @@ void handle_setting() {
                         strcpy(config.aprs_comment, server.arg(i).c_str());
                     }
                 }
+
+                if (server.argName(i) == "sbFastSpeed") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_fast_speed = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbFastRate") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_fast_rate = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbSlowSpeed") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_slow_speed = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbSlowRate") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_slow_rate = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbMinTurnTime") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_turn_time = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbMinTurnAngle") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_turn_min = server.arg(i).toInt();
+                    }
+                }
+                if (server.argName(i) == "sbTurnSlope") {
+                    if (server.arg(i) != "") {
+                        if (isValidNumber(server.arg(i)))
+                            config.sb_turn_slope = server.arg(i).toInt();
+                    }
+                }
+                
             }
 
             config.synctime = synctime;
@@ -966,6 +1010,41 @@ void handle_setting() {
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Sync Time</label>\n";
     webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_1\" name=\"synctime\" type=\"checkbox\" value=\"OK\" " + syncFlage + "/></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Fast Speed (km/h)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbFastSpeed\" name=\"sbFastSpeed\" type=\"text\" value=\"" + String(config.sb_fast_speed) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Fast Rate (sec)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbFastRate\" name=\"sbFastRate\" type=\"text\" value=\"" + String(config.sb_fast_rate) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Slow Speed (km/h)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbSlowSpeed\" name=\"sbSlowSpeed\" type=\"text\" value=\"" + String(config.sb_slow_speed) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Slow Rate (sec)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbSlowRate\" name=\"sbSlowRate\" type=\"text\" value=\"" + String(config.sb_slow_rate) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Min Turn Time (sec)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbMinTurnTime\" name=\"sbMinTurnTime\" type=\"text\" value=\"" + String(config.sb_turn_time) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Min Turn Angle (deg)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbMinTurnAngle\" name=\"sbMinTurnAngle\" type=\"text\" value=\"" + String(config.sb_turn_min) + "\" /></div>\n";
+    webString += "</div>\n";
+
+    webString += "<div class=\"form-group\">\n";
+    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Turn Slope (deg/km)</label>\n";
+    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbTurnSlope\" name=\"sbTurnSlope\" type=\"text\" value=\"" + String(config.sb_turn_slope) + "\" /></div>\n";
     webString += "</div>\n";
 
     webString += "</div>\n";  // div general
@@ -2254,10 +2333,12 @@ void handle_firmware() {
 
 //holds the current upload
 File fsUploadFile;
+File fsUploadCfgFile;
 
 void handle_configuration() {
     // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/FSBrowser/FSBrowser.ino
     if (server.hasArg("backupConfig")) {
+        log_d("Backup Config");
         char strCID[50];
         uint64_t chipid = ESP.getEfuseMac();
         sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
@@ -2300,57 +2381,7 @@ void handle_configuration() {
             jsonFile.close();
         }
         SPIFFS.end();
-    } else if (server.hasArg("restoreConfig")) {
-        HTTPUpload& upload = server.upload();
-        log_d("Upload file name: %s", upload.filename.c_str()); 
-        log_d("Upload file size: %d", upload.totalSize);
-        log_d("Upload file status: %d", upload.status);
-        // if (upload.totalSize != (sizeof(Configuration) + 1)) {
-        //     Serial.println("Upload file size error!");
-        //     server.send(500, "text/plain", "Upload file size error!");
-        //     return;
-        // }
-        // //if (upload.status == UPLOAD_FILE_START) {
-        //     String filename = upload.filename;
-        //     filename = "config.bin";    // override filename
-        //     if (!filename.startsWith("/")) filename = "/" + filename;
-        //     Serial.print("handleFileUpload Name: "); Serial.println(filename);
-        //     SPIFFS.begin(true);
-        //     // SPIFFS.remove(filename);
-        //     fsUploadFile = SPIFFS.open(filename, "w");
-        //     filename = String();
-        // //} else if (upload.status == UPLOAD_FILE_WRITE) {
-        //     Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
-        //     if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
-        // //} else if (upload.status == UPLOAD_FILE_END) {
-        //     if (fsUploadFile) fsUploadFile.close();
-        //     Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
-        //     SPIFFS.end();
-        // //}
-
-        if (upload.totalSize == 0) {
-            log_e("Upload file size error!");
-            server.send(500, "text/plain", "Upload file size error!");
-            return;
-        }
-
-        String filenameJson = upload.filename;
-        filenameJson = "config.json";    // override filename
-        if (!filenameJson.startsWith("/")) 
-            filenameJson = "/" + filenameJson;
-        log_d("handleFileUpload Name: %s", filenameJson.c_str());
-        SPIFFS.begin(true);
-        // SPIFFS.remove(filenameJson);
-        fsUploadFile = SPIFFS.open(filenameJson, "w");
-        filenameJson = String();
-        log_d("handleFileUpload Data: %d", upload.currentSize);
-        if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
-        if (fsUploadFile) fsUploadFile.close();
-        log_d("handleFileUpload Size: %d", upload.totalSize);
-        SPIFFS.end();
-
-        LoadReConfig();
-    }
+    } 
 
     char strCID[50];
     uint64_t chipid = ESP.getEfuseMac();
@@ -2377,7 +2408,7 @@ void handle_configuration() {
     webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
-    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
+    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='download_form' class=\"form-horizontal\">\n";
 
     webString += "<div class=\"form-group\">\n";
     webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
@@ -2402,7 +2433,7 @@ void handle_configuration() {
     webString += "</div>\n";
 
     webString += "</form></div>\n";
-/*
+
     webString +=
         "<script>"
         "function sub(obj){"
@@ -2410,12 +2441,19 @@ void handle_configuration() {
         "document.getElementById('file-input').innerHTML = '   '+ "
         "fileName[fileName.length-1];"
         "};"
-        "$('form').submit(function(e){"
+
+        // "$('#download_form').submit(function(e){"
+        // "e.preventDefault();"
+        // "console.log('download_form');"
+        // "});"
+
+        "$('#upload_form').submit(function(e){"
         "e.preventDefault();"
+        "console.log('upload_form');"
         "var form = $('#upload_form')[0];"
         "var data = new FormData(form);"
         "$.ajax({"
-        "url: '/update',"
+        "url: '/updateconfig',"
         "type: 'POST',"
         "data: data,"
         "contentType: false,"
@@ -2439,7 +2477,7 @@ void handle_configuration() {
         "});"
         "});"
         "</script>";
-*/
+
     webString += "</body></html>\n";
     server.send(200, "text/html", webString);
 
@@ -2593,6 +2631,8 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
 }
 #endif
 
+static bool cfgUpdate = false;
+
 void webService() {
     server.close();
     // web client handlers
@@ -2613,6 +2653,58 @@ void webService() {
     server.on("/realtime", handle_realtime);
     server.on("/firmware", handle_firmware);
     server.on("/configuration", handle_configuration);
+    /* handling uploading configuration file */
+    server.on(
+        "/updateconfig", HTTP_POST,
+        []() {
+            log_d("Update config file B");
+            server.sendHeader("Connection", "close");
+            server.send(200, "text/plain", cfgUpdate ? "FAIL" : "OK");
+            if (cfgUpdate) LoadReConfig();
+            cfgUpdate = false;
+        },
+        []() {
+            log_d("Update config file A");
+            HTTPUpload &upload = server.upload();
+            log_d("Upload Status: %d", upload.status);
+            if (upload.status == UPLOAD_FILE_START) {
+                String filenameJson = upload.filename;
+                filenameJson = "tconfig.json";    // override filename
+                if (!filenameJson.startsWith("/")) 
+                    filenameJson = "/" + filenameJson;
+                log_d("handleFileUpload Name: %s", filenameJson.c_str());
+                SPIFFS.begin(true);
+                // SPIFFS.remove(filename);
+                fsUploadCfgFile = SPIFFS.open(filenameJson, "w");
+                filenameJson = String();
+            } else if (upload.status == UPLOAD_FILE_WRITE) {
+                log_d("handleFileUpload Data: %d", upload.currentSize);
+                if (fsUploadCfgFile) fsUploadCfgFile.write(upload.buf, upload.currentSize);
+            } else if (upload.status == UPLOAD_FILE_END) {
+                log_d("handleFileUpload Size: %d", upload.totalSize);
+                if (fsUploadCfgFile) {
+                    fsUploadCfgFile.close();
+                    fsUploadCfgFile = SPIFFS.open("/tconfig.json", "r");
+                    if (fsUploadCfgFile) {
+                        size_t cfgSize = fsUploadCfgFile.size();
+                        fsUploadCfgFile.close();
+                        log_d("filesize: %d", cfgSize);
+                        if (upload.totalSize > 0) {
+                            if (upload.totalSize == cfgSize) {
+                                log_d("Update Success");
+                                if (SPIFFS.exists("/config.json")) SPIFFS.remove("/config.json");
+                                SPIFFS.rename("/tconfig.json", "/config.json");
+                                cfgUpdate = true;
+                            } else {
+                                log_d("Update Fail");
+                            }
+                        }
+                    }
+                }
+                SPIFFS.end();
+            }
+        }
+    );
     /* handling uploading firmware file */
     server.on(
         "/update", HTTP_POST,
