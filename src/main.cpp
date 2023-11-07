@@ -472,17 +472,12 @@ boolean APRSConnect() {
 
         if (strlen(config.aprs_object) >= 3) {
             uint16_t passcode = aprsParse.passCode(config.aprs_object);
-            login = "user " + String(config.aprs_object) + " pass " + String(passcode, DEC) + " vers ESP32IGate V" + String(VERSION) + " filter " + String(config.aprs_filter);
+            login = "user " + String(config.aprs_object) + " pass " + String(passcode, DEC) + " vers APRS-ESP V" + String(VERSION_FULL) + " filter " + String(config.aprs_filter);
         } else {
             if (config.aprs_ssid == 0) {
-                login = "user " + String(config.aprs_mycall) + " pass " +
-                        String(config.aprs_passcode) + " vers APRS-ESP V" +
-                        String(VERSION) + " filter " + String(config.aprs_filter);
+                login = "user " + String(config.aprs_mycall) + " pass " + String(config.aprs_passcode) + " vers APRS-ESP V" + String(VERSION_FULL) + " filter " + String(config.aprs_filter);
             } else {
-                login = "user " + String(config.aprs_mycall) + "-" +
-                        String(config.aprs_ssid) + " pass " +
-                        String(config.aprs_passcode) + " vers APRS-ESP V" +
-                        String(VERSION) + " filter " + String(config.aprs_filter);
+                login = "user " + String(config.aprs_mycall) + "-" + String(config.aprs_ssid) + " pass " + String(config.aprs_passcode) + " vers APRS-ESP V" + String(VERSION_FULL) + " filter " + String(config.aprs_filter);
             }
         }
         aprsClient.println(login);

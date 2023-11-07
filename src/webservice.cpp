@@ -1014,12 +1014,16 @@ void handle_service() {
             }
             if (server.argName(i) == "myCall") {
                 if (server.arg(i) != "") {
-                    strcpy(config.aprs_mycall, server.arg(i).c_str());
+                    String str = server.arg(i);
+                    str.trim();
+                    strcpy(config.aprs_mycall, str.c_str());
                 }
             }
             if (server.argName(i) == "myobject") {
                 if (server.arg(i) != "") {
-                    strcpy(config.aprs_object, server.arg(i).c_str());
+                    String str = server.arg(i);
+                    str.trim();
+                    strcpy(config.aprs_object, str.c_str());
                     // for (int i = strlen(config.aprs_object); i < 9; i++) {
                     // config.aprs_object[i] = 0x20; } config.aprs_object[9] =
                     // 0;
@@ -1031,7 +1035,7 @@ void handle_service() {
                 if (server.arg(i) != "") {
                     if (isValidNumber(server.arg(i)))
                         config.aprs_ssid = server.arg(i).toInt();
-                    if (config.aprs_ssid > 15) config.aprs_ssid = 13;
+                    if (config.aprs_ssid > 15) config.aprs_ssid = 15;
                 }
             }
             if (server.argName(i) == "myPasscode") {
