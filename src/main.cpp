@@ -55,14 +55,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 
 #include "rotaryProc.h"
 
-#ifdef USE_SCREEN
+#if defined(USE_SCREEN) || defined(USE_PMU)
 #include "Wire.h"
-#include "Adafruit_GFX.h"
-#if defined(USE_SCREEN_SSD1306)
-#include "Adafruit_SSD1306.h"
-#elif defined(USE_SCREEN_SH1106)
-#include "Adafruit_SH1106.h"
-#endif
 #include "oled.h"
 #endif
 
@@ -159,12 +153,6 @@ HardwareSerial SerialGPS(SERIAL_GPS_UART);
 
 // BluetoothSerial SerialBT;
 
-#if defined(USE_SCREEN_SSD1306)
-Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
-#elif defined(USE_SCREEN_SH1106)
-Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
-#endif
-
 #ifdef USE_ROTARY
 Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
 #endif
@@ -241,7 +229,6 @@ bool pkgTxSend() {
                 psramBusy = false;
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
-                TX_LED_ON();
                 String _empty = "";
                 String _msg = "TX RF";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
@@ -249,6 +236,7 @@ bool pkgTxSend() {
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
+                TX_LED_ON();
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
                 log_d("TX->RF: %s\n", info);
@@ -500,7 +488,7 @@ void setFlag(void)
 
 void setupPower()
 {
-    bool result = PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
+    bool result = PMU.begin(Wire, AXP2101_SLAVE_ADDRESS, OLED_SDA_PIN, OLED_SCL_PIN);
     if (result == false) {
         while (1) {
             log_e("PMU is not online...");
@@ -762,6 +750,10 @@ void setup()
     log_i("Start APRS-ESP V%s", VERSION_FULL);
     log_i("Press and hold BOOT button for 3 sec to Factory Default config");
 
+#if defined(USE_SCREEN) || defined(USE_PMU)
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000L);
+#endif
+
 #if defined(BOARD_TTWR_MOD)
     // +4.2V EN
     pinMode(16, OUTPUT);
@@ -787,13 +779,12 @@ void setup()
     pinMode(ADC_BATTERY, INPUT);
 #endif
 
-#ifdef USE_SCREEN
-    OledStartup();
+#if defined(USE_PMU)
+    setupPower();
 #endif
 
-#if defined(USE_PMU)
-    // PMU
-    setupPower();
+#ifdef USE_SCREEN
+    OledStartup();
 #endif
 
 #if defined(BOARD_TTWR_PLUS)

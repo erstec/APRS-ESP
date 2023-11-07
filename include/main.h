@@ -87,7 +87,7 @@
 #define PKGTXSIZE 100
 #else
 #define TLMLISTSIZE 10
-#define PKGLISTSIZE 10
+#define PKGLISTSIZE 30
 #define PKGTXSIZE 10
 #endif
 

@@ -17,12 +17,17 @@
 
 #include <Fonts/FreeSans9pt7b.h>
 
+#include <Wire.h>
 #if defined(USE_SCREEN_SSD1306)
-#include <Adafruit_SSD1306.h>
-extern Adafruit_SSD1306 display;
+#include "Adafruit_SSD1306.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_I2CDevice.h>
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
 #elif defined(USE_SCREEN_SH1106)
 #include <Adafruit_SH1106.h>
-extern Adafruit_SH1106 display;
+#include <Adafruit_GFX.h>
+#include <Adafruit_I2CDevice.h>
+Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 #endif
 
 extern TinyGPSPlus gps;
@@ -40,14 +45,7 @@ static struct {
 void OledStartup() {
 #ifdef USE_SCREEN
 #if defined(USE_SCREEN_SSD1306)
-    // Explicit Wire pins assignment
-#if defined(BOARD_TTWR_PLUS)
-    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000L);
-#else
-    Wire.setPins(OLED_SDA_PIN, OLED_SCL_PIN);
-#endif
-
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C, false)) {
         log_e("SSD1306 init failed");
     } else {
         log_i("SSD1306 init ok");
