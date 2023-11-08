@@ -493,6 +493,10 @@ void Adafruit_SH1106::sh1106_data(uint8_t c) {
 }
 
 void Adafruit_SH1106::display(void) {
+  sh1106_command(SH1106_SETLOWCOLUMN | 0x0);  // low col = 0
+  sh1106_command(SH1106_SETHIGHCOLUMN | 0x0);  // hi col = 0
+  sh1106_command(SH1106_SETSTARTLINE | 0x0); // line #0
+
   if (sid != -1)
   {
 

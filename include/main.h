@@ -87,7 +87,7 @@
 #define PKGTXSIZE 100
 #else
 #define TLMLISTSIZE 10
-#define PKGLISTSIZE 10
+#define PKGLISTSIZE 20
 #define PKGTXSIZE 10
 #endif
 
@@ -115,16 +115,6 @@
 
 #include "HardwareSerial.h"
 #include "EEPROM.h"
-
-enum M17Flags {
-    DISCONNECTED = 1 << 0,
-    CONNECTING = 1 << 1,
-    M17_AUTH = 1 << 2,
-    M17_CONF = 1 << 3,
-    M17_OPTS = 1 << 4,
-    CONNECTED_RW = 1 << 5,
-    CONNECTED_RO = 1 << 6
-};
 
 typedef struct igateTLM_struct {
     uint16_t Sequence;

@@ -78,7 +78,7 @@ int igateProcess(AX25Msg &Packet) {
         }
     }
 
-    // Add Infomation
+    // Add Information
     header += String(F(":"));
     size_t hSize = strlen(header.c_str());
     uint8_t raw[500];
