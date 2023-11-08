@@ -70,6 +70,14 @@ typedef struct Config_Struct {
     int8_t timeZone;
     char ntpServer[50];
     uint8_t gps_mode;   // 0 - Auto, 1 - GPS only, 2 - Fixed only
+
+    uint16_t sb_fast_speed;
+    uint16_t sb_fast_rate;
+    uint16_t sb_slow_speed;
+    uint16_t sb_slow_rate;
+    uint16_t sb_turn_min;
+    uint16_t sb_turn_slope;
+    uint16_t sb_turn_time;
 } Configuration;
 
 void DefaultConfig();
