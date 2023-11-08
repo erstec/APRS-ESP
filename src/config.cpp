@@ -143,7 +143,7 @@ void DefaultConfig() {
     config.aprs_port = 14580;
     sprintf(config.aprs_passcode, "00000");
     sprintf(config.aprs_moniCall, "%s-%d", config.aprs_mycall, config.aprs_ssid);
-    sprintf(config.aprs_filter, "m/150"); // g/LY*/SP*
+    sprintf(config.aprs_filter, "m/50"); // g/LY*/SP*
     sprintf(config.wifi_ssid, "APRS-ESP32");
     sprintf(config.wifi_pass, "aprs-esp32");
     sprintf(config.wifi_ap_ssid, "APRS-ESP32");
@@ -172,7 +172,6 @@ void DefaultConfig() {
     memset(config.aprs_object, 0, sizeof(config.aprs_object));
     sprintf(config.aprs_comment, "ESP IG github.com/erstec/APRS-ESP");
     sprintf(config.tnc_comment, "APRS-ESP Built in TNC");
-    sprintf(config.aprs_filter, "m/150");
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
     config.input_hpf = true;
