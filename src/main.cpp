@@ -1176,6 +1176,14 @@ int btn_count = 0;
 long timeCheck = 0;
 long TimeSyncPeriod = 0;
 
+#if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
+const int btnCnt1 = 100;
+const int btnCnt2 = 200;
+#else
+const int btnCnt1 = 1000;
+const int btnCnt2 = 2000;
+#endif
+
 void loop()
 {
     vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
@@ -1227,36 +1235,54 @@ void loop()
 #ifndef USE_ROTARY
     bootPin2 = digitalRead(PIN_ROT_BTN);
 #endif
+    
+    String _empty = "";
 
-    if (digitalRead(BOOT_PIN) == LOW || bootPin2 == LOW) {
+    int rot_sw = digitalRead(BOOT_PIN);
+
+    // log_d("rot_sw=%d bootPin2=%d btn_count=%d", rot_sw, bootPin2, btn_count);
+
+    if (rot_sw == LOW || bootPin2 == LOW) {
         btn_count++;
-        if (btn_count > 1000 && btn_count < 2000)  // Push BOOT 10sec
+        if (btn_count > btnCnt1 && btn_count < btnCnt2)  // Push BOOT 10sec
         {
             RX_LED_ON();
             TX_LED_ON();
+            String _msg = "WiFi SW";
+            OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
-        if (btn_count > 2000)  // Push BOOT 20sec
+        if (btn_count > btnCnt2)  // Push BOOT 20sec
         {
             RX_LED_OFF();
             TX_LED_OFF();
+            String _msg = "Factory";
+            OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
     } else {
         if (btn_count > 0) {
             // Serial.printf("btn_count=%dms\n", btn_count * 10);
-            if (btn_count > 1000)  // Push BOOT 10sec to Disable/Enable WiFi
+            if (btn_count > btnCnt1)  // Push BOOT 10sec to Disable/Enable WiFi
             {
                 if (config.wifi_mode == WIFI_OFF) {
                     config.wifi_mode = WIFI_AP_STA_FIX;
                     log_i("WiFi ON");
+                    String _msg = "WiFi ON";
+                    OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+                    OledUpdate(0, false);
+                    delay(2000);
                 } else {
                     config.wifi_mode = WIFI_OFF;
                     log_i("WiFi OFF");
+                    String _msg = "WiFi OFF";
+                    OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+                    OledUpdate(0, false);
+                    delay(2000);
                 }
                 btn_count = 0;
                 SaveConfig();
                 esp_restart();
             }
-            else if (btn_count > 2000) {    // Config Default
+            else if (btn_count > btnCnt1) {    // Config Default
                 log_i("Factory Default");
                 btn_count = 0;
                 DefaultConfig();
@@ -1692,7 +1718,7 @@ void taskNetwork(void *pvParameters) {
                                 if (msg_call_idx > 0) {
                                     msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
                                 }
-#ifdef DEBUG_IS
+
                                 log_i("SRC_CALL: %s", src_call.c_str());
                                 if (msg_call_idx > 0) {
                                     log_i("MSG_CALL: %s", msg_call.c_str());
@@ -1713,7 +1739,7 @@ void taskNetwork(void *pvParameters) {
                                     String msgType = "Type: " + pkgGetType(type);
                                     OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
                                 }
-#endif
+
                                 status.allCount++;
                                 // igateTLM.RX++;
 
@@ -1732,29 +1758,42 @@ void taskNetwork(void *pvParameters) {
                                             pkgTxPush(line.c_str(), line.length(), 0);
                                             status.inet2rf++;
                                             igateTLM.INET2RF++;
-#ifdef DEBUG
                                             log_i("INET->RF %s", line.c_str());
-#endif
                                         } else {
+                                            bool msgForwarded = false;
                                             // Is it a message for last heard stations?
                                             for (int i = 0; i < PKGLISTSIZE; i++) {
                                                 if (pkgList[i].time > 0) {
                                                     if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
-                                                        log_i("MSG to last heard");
-                                                        pkgTxPush(line.c_str(), line.length(), 0);
-                                                        status.inet2rf++;
-                                                        igateTLM.INET2RF++;
-                                                        log_i("INET->RF %s", line.c_str());
+                                                        if (pkgList[i].channel == 0) {  // was heard on RF
+                                                            log_i("MSG to last heard");
+                                                            pkgTxPush(line.c_str(), line.length(), 0);
+                                                            status.inet2rf++;
+                                                            igateTLM.INET2RF++;
+                                                            log_i("INET->RF %s", line.c_str());
+                                                            msgForwarded = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
+
+                                            if (!msgForwarded) {
+                                                // Not found in last heard list
+                                                status.dropCount++;
+                                                log_i("MSG not to last heard nor owner group, dropped");
+                                            }
                                         }
+                                    } else {
+                                        // No INET2RF configured or MSG_CALL not present
+                                        status.dropCount++;
+                                        log_i("INET Packet dropped from %s", src_call.c_str());
                                     }
                                 } else {
                                     // Telemetry found
                                     igateTLM.DROP++;
                                     status.dropCount++;
-                                    log_i("INET Message TELEMETRY from %s", src_call.c_str());
+                                    log_i("INET Packet TELEMETRY dropped from %s", src_call.c_str());
                                 }
                             }
                         }
