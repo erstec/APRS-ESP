@@ -116,6 +116,7 @@ uint16_t pkgType(const char *raw) {
                 type |= FILTER_WX;
                 break;
             }
+            break;
         case '/':
         case '@':
             type |= FILTER_POSITION;
