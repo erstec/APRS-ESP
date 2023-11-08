@@ -1718,7 +1718,7 @@ void taskNetwork(void *pvParameters) {
                                 if (msg_call_idx > 0) {
                                     msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
                                 }
-#ifdef DEBUG_IS
+
                                 log_i("SRC_CALL: %s", src_call.c_str());
                                 if (msg_call_idx > 0) {
                                     log_i("MSG_CALL: %s", msg_call.c_str());
@@ -1739,7 +1739,7 @@ void taskNetwork(void *pvParameters) {
                                     String msgType = "Type: " + pkgGetType(type);
                                     OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
                                 }
-#endif
+
                                 status.allCount++;
                                 // igateTLM.RX++;
 
@@ -1758,29 +1758,42 @@ void taskNetwork(void *pvParameters) {
                                             pkgTxPush(line.c_str(), line.length(), 0);
                                             status.inet2rf++;
                                             igateTLM.INET2RF++;
-#ifdef DEBUG
                                             log_i("INET->RF %s", line.c_str());
-#endif
                                         } else {
+                                            bool msgForwarded = false;
                                             // Is it a message for last heard stations?
                                             for (int i = 0; i < PKGLISTSIZE; i++) {
                                                 if (pkgList[i].time > 0) {
                                                     if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
-                                                        log_i("MSG to last heard");
-                                                        pkgTxPush(line.c_str(), line.length(), 0);
-                                                        status.inet2rf++;
-                                                        igateTLM.INET2RF++;
-                                                        log_i("INET->RF %s", line.c_str());
+                                                        if (pkgList[i].channel == 0) {  // was heard on RF
+                                                            log_i("MSG to last heard");
+                                                            pkgTxPush(line.c_str(), line.length(), 0);
+                                                            status.inet2rf++;
+                                                            igateTLM.INET2RF++;
+                                                            log_i("INET->RF %s", line.c_str());
+                                                            msgForwarded = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
+
+                                            if (!msgForwarded) {
+                                                // Not found in last heard list
+                                                status.dropCount++;
+                                                log_i("MSG not to last heard nor owner group, dropped");
+                                            }
                                         }
+                                    } else {
+                                        // No INET2RF configured or MSG_CALL not present
+                                        status.dropCount++;
+                                        log_i("INET Packet dropped from %s", src_call.c_str());
                                     }
                                 } else {
                                     // Telemetry found
                                     igateTLM.DROP++;
                                     status.dropCount++;
-                                    log_i("INET Message TELEMETRY from %s", src_call.c_str());
+                                    log_i("INET Packet TELEMETRY dropped from %s", src_call.c_str());
                                 }
                             }
                         }
