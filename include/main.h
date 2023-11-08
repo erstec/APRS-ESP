@@ -54,7 +54,7 @@
 #define USE_RF
 
 // smart beaconing parameters
-#define APRS_SB_FAST_SPEED      100         // At this speed or above, beacons will be transmitted at the Fast Rate
+#define APRS_SB_FAST_SPEED      70          // At this speed or above, beacons will be transmitted at the Fast Rate
 #define APRS_SB_FAST_RATE       60          // How often beacons will be sent when you are travelling at or above the Fast Speed
 #define APRS_SB_SLOW_SPEED      5           // This is the speed below which you’re considered stationary
 #define APRS_SB_SLOW_RATE       1200        // How often beacons will be sent when you are are below the Slow Speed

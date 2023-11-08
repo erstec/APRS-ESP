@@ -28,10 +28,10 @@ extern Configuration config;
 static Location lastLoc = { .valid = false };
 
 int smartBeaconSpeedRate(float speed) {
-    float SB_FAST_SPEED = APRS_SB_FAST_SPEED / 3.6; // [m/s]
-    int SB_FAST_RATE = APRS_SB_FAST_RATE;
-    float SB_SLOW_SPEED = APRS_SB_SLOW_SPEED / 3.6; // [m/s]
-    int SB_SLOW_RATE = APRS_SB_SLOW_RATE;
+    float SB_FAST_SPEED = config.sb_fast_speed / 3.6; // [m/s]
+    int SB_FAST_RATE = config.sb_fast_rate;
+    float SB_SLOW_SPEED = config.sb_slow_speed / 3.6; // [m/s]
+    int SB_SLOW_RATE = config.sb_slow_rate;
     if (speed <= SB_SLOW_SPEED)
         return SB_SLOW_RATE;
     else if (speed >= SB_FAST_SPEED)
@@ -57,9 +57,9 @@ float getSpeed(Location location) {
 }
 
 bool smartBeaconCornerPeg(Location location) {
-    int SB_TURN_TIME = APRS_SB_MIN_TURN_TIME;
-    int SB_TURN_MIN = APRS_SB_MIN_TURN_ANGLE;
-    float SB_TURN_SLOPE = APRS_SB_TURN_SLOPE * 1.0;
+    int SB_TURN_TIME = config.sb_turn_time;
+    int SB_TURN_MIN = config.sb_turn_min;
+    float SB_TURN_SLOPE = config.sb_turn_slope * 1.0;
 
     float speed = location.speed.mps();
     time_t t_diff = location.time.value() - lastLoc.time.value();
@@ -133,20 +133,20 @@ bool SmartBeaconingProc() {
 //     long beacon_rate, secs_since_beacon, turn_time;
 
 //     if (speed < APRS_SB_LOW_SPEED) {
-//         beacon_rate = APRS_SB_SLOW_RATE;
+//         beacon_rate = config.sb_slow_rate;
 //     } else {
 //         // Adjust beacon rate according to speed
 //         if (speed > APRS_SB_HIGH_SPEED) {
-//             beacon_rate = APRS_SB_FAST_RATE;
+//             beacon_rate = config.sb_fast_rate;
 //         } else {
-//             beacon_rate = APRS_SB_FAST_RATE * APRS_SB_HIGH_SPEED / speed;
+//             beacon_rate = config.sb_fast_rate * APRS_SB_HIGH_SPEED / speed;
 //         }
 
 //         // Corner pegging - ALWAYS occurs if not "stopped"
 //         // Note turn threshold is speed-dependent
 
 //         // what is mph?
-//         float turn_threshold = APRS_SB_TURN_MIN + APRS_SB_TURN_SLOPE / (speed * 2.23693629);
+//         float turn_threshold = APRS_SB_TURN_MIN + config.sb_turn_slope / (speed * 2.23693629);
 
 //         if ((heading_change_since_beacon > APRS_SB_TURN_TH) && (secs_since_beacon > turn_time)) {
 //             secs_since_beacon = beacon_rate;
