@@ -24,7 +24,8 @@ void setHTML(byte page) {
     webString += "<meta charset=\"utf-8\">";
     webString += "<style>\n";
     webString += "body{background-color: #5f5f5f;font-family:\"Segoe UI\",Tahoma,sans-serif;color:#f1f1f1;font-weight: normal;display: inline-block;}\n";
-    webString += "hdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n</style>\n";
+    webString += "hdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n";
+    webString += "a{color: powderblue; text-decoration: none;}\n</style>\n";
     if (page == 0)
         webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
     webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
@@ -2257,7 +2258,10 @@ void handle_firmware() {
     webString += "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
     webString += "<hr>";
-    webString += "Maintained by <b>LY3PH</b>\n<br />";
+    webString += "Maintained by <b>LY3PH</b>\n<br /></b>";
+    webString += "Visit <a href=\"https://github.com/erstec/APRS-ESP\" target=\"_blank\">Project page at GitHub</a>\n<br />";
+    webString += "<hr>";
+    webString += "<b>Download Latest Firmware from <a href=\"https://github.com/erstec/APRS-ESP/releases\" target=\"_blank\">GitHub</a>\n<br />";
     webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
@@ -2398,7 +2402,8 @@ void handle_configuration() {
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
     webString += "<hr>";
-    webString += "Maintained by <b>LY3PH</b>\n<br />";
+    webString += "Maintained by <b>LY3PH</b>\n</b><br />";
+    webString += "Visit <a href=\"https://github.com/erstec/APRS-ESP\" target=\"_blank\">Project page at GitHub</a>\n<br />";
     webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
