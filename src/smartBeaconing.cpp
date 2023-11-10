@@ -76,7 +76,7 @@ bool smartBeaconCornerPeg(Location location) {
     // threshold depends on slope/speed [mph]
     float threshold = SB_TURN_MIN + SB_TURN_SLOPE / (speed * 2.23693629);
 
-    log_i("smartBeaconCornerPeg: %1.0f < %1.0f %ld/%d", turn, threshold, t_diff, SB_TURN_TIME);
+    log_i("%1.0f < %1.0f %ld/%d", turn, threshold, t_diff, SB_TURN_TIME);
     // need to corner peg if turn time reached and turn > threshold
     return (t_diff >= SB_TURN_TIME && turn > threshold);
 }
@@ -93,9 +93,9 @@ bool smartBeaconCheck(Location location) {
     float speed = location.speed.mps();
     //if (location.speed.isValid() && location.course.isValid())
     int speed_rate = smartBeaconSpeedRate(speed);
-    log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
+    log_i("%1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
     if (t_diff >= speed_rate) {
-        // log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
+        // log_i("%1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
         return true;
     } else {
         return false;
