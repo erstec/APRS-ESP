@@ -11,7 +11,7 @@
 
 #if defined(BOARD_ESP32DR)
 
-#define BOARD_NAME          "ESP32DR"
+#define BOARD_NAME          "SA818/868"
 
 // SA8x8 radio module
 //#define VBAT_PIN            35

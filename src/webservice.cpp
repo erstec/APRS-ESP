@@ -2253,15 +2253,14 @@ void handle_firmware() {
     setHTML(5);
 
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
-    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-    webString += " <b>(MODEL: SA818/868)</b>";
-    webString += "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
+    webString += "Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
+    webString += "<br />Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
     webString += "<hr>";
     webString += "Maintained by <b>LY3PH</b>\n<br /></b>";
     webString += "Visit <a href=\"https://github.com/erstec/APRS-ESP\" target=\"_blank\">Project page at GitHub</a>\n<br />";
     webString += "<hr>";
-    webString += "<b>Download Latest Firmware from <a href=\"https://github.com/erstec/APRS-ESP/releases\" target=\"_blank\">GitHub</a>\n<br />";
+    webString += "<b><a href=\"https://github.com/erstec/APRS-ESP/releases\" target=\"_blank\">Download</a> Latest Firmware\n<br />";
     webString += "<hr>";
 
     webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
@@ -2395,10 +2394,9 @@ void handle_configuration() {
         "<script "
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
-    webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-    webString += " <b>(MODEL:SA818/SA868)</b>";
+    webString += "Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
     webString +=
-        "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
+        "<br />Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
 
     webString += "<hr>";
