@@ -22,6 +22,8 @@ extern unsigned long age;
 
 extern bool send_aprs_update;
 
+uint32_t GpsPktCnt();
+
 void GpsUpdate();
 void distanceChanged();
 

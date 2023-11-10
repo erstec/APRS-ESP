@@ -35,6 +35,8 @@ uint8_t temprature_sens_read();
 #endif
 uint8_t temprature_sens_read();
 
+void WebDataUpdate(int _batData, bool _usbPlugged);
+
 void serviceHandle();
 void setHTML(byte page);
 void handle_root();

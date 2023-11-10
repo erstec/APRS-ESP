@@ -11,12 +11,24 @@
 #include "base64.hpp"
 #include "utilities.h"
 #include <LibAPRSesp.h>
+#include <TinyGPS++.h>
+#include "gps.h"
 
 WebServer server(80);
 
 String webString;
 
 bool defaultSetting = false;
+
+static int batData = 0;
+static bool usbPlugged = false;
+
+extern TinyGPSPlus gps;
+
+void WebDataUpdate(int _batData, bool _usbPlugged) {
+    batData = _batData;
+    usbPlugged = _usbPlugged;
+}
 
 void serviceHandle() { server.handleClient(); }
 void setHTML(byte page) {
@@ -560,22 +572,61 @@ void setHTML(byte page) {
         sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn), minute(tn), second(tn));
         webString += "<div>System Uptime: " + String(strTime) + "</div> \n";
         webString += "<div>WiFi RSSI: " + String(WiFi.RSSI()) + " dBm</div> \n";
+        
+        String batStr = "";
+        String usbStr = "";
+#if defined(ADC_BATTERY)
+        if (config.wifi_mode == WIFI_OFF) {
+#endif
+            if (batData > 0) {
+                batStr = String(batData) + "%";
+            } else {
+                batStr = "N/A";
+            }
+#if defined(ADC_BATTERY)
+        } else {
+            if (batData == 1) {
+                display.print("YES");
+            } else {
+                display.print("NO");
+            }
+        }
+#endif
+        if (usbPlugged) {
+            usbStr = " - USB Plugged";
+        }
+
+        webString += "<div>Battery: " + batStr + " " + usbStr + "</div>\n";
+
         webString += "<span>&nbsp;</span>\n";
 
         webString += "</td></tr>\n";
 
         webString += "<tr align=\"left\"><td>\n";
 
+        bool gpsValid = gps.location.isValid() && gps.altitude.isValid() && gps.speed.isValid() && gps.course.isValid() && gps.satellites.isValid() && gps.hdop.isValid();
+        bool gpsOnline = GpsPktCnt() > 0;
+
+        webString += "<div class=\"L1\">GPS STATUS</div>";
+        webString += "<table border=\"0\" width=\"400\">";
+        // if (config.gps_mode != GPS_MODE_FIXED) {
+        if (gpsOnline) {
+            webString += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
+            webString += "<tr><td>Coords</td><td align=\"right\">" + (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") + " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
+            webString += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? (String(gps.altitude.meters(), 1) + " m") : "-") +"</td></tr>";
+            webString += "<tr><td>Speed / Course</td><td align=\"right\">" + (gpsValid ? (String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;") : "- / -") + "</td></tr>";
+            webString += "<tr><td>Sats / HDOP</td><td align=\"right\">" + (gpsValid ? (String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1)) : "- / -") +"</td></tr>";
+        } else {
+            webString += "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
+        }
+        webString += "</table>";
+
+        webString += "<span>&nbsp;</span>\n";
+
         webString += "<div class=\"L1\">STATISTICS</div>";
-        webString += "<table border=\"0\" width=\"180\">";
-        webString += "<tr><td>ALL DATA</td><td align=\"right\">" +
-                     String(status.allCount) + "</td></tr>";
-        webString += "<tr><td>RF->INET</td><td align=\"right\">" +
-                     String(status.rf2inet) + "</td></tr>";
-        webString += "<tr><td>INET->RF</td><td align=\"right\">" +
-                     String(status.inet2rf) + "</td></tr>";
-        webString += "<tr><td>DROP</td><td align=\"right\">" +
-                     String(status.dropCount) + "</td></tr>";
+        webString += "<table border=\"0\" width=\"400\">";
+        webString += "<tr><td>ALL DATA / DROP</td><td align=\"right\">" + String(status.allCount) + " / " + String(status.dropCount) + "</td></tr>";
+        webString += "<tr><td>RF->INET / INET->RF</td><td align=\"right\">" + String(status.rf2inet) + " / " + String(status.inet2rf) + "</td></tr>";
         // webString += "<tr><td>ERROR</td><td align=\"right\">" +
         //              String(status.errorCount) + "</td></tr>";
         webString += "</table>";

@@ -74,13 +74,30 @@ void updateDistance() {
 #endif
 }
 
+static uint32_t gpsPktCnt = 0;
+
+static const uint16_t gpsValidThr = 60 * 100; // 60 sec
+static uint16_t gpsOfflineCnt = gpsValidThr;
+
+uint32_t GpsPktCnt() {
+    return gpsPktCnt;
+}
+
 void GpsUpdate() {
 #ifdef USE_GPS
     //     for (unsigned long start = millis(); millis() - start <
     //     GPS_POLL_DURATION_MS;)
     //     {
+    if (gpsOfflineCnt++ >= gpsValidThr) {
+        if (gpsOfflineCnt >= UINT16_MAX) gpsOfflineCnt = gpsValidThr;
+        gpsPktCnt = 0;
+    }
+
     while (SerialGPS.available()) {
         if (gps.encode(SerialGPS.read())) {
+            if (gpsPktCnt++ >= UINT32_MAX) gpsPktCnt = 1;
+            gpsOfflineCnt = 0;
+
             lat = gps.location.lat() * 1000000;
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();

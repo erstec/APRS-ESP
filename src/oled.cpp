@@ -246,7 +246,7 @@ void OledUpdate(int batData, bool usbPlugged) {
     // 1st line
     // Sat count, fix status
     display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
-    display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
+    display.printf("%d%s%s ", gps.satellites.value(), isValid ? "+" : "-", GpsPktCnt() > 0 ? "+" : "-");
 
     // altitude
     sprintf(buf, "%.1fm", gps.altitude.meters());

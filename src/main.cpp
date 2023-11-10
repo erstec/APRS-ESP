@@ -1078,7 +1078,7 @@ void printPeriodicDebug() {
 #else
     stridx += sprintf(strtmp + stridx, "Lat: ");
 #endif
-    stridx += sprintf(strtmp + stridx, "%d lon: %d age: %d, %s, %s, dist: %d", lat, lon, age, gps.location.isValid() ? "valid" : "invalid", gps.location.isUpdated() ? "updated" : "not updated", distance);
+    stridx += sprintf(strtmp + stridx, "%d lon: %d age: %d, %s, %s, gps %s, dist: %d", lat, lon, age, gps.location.isValid() ? "valid" : "invalid", gps.location.isUpdated() ? "updated" : "not updated", GpsPktCnt() > 0 ? "on" : "off", distance);
 
     log_i("%s", strtmp);
 }
@@ -1787,10 +1787,13 @@ void taskOLEDDisplay(void *pvParameters) {
 
 #if defined(ADC_BATTERY)
         OledUpdate(batteryPercentage, false);
+        WebDataUpdate(batteryVoltage, false);
 #elif defined(USE_PMU)
         OledUpdate(batteryPercentage, vbusIn);
+        WebDataUpdate(batteryPercentage, vbusIn);
 #else
         OledUpdate(-1, false);
+        WebDataUpdate(-1, false);
 #endif
 
 #if defined(USE_PMU)
