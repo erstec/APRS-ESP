@@ -52,8 +52,8 @@ float getBearingAngle(float alpha, float beta) {
 // obtain max speed in [m/s] from moved distance, last and current location
 float getSpeed(Location location) {
     float dist = gps.distanceBetween(lastLoc.location.lat(), lastLoc.location.lng(), location.location.lat(), location.location.lng());
-    time_t t_diff = location.time.value() - lastLoc.time.value();
-    return max(max(dist * 1000 / t_diff, (float)location.speed.mps()), (float)lastLoc.speed.mps());
+    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
+    return max(max(dist / t_diff, (float)location.speed.mps()), (float)lastLoc.speed.mps());
 }
 
 bool smartBeaconCornerPeg(Location location) {
@@ -62,7 +62,7 @@ bool smartBeaconCornerPeg(Location location) {
     float SB_TURN_SLOPE = config.sb_turn_slope * 1.0;
 
     float speed = location.speed.mps();
-    time_t t_diff = location.time.value() - lastLoc.time.value();
+    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
     float turn = getBearingAngle(location.course.deg(), lastLoc.course.deg());
 
     // no bearing / stillstand -> no corner pegging
@@ -71,14 +71,14 @@ bool smartBeaconCornerPeg(Location location) {
 
     // if last bearing unknown, deploy turn_time
     if (!lastLoc.course.isValid())
-        return (t_diff / 1000 >= SB_TURN_TIME);
+        return (t_diff >= SB_TURN_TIME);
 
     // threshold depends on slope/speed [mph]
     float threshold = SB_TURN_MIN + SB_TURN_SLOPE / (speed * 2.23693629);
 
-    log_i("smartBeaconCornerPeg: %1.0f < %1.0f %ld/%d", turn, threshold, t_diff / 1000, SB_TURN_TIME);
+    log_i("smartBeaconCornerPeg: %1.0f < %1.0f %ld/%d", turn, threshold, t_diff, SB_TURN_TIME);
     // need to corner peg if turn time reached and turn > threshold
-    return (t_diff / 1000 >= SB_TURN_TIME && turn > threshold);
+    return (t_diff >= SB_TURN_TIME && turn > threshold);
 }
 
 // return true if current position is "new enough" vs. lastLoc
@@ -88,13 +88,14 @@ bool smartBeaconCheck(Location location) {
     if (smartBeaconCornerPeg(location))
         return true;
     float dist = gps.distanceBetween(location.location.lat(), location.location.lng(), lastLoc.location.lat(), lastLoc.location.lng());
-    time_t t_diff = location.time.value() - lastLoc.time.value();
+    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
+    // log_d("location.time.value(): %ld", location.time.value());     // /100 => in seconds
     float speed = location.speed.mps();
     //if (location.speed.isValid() && location.course.isValid())
     int speed_rate = smartBeaconSpeedRate(speed);
-    log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff / 1000, speed_rate, (t_diff / 1000 >= speed_rate) ? "true" : "false");
-    if (t_diff / 1000 >= speed_rate) {
-        // log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff / 1000, speed_rate, (t_diff / 1000 >= speed_rate) ? "true" : "false");
+    log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
+    if (t_diff >= speed_rate) {
+        // log_i("smartBeaconCheck: %1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
         return true;
     } else {
         return false;

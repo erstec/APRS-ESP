@@ -301,30 +301,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     
     display.display();
 #endif
-
-//     // // active mode / selected mode / free memory
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[active_heuristic])));
-//     // display.print(F("/"));
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[selected_heuristic])));
-//     // display.print(F("/"));
-//     // display.print(freeMemory());
-//     // display.print(F("/"));
-//     // display.println((char)cur_symbol);
-
-//     // count updates / count tx / count rx / satellites / age
-//     // display.print(cnt);
-//     // display.print(F("/"));
-//     // display.print(cnt_tx);
-//     // display.print(F("tx"));
-//     // display.print(F("/"));
-//     // display.print(cnt_rx);
-//     // display.println(F("rx"));
-//
-//     display.display();
-// #endif
-//     // cnt++;
 }
 
 void OledUpdateFWU() {

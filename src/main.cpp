@@ -905,9 +905,6 @@ String send_gps_location() {
         }
     }
 
-    // Reset counted distance
-    distance = 0;
-
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
 
@@ -1812,7 +1809,7 @@ void updateGps(void) {
 
     // 1/sec
     if (millis() - gpsUpdTMO > 1000) {
-        heuristicDistanceChanged();
+        distanceChanged();
         gpsUpdTMO = millis();
     }
 }
