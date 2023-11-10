@@ -135,6 +135,8 @@
 
 #define PMU_IRQ             4
 
+#define USER_BUTTON         3
+
 // DEBUG UART
 #define SERIAL_DEBUG_BAUD   115200
 

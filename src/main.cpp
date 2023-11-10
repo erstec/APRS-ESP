@@ -726,6 +726,10 @@ void setup()
 
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
+#if defined(USE_SCREEN_SH1106) && defined(USER_BUTTON)
+    pinMode(USER_BUTTON, INPUT_PULLUP);  // USER Button
+#endif
+
     // Set up serial port
     Serial.setRxBufferSize(256);
     Serial.begin(SERIAL_DEBUG_BAUD);  // debug
@@ -1255,6 +1259,15 @@ void loop()
             btn_count = 0;
         }
     }
+
+#if defined(USE_SCREEN_SH1106) && defined(USER_BUTTON)
+    if (digitalRead(USER_BUTTON) == LOW) {
+        while (digitalRead(USER_BUTTON) == LOW) {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        OledReInit();
+    }
+#endif
 }
 
 String sendIsAckMsg(String toCallSign, char *msgId) {
@@ -1761,6 +1774,10 @@ void taskNetwork(void *pvParameters) {
     }
 }
 
+// #if defined(USE_SCREEN_SH1106)
+// static uint8_t sh1106ReInit = 0;
+// #endif
+
 void taskOLEDDisplay(void *pvParameters) {
     log_i("Task <OLEDDisplay> started");
 
@@ -1771,6 +1788,14 @@ void taskOLEDDisplay(void *pvParameters) {
             OledUpdateFWU();
             continue;
         }
+
+// #if defined(USE_SCREEN_SH1106)
+//         if (sh1106ReInit++ > 10) {
+//             log_d("ReInit OLED");
+//             sh1106ReInit = 0;
+//             OledReInit();
+//         }
+// #endif
 
 #if defined(ADC_BATTERY)
         OledUpdate(batteryPercentage, false);
