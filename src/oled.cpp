@@ -327,34 +327,3 @@ void OledPushMsg(String caption, char *msg, char *msg2 = NULL, uint8_t timeout =
         memset(msgBox.msg2, 0, sizeof(msgBox.msg2));
     msgBox.timeout = timeout;
 }
-
-#if defined(USE_SCREEN_SH1106)
-void OledReInit() {
-    log_d("OledReInit");
-    display.sh1106_command(SH1106_DISPLAYOFF);
-    // display.sh1106_command(SH1106_SETDISPLAYCLOCKDIV);
-    // display.sh1106_command(0x80);
-    // display.sh1106_command(SH1106_SETMULTIPLEX);
-    // display.sh1106_command(0x3F);
-    display.sh1106_command(SH1106_SETDISPLAYOFFSET);
-    display.sh1106_command(0x00);
-    display.sh1106_command(SH1106_SETSTARTLINE | 0x00);
-    // display.sh1106_command(SH1106_CHARGEPUMP);
-    // display.sh1106_command(0x14);
-    // display.sh1106_command(SH1106_MEMORYMODE);
-    // display.sh1106_command(0x00);
-    // display.sh1106_command(SH1106_SEGREMAP | 0x1);
-    // display.sh1106_command(SH1106_COMSCANDEC);
-    // display.sh1106_command(SH1106_SETCOMPINS);
-    // display.sh1106_command(0x12);
-    // display.sh1106_command(SH1106_SETCONTRAST);
-    // display.sh1106_command(0xCF);
-    // display.sh1106_command(SH1106_SETPRECHARGE);
-    // display.sh1106_command(0xF1);
-    // display.sh1106_command(SH1106_SETVCOMDETECT);
-    // display.sh1106_command(0x40);
-     // display.sh1106_command(SH1106_DISPLAYALLON_RESUME);
-    // display.sh1106_command(SH1106_NORMALDISPLAY);
-    display.sh1106_command(SH1106_DISPLAYON);
-}
-#endif

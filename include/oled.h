@@ -17,6 +17,3 @@ void OledPostStartup(String customMsg);
 void OledUpdate(int batData, bool usbPlugged);
 void OledUpdateFWU();
 void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout);
-#if defined(USE_SCREEN_SH1106)
-void OledReInit();
-#endif
