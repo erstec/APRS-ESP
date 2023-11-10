@@ -126,7 +126,10 @@ void SaveConfig(bool storeBackup) {
     doc["sb_turn_slope"] = config.sb_turn_slope;
     doc["sb_turn_time"] = config.sb_turn_time;
 
-    serializeJsonPretty(doc, Serial);
+    // serializeJsonPretty(doc, Serial);
+    String s = "";
+    serializeJsonPretty(doc, s);
+    log_d("%s", s.c_str());
     serializeJsonPretty(doc, f_json);
     f_json.close();
     
