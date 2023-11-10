@@ -53,6 +53,7 @@ void OledStartup() {
 #elif defined(USE_SCREEN_SH1106)
     log_i("SH1106 init");
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    display.stopscroll();
 #endif
 
     display.clearDisplay();
