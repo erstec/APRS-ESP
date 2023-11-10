@@ -90,94 +90,100 @@ void sortPkgDesc(pkgListType a[], int size) {
 }
 
 uint16_t pkgType(const char *raw) {
-    uint16_t type = 0;
-    char packettype = 0;
-    const char *body;
+  uint16_t type = 0;
+  char packettype = 0;
+  const char *body;
+  char *ptr;
 
-    if (*raw == 0)
-        return 0;
+  if (*raw == 0)
+    return 0;
 
-    packettype = (char)raw[0];
-    body = &raw[1];
+  packettype = (char)raw[0];
+  body = &raw[1];
 
-    switch (packettype) {
-        case '$': // NMEA
-            type |= FILTER_POSITION;
-            break;
-        case 0x27: /* ' */
-        case 0x60: /* ` */
-            type |= FILTER_POSITION;
-            type |= FILTER_MICE;
-            break;
-        case '!':
-        case '=':
-            type |= FILTER_POSITION;
-            if (body[18] == '_' || body[10] == '_') {
-                type |= FILTER_WX;
-                break;
-            }
-            break;
-        case '/':
-        case '@':
-            type |= FILTER_POSITION;
-            if (body[25] == '_' || body[16] == '_') {
-                type |= FILTER_WX;
-                break;
-            }
-            if (strchr(body, 'r') != NULL) {
-                if (strchr(body, 'g') != NULL) {
-                    if (strchr(body, 't') != NULL) {
-                        if (strchr(body, 'P') != NULL) {
-                            type |= FILTER_WX;
-                        }
-                    }
-                }
-            }
-            break;
-        case ':':
-            if (body[9] == ':' &&
-                (memcmp(body + 10, "PARM", 4) == 0 ||
-                memcmp(body + 10, "UNIT", 4) == 0 ||
-                memcmp(body + 10, "EQNS", 4) == 0 ||
-                memcmp(body + 10, "BITS", 4) == 0)) {
-                    type |= FILTER_TELEMETRY;
-            } else {
-                type |= FILTER_MESSAGE;
-            }
-            break;
-        case '{': // User defind
-        case '<': // statcapa
-        case '>':
-            type |= FILTER_STATUS;
-            break;
-        case '?':
-            type |= FILTER_QUERY;
-            break;
-        case ';':
-            if (body[28] == '_')
-                type |= FILTER_WX;
-            else
-                type |= FILTER_OBJECT;
-            break;
-        case ')':
-            type |= FILTER_ITEM;
-            break;
-        case '}':
-            type |= FILTER_THIRDPARTY;
-            break;
-        case 'T':
-            type |= FILTER_TELEMETRY;
-            break;
-        case '#': /* Peet Bros U-II Weather Station */
-        case '*': /* Peet Bros U-I  Weather Station */
-        case '_': /* Weather report without position */
-            type |= FILTER_WX;
-            break;
-        default:
-            type = 0;
-            break;
+  switch (packettype) {
+  case '$': // NMEA
+    type |= FILTER_POSITION;
+    break;
+  case 0x27: /* ' */
+  case 0x60: /* ` */
+    type |= FILTER_POSITION;
+    type |= FILTER_MICE;
+    break;
+  case '!':
+  case '=':
+    type |= FILTER_POSITION;
+    if (body[18] == '_' || body[10] == '_') {
+      type |= FILTER_WX;
+      break;
     }
-    return type;
+            break;
+  case '/':
+  case '@':
+    type |= FILTER_POSITION;
+    if (body[25] == '_' || body[16] == '_') {
+      type |= FILTER_WX;
+      break;
+    }
+    if (strchr(body, 'r') != NULL) {
+      if (strchr(body, 'g') != NULL) {
+        if (strchr(body, 't') != NULL) {
+          if (strchr(body, 'P') != NULL) {
+            type |= FILTER_WX;
+          }
+        }
+      }
+    }
+    break;
+  case ':':
+    if (body[9] == ':' &&
+        (memcmp(body + 10, "PARM", 4) == 0 ||
+         memcmp(body + 10, "UNIT", 4) == 0 ||
+         memcmp(body + 10, "EQNS", 4) == 0 ||
+         memcmp(body + 10, "BITS", 4) == 0)) {
+      type |= FILTER_TELEMETRY;
+    } else {
+      type |= FILTER_MESSAGE;
+    }
+    break;
+  case '{': // User defind
+  case '<': // statcapa
+  case '>':
+    type |= FILTER_STATUS;
+    break;
+  case '?':
+    type |= FILTER_QUERY;
+    break;
+  case ';':
+    if (body[28] == '_')
+      type |= FILTER_WX;
+    else
+      type |= FILTER_OBJECT;
+    break;
+  case ')':
+    type |= FILTER_ITEM;
+    break;
+  case '}':
+    type |= FILTER_THIRDPARTY;
+    ptr=strchr(raw,':');
+    if(ptr!=NULL){
+        ptr++;
+        type|=pkgType(ptr);
+    }
+    break;
+  case 'T':
+    type |= FILTER_TELEMETRY;
+    break;
+  case '#': /* Peet Bros U-II Weather Station */
+  case '*': /* Peet Bros U-I  Weather Station */
+  case '_': /* Weather report without position */
+    type |= FILTER_WX;
+    break;
+  default:
+    type = 0;
+    break;
+  }
+  return type;
 }
 
 pkgListType getPkgList(int idx) {

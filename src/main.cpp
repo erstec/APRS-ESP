@@ -735,7 +735,7 @@ void setup()
     Serial.begin(SERIAL_DEBUG_BAUD);  // debug
 
 #if defined(USE_GPS)
-    SerialGPS.setRxBufferSize(500);
+    SerialGPS.setRxBufferSize(1024);
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
 #endif
 
