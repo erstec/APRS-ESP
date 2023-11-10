@@ -198,9 +198,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     // Top line
     display.setCursor(0, 0);
     display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     display.setCursor(display.width() - CHAR_WIDTH * 1, 0);
     switch (config.gps_mode) {
@@ -250,9 +247,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     // Sat count, fix status
     display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
     display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     // altitude
     sprintf(buf, "%.1fm", gps.altitude.meters());
@@ -263,9 +257,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     // speed
     display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
     display.printf("%.1fkmh", satCnt > 0 ? gps.speed.kmph() : 0.0);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     // course
     sprintf(buf, "%.1f'", gps.course.deg());
@@ -285,17 +276,15 @@ void OledUpdate(int batData, bool usbPlugged) {
     } else {
         display.print("-");
     }
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     // 4th line
     display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
     display.print(deg_to_nmea(lon, false));
     display.print(" dist ");
-    display.print(distance);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
+    if (distance > 99999) {
+        display.print("ERR");
+    } else {
+        display.print(distance);
     }
 
     OledDrawMsg();
