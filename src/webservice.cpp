@@ -586,9 +586,9 @@ void setHTML(byte page) {
 #if defined(ADC_BATTERY)
         } else {
             if (batData == 1) {
-                display.print("YES");
+                batStr = "YES";
             } else {
-                display.print("NO");
+                batStr = "NO";
             }
         }
 #endif
@@ -607,7 +607,7 @@ void setHTML(byte page) {
         bool gpsValid = gps.location.isValid() && gps.altitude.isValid() && gps.speed.isValid() && gps.course.isValid() && gps.satellites.isValid() && gps.hdop.isValid();
         bool gpsOnline = GpsPktCnt() > 0;
 
-        webString += "<div class=\"L1\">GPS STATUS</div>";
+        webString += "<div class=\"L1\">GNSS STATUS</div>";
         webString += "<table border=\"0\" width=\"400\">";
         // if (config.gps_mode != GPS_MODE_FIXED) {
         if (gpsOnline) {
