@@ -31,9 +31,7 @@
 #include <parse_aprs.h>
 #include <WiFiUdp.h>
 
-#ifdef USE_RF
 #include "rfModem.h"
-#endif
 
 #ifdef USE_GPS
 #include "TinyGPS++.h"
@@ -103,9 +101,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 
 #endif
 
-#ifdef USE_RF
 HardwareSerial SerialRF(SERIAL_RF_UART);
-#endif
 
 bool fwUpdateProcess = false;
 
@@ -141,7 +137,7 @@ Configuration config;
 TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 TaskHandle_t taskOLEDDisplayHandle;
-TaskHandle_t taskGpsHandle;
+TaskHandle_t taskGPSHandle;
 TaskHandle_t taskTNCHandle;
 
 TelemetryType *Telemetry;
@@ -803,10 +799,8 @@ void setup()
     OledPostStartup("Load Config...");
     LoadConfig();
 
-#ifdef USE_RF
     // RF SHOULD BE Initialized or there is no reason to startup at all
     while (!RF_Init(true, true)) {};
-#endif
 
 #if defined(USE_PMU)
     if (PMU.isVbusIn()) {
@@ -832,7 +826,7 @@ void setup()
                             "taskAPRS", /* Name of the task */
                             8192,       /* Stack size in words */
                             NULL,       /* Task input parameter */
-                            1,          /* Priority of the task */
+                            3,          /* Priority of the task */
                             &taskAPRSHandle, /* Task handle. */
                             0); /* Core where the task should run */
 
@@ -841,7 +835,7 @@ void setup()
                             "taskNetwork", /* Name of the task */
                             (32768),       /* Stack size in words */
                             NULL,          /* Task input parameter */
-                            1,             /* Priority of the task */
+                            2,             /* Priority of the task */
                             &taskNetworkHandle, /* Task handle. */
                             1); /* Core where the task should run */
 
@@ -853,6 +847,24 @@ void setup()
                             1,                      /* Priority of the task */
                             &taskOLEDDisplayHandle, /* Task handle. */
                             1);                     /* Core where the task should run */
+    
+    // Task 4
+    xTaskCreatePinnedToCore(taskGPS,                /* Function to implement the task */
+                            "taskGPS",              /* Name of the task */
+                            4096,                   /* Stack size in words */
+                            NULL,                   /* Task input parameter */
+                            2,                      /* Priority of the task */
+                            &taskGPSHandle,         /* Task handle. */
+                            0);                     /* Core where the task should run */
+    
+    // Task 5
+    xTaskCreatePinnedToCore(taskTNC,                /* Function to implement the task */
+                            "taskTNC",              /* Name of the task */
+                            8192,                   /* Stack size in words */
+                            NULL,                   /* Task input parameter */
+                            1,                      /* Priority of the task */
+                            &taskTNCHandle,         /* Task handle. */
+                            0);                     /* Core where the task should run */
 }
 
 int pkgCount = 0;
@@ -1072,28 +1084,6 @@ void printPeriodicDebug() {
 
 bool gpsUnlock = false;
 
-void updateScreenAndGps(bool force) {
-    // GpsUpdate();
-
-    if (fwUpdateProcess) return;
-
-    // If startup dealy not expired
-    if (!gpsUnlock) {
-        if ((long)millis() - gpsUpdTMO < 0) {
-            return;
-        } else {
-            log_i("GPS Unlocked");
-            gpsUnlock = true;
-        }
-    }
-    // 1/sec
-    if (millis() - gpsUpdTMO > 1000) {
-        GpsUpdate();
-        heuristicDistanceChanged();
-        gpsUpdTMO = millis();
-    }
-}
-
 #if defined(USE_PMU)
 void loopPMU()
 {
@@ -1172,7 +1162,7 @@ const int btnCnt2 = 2000;
 
 void loop()
 {
-    vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
+    vTaskDelay(10 / portTICK_PERIOD_MS);  // 5 ms // remove?
     if (!fwUpdateProcess) {
         if (millis() > timeCheck) {
             timeCheck = millis() + 10000;
@@ -1188,32 +1178,9 @@ void loop()
                 log_i("TimeSync Flag Reset");
             }
         }
-
-        if (AFSKInitAct == true) {
-#ifdef USE_RF
-            AFSK_Poll(true);
-#else
-            AFSK_Poll(false, LOW);
-#endif
-#ifdef USE_GPS
-            // if (SerialGPS.available()) {
-            //     String gpsData = SerialGPS.readStringUntil('\n');
-            //     log_d("%s", gpsData.c_str());
-            // }
-#endif
-        }
-
     } // if (!fwUpdateProcess)
         
-    bool update_screen = RotaryProcess();
-
-    // if (send_aprs_update) {
-    //     update_screen |= true;
-    //     // send_aprs_update = false;    // moved to APRS task
-    // }
-    // if (update_screen) OledUpdate();
-    
-    updateScreenAndGps(update_screen);
+    RotaryProcess();
 
     if (fwUpdateProcess) return;
 
@@ -1412,9 +1379,9 @@ void taskAPRS(void *pvParameters) {
             if (sendByFlag) log_i("Send by Flag");
 
             if (digiCount > 0) digiCount--;
-#ifdef USE_RF
+
             RF_Check();
-#endif
+
             if (AFSKInitAct == true) {
                 if (config.tnc) {
                     String rawData = send_gps_location();
@@ -1798,7 +1765,6 @@ void taskNetwork(void *pvParameters) {
 }
 
 void taskOLEDDisplay(void *pvParameters) {
-
     log_i("Task <OLEDDisplay> started");
 
     for (;;) {
@@ -1826,5 +1792,57 @@ void taskOLEDDisplay(void *pvParameters) {
 #endif
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+void updateGps(void) {
+    if (fwUpdateProcess) return;
+
+    // If startup dealy not expired
+    if (!gpsUnlock) {
+        if ((long)millis() - gpsUpdTMO < 0) {
+            return;
+        } else {
+            log_i("GPS Unlocked");
+            gpsUnlock = true;
+        }
+    }
+
+    GpsUpdate();
+
+    // 1/sec
+    if (millis() - gpsUpdTMO > 1000) {
+        heuristicDistanceChanged();
+        gpsUpdTMO = millis();
+    }
+}
+
+void taskGPS(void *pvParameters) {
+    log_i("Task <GPS> started");
+
+    for (;;) {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+#ifdef USE_GPS
+        // if (SerialGPS.available()) {
+        //     String gpsData = SerialGPS.readStringUntil('\n');
+        //     log_d("%s", gpsData.c_str());
+        // }
+#endif
+
+        updateGps();
+    }
+}
+
+void taskTNC(void *pvParameters) {
+    log_i("Task <TNC> started");
+
+    for (;;) {
+        if (!fwUpdateProcess) {
+            if (AFSKInitAct == true) {
+               AFSK_Poll(true);
+            }
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }

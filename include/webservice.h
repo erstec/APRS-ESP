@@ -50,7 +50,5 @@ void handle_delete();
 void listDir(fs::FS& fs, const char* dirname, uint8_t levels);
 #endif
 void webService();
-#ifdef USE_RF
 void handle_radio();
 extern bool RF_Init(bool boot, bool showOled = false);
-#endif

@@ -516,11 +516,11 @@ void setHTML(byte page) {
     webString += "<li role=\"presentation\"" + strActiveP3 +
                  ">\n<a href=\"/config\" "
                  "id=\"channel_link_settings\">Setting</a>\n</li>\n";
-#ifdef USE_RF
+
     webString +=
         "<li role=\"presentation\"" + strActiveP8 +
         ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
-#endif
+
     webString += "<li role=\"presentation\"" + strActiveP4 +
                  ">\n<a href=\"/service\" "
                  "id=\"channel_link_service\">Service</a>\n</li>\n";
@@ -1412,7 +1412,6 @@ void handle_service() {
     webString.clear();
 }
 
-#ifdef USE_RF
 void handle_radio() {
     // bool noiseEn=false;
     // bool agcEn=false;
@@ -1690,7 +1689,6 @@ void handle_radio() {
     delay(100);
     webString.clear();
 }
-#endif
 
 void handle_system() {
     if (server.hasArg("updateTimeZone")) {
@@ -2255,11 +2253,7 @@ void handle_firmware() {
 
     webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-#ifdef USE_RF
     webString += " <b>(MODEL: SA818/868)</b>";
-#else
-    webString += " <b>(MODEL: Simple)</b>";
-#endif
     webString += "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
     webString += "<hr>";
@@ -2398,11 +2392,7 @@ void handle_configuration() {
         "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
         "jquery.min.js'></script>\n";
     webString += "Current Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-#ifdef USE_RF
     webString += " <b>(MODEL:SA818/SA868)</b>";
-#else
-    webString += " <b>(MODEL: Simple)</b>";
-#endif
     webString +=
         "<br />Current Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
     webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
@@ -2647,9 +2637,7 @@ void webService() {
     server.on("/download", handle_download);
     server.on("/delete", handle_delete);
 #endif
-#ifdef USE_RF
     server.on("/radio", handle_radio);
-#endif
     server.on("/default", handle_default);
     server.on("/service", handle_service);
     server.on("/system", handle_system);

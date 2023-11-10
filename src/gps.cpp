@@ -105,11 +105,7 @@ void GpsUpdate() {
     //     GPS_POLL_DURATION_MS;)
     //     {
     while (SerialGPS.available()) {
-        char c = SerialGPS.read();
-#ifdef DEBUG_GPS
-        Serial.print(c);  // Debug
-#endif
-        if (gps.encode(c)) {
+        if (gps.encode(SerialGPS.read())) {
             lat = gps.location.lat() * 1000000;
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
