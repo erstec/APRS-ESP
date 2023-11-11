@@ -826,7 +826,11 @@ void setup()
                             "taskAPRS", /* Name of the task */
                             8192,       /* Stack size in words */
                             NULL,       /* Task input parameter */
+#if defined(BOARD_ESP32DR)
+                            1,          /* Priority of the task */
+#else
                             3,          /* Priority of the task */
+#endif
                             &taskAPRSHandle, /* Task handle. */
                             0); /* Core where the task should run */
 
@@ -835,7 +839,11 @@ void setup()
                             "taskNetwork", /* Name of the task */
                             (32768),       /* Stack size in words */
                             NULL,          /* Task input parameter */
+#if defined(BOARD_ESP32DR)
+                            1,             /* Priority of the task */
+#else
                             2,             /* Priority of the task */
+#endif
                             &taskNetworkHandle, /* Task handle. */
                             1); /* Core where the task should run */
 
@@ -1843,6 +1851,10 @@ void taskTNC(void *pvParameters) {
                AFSK_Poll(true);
             }
         }
+#if defined(BOARD_ESP32DR)
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+#else
         vTaskDelay(10 / portTICK_PERIOD_MS);
+#endif
     }
 }
