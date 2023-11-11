@@ -1272,9 +1272,16 @@ void loop()
                     OledUpdate(0, false, false);
                     delay(2000);
                 } else {
-                    config.tnc = true;
-                    log_i("RF ON");
-                    String _msg = "RF ON";
+                    String _msg = "";
+                    if (callsignValid) {
+                        log_i("RF ON");
+                        _msg = "RF ON";
+                        config.tnc = true;
+                    } else {
+                        log_w("Invalid callsign!");
+                        _msg = "Invalid";
+                        config.tnc = false;
+                    }
                     OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 3);
                     OledUpdate(0, false, false);
                     delay(2000);
