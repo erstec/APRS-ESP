@@ -138,7 +138,9 @@ TaskHandle_t taskNetworkHandle;
 TaskHandle_t taskAPRSHandle;
 TaskHandle_t taskOLEDDisplayHandle;
 TaskHandle_t taskGPSHandle;
+#if !defined(BOARD_ESP32DR)
 TaskHandle_t taskTNCHandle;
+#endif
 
 TelemetryType *Telemetry;
 
@@ -869,6 +871,7 @@ void setup()
                             &taskGPSHandle,         /* Task handle. */
                             0);                     /* Core where the task should run */
     
+#if !defined(BOARD_ESP32DR)
     // Task 5
     xTaskCreatePinnedToCore(taskTNC,                /* Function to implement the task */
                             "taskTNC",              /* Name of the task */
@@ -877,6 +880,7 @@ void setup()
                             1,                      /* Priority of the task */
                             &taskTNCHandle,         /* Task handle. */
                             0);                     /* Core where the task should run */
+#endif
 }
 
 int pkgCount = 0;
@@ -1170,7 +1174,11 @@ const int btnCnt2 = 2000;
 
 void loop()
 {
+#if defined(BOARD_ESP32DR)
+    vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
+#else
     vTaskDelay(10 / portTICK_PERIOD_MS);  // 5 ms // remove?
+#endif
     if (!fwUpdateProcess) {
         if (millis() > timeCheck) {
             timeCheck = millis() + 10000;
@@ -1273,6 +1281,12 @@ void loop()
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         log_d("USER_BUTTON");
+    }
+#endif
+
+#if defined(BOARD_ESP32DR)
+    if (AFSKInitAct == true) {
+        AFSK_Poll(true);
     }
 #endif
 }
@@ -1854,6 +1868,7 @@ void taskGPS(void *pvParameters) {
     }
 }
 
+#if !defined(BOARD_ESP32DR)
 void taskTNC(void *pvParameters) {
     log_i("Task <TNC> started");
 
@@ -1870,3 +1885,4 @@ void taskTNC(void *pvParameters) {
 #endif
     }
 }
+#endif

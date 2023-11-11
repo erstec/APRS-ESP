@@ -208,7 +208,9 @@ void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
 void taskOLEDDisplay(void *pvParameters);
 void taskGPS(void *pvParameters);
+#if !defined(BOARD_ESP32DR)
 void taskTNC(void *pvParameters);
+#endif
 int processPacket(String &tnc2);
 String send_gps_location();
 int digiProcess(AX25Msg &Packet);
