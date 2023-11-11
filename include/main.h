@@ -27,6 +27,8 @@
 #define DEBUG_TNC
 #define DEBUG_RF
 
+// #define BLUETOOTH
+
 //#define SDCARD
 #define USE_GPS
 //#define USE_BLE
@@ -68,6 +70,10 @@
 #define WIFI_AP_FIX 1
 #define WIFI_STA_FIX 2
 #define WIFI_AP_STA_FIX 3
+
+#define BT_MODE_OFF 0
+#define BT_MODE_TNC2RAW 1
+#define BT_MODE_KISS 2
 
 #define IMPLEMENTATION FIFO
 

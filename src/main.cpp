@@ -19,9 +19,9 @@
 #include "webservice.h"
 #include <WiFiUdp.h>
 #include <WiFi.h>
+// #include <WiFiMulti.h>
 #include <WiFiClient.h>
 #include "cppQueue.h"
-#include "BluetoothSerial.h"
 #ifdef USE_GPS
 #include "gps.h"
 #endif
@@ -30,6 +30,10 @@
 #include <pbuf.h>
 #include <parse_aprs.h>
 #include <WiFiUdp.h>
+
+#ifdef BLUETOOTH
+#include "BluetoothSerial.h"
+#endif
 
 #include "rfModem.h"
 
@@ -147,7 +151,29 @@ TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
-// BluetoothSerial SerialBT;
+#ifdef BLUETOOTH
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
+
+BluetoothSerial SerialBT;
+
+void Bluetooth() {
+    if (SerialBT.available()) {
+        char raw[500];
+        int i = 0;
+        memset(raw, 0, sizeof(raw));
+        i = SerialBT.readBytes((uint8_t *)&raw, 500);
+
+        if (config.bt_mode == BT_MODE_TNC2RAW) {
+            pkgTxPush(raw, strlen(raw), 1);
+        } else if (config.bt_mode == BT_MODE_KISS) {
+            for (int n = 0; n < i; n++)
+                kiss_serial((uint8_t)raw[n]);
+        }
+    }
+}
+#endif
 
 #ifdef USE_ROTARY
 Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
@@ -814,6 +840,13 @@ void setup()
     }
 #endif
 
+#ifdef BLUETOOTH
+    if (config.bt_master) {
+        SerialBT.begin(config.bt_name); // Bluetooth device name
+        log_i("Bluetooth started as %s, mode: %d", config.bt_name, config.bt_mode);
+    }
+#endif
+
     // if SmartBeaconing - delay processing GPS data
     if (config.aprs_beacon == 0) {
         log_i("SmartBeaconing, delayed GPS processing");
@@ -1164,6 +1197,12 @@ const int btnCnt2 = 2000;
 void loop()
 {
     vTaskDelay(10 / portTICK_PERIOD_MS);  // 5 ms // remove?
+
+#ifdef BLUETOOTH
+    if (config.bt_master)
+        Bluetooth();
+#endif
+
     if (!fwUpdateProcess) {
         if (millis() > timeCheck) {
             timeCheck = millis() + 10000;
@@ -1461,6 +1500,28 @@ void taskAPRS(void *pvParameters) {
 //TODO          processPacket();
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
+
+#ifdef BLUETOOTH
+            if (config.bt_master) { // Output TNC2RAW to BT Serial
+              // SerialBT.println(tnc2);
+                if (config.bt_mode == BT_MODE_TNC2RAW) {
+                    char *rawP = (char *)malloc(tnc2.length());
+                    memcpy(rawP, tnc2.c_str(), tnc2.length());
+                    SerialBT.write((uint8_t *)rawP, tnc2.length());
+                    // pTxCharacteristic->setValue((uint8_t *)rawP, tnc2.length());
+                    // pTxCharacteristic->notify();
+                    free(rawP);
+                }
+                else if (config.bt_mode == BT_MODE_KISS) {
+                    uint8_t pkg[500];
+                    int sz = kiss_wrapper(pkg);
+                    SerialBT.write(pkg, sz);
+                    // pTxCharacteristic->setValue(pkg, sz);
+                    // pTxCharacteristic->notify();
+                }
+            }
+#endif
+
 #ifdef DEBUG_TNC                
                 log_i("RX->RF: %s", tnc2.c_str());
 #endif

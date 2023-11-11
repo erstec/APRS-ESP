@@ -126,6 +126,10 @@ void SaveConfig(bool storeBackup) {
     doc["sb_turn_slope"] = config.sb_turn_slope;
     doc["sb_turn_time"] = config.sb_turn_time;
 
+    doc["bt_mode"] = config.bt_mode;
+    doc["bt_name"] = config.bt_name;
+    doc["bt_master"] = config.bt_master;
+
     // serializeJsonPretty(doc, Serial);
     String s = "";
     serializeJsonPretty(doc, s);
@@ -205,6 +209,10 @@ void DefaultConfig() {
     config.sb_turn_min = APRS_SB_MIN_TURN_ANGLE;
     config.sb_turn_slope = APRS_SB_TURN_SLOPE;
     config.sb_turn_time = APRS_SB_MIN_TURN_TIME;
+
+    config.bt_mode = BT_MODE_OFF;
+    sprintf(config.bt_name, "APRS-ESP32");
+    config.bt_master = true;
 
     SaveConfig();
 }
@@ -311,6 +319,12 @@ void LoadConfig() {
         f_json.close();
         SPIFFS.end();
     }
+
+    // For Debug
+#warning REMOVE IT!
+    config.bt_mode = BT_MODE_TNC2RAW;
+    strcpy(config.bt_name, "APRS-ESP32");
+    config.bt_master = true;
 }
 
 Configuration jsonToBinConfig(JsonObject obj) {
@@ -380,6 +394,10 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.sb_turn_min = obj["sb_turn_min"];
     tmpConfig.sb_turn_slope = obj["sb_turn_slope"];
     tmpConfig.sb_turn_time = obj["sb_turn_time"];
+
+    tmpConfig.bt_mode = obj["bt_mode"];
+    strcpy(tmpConfig.bt_name, obj["bt_name"]);
+    tmpConfig.bt_master = obj["bt_master"];
 
     return tmpConfig;
 }

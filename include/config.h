@@ -76,6 +76,10 @@ typedef struct Config_Struct {
     uint16_t sb_turn_min;
     uint16_t sb_turn_slope;
     uint16_t sb_turn_time;
+
+    uint8_t bt_mode;
+    char bt_name[20];
+    bool bt_master;
 } Configuration;
 
 void DefaultConfig();
