@@ -77,9 +77,23 @@ typedef struct Config_Struct {
     uint16_t sb_turn_slope;
     uint16_t sb_turn_time;
 
+#ifdef BLUETOOTH
     uint8_t bt_mode;
     char bt_name[20];
     bool bt_master;
+#endif
+
+#if defined(BLE)
+	bool bt_slave;
+	bool bt_master;
+	uint8_t bt_mode;
+	char bt_uuid[37];
+	char bt_uuid_rx[37];
+	char bt_uuid_tx[37];
+	char bt_name[20];
+	uint32_t bt_pin;
+	uint8_t bt_power;
+#endif
 } Configuration;
 
 void DefaultConfig();

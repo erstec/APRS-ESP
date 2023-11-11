@@ -126,9 +126,23 @@ void SaveConfig(bool storeBackup) {
     doc["sb_turn_slope"] = config.sb_turn_slope;
     doc["sb_turn_time"] = config.sb_turn_time;
 
+#ifdef BLUETOOTH
     doc["bt_mode"] = config.bt_mode;
     doc["bt_name"] = config.bt_name;
     doc["bt_master"] = config.bt_master;
+#endif
+
+#if defined(BLE)
+    doc["bt_slave"] = config.bt_slave;
+    doc["bt_master"] = config.bt_master;
+    doc["bt_mode"] = config.bt_mode;
+    doc["bt_power"] = config.bt_power;
+    doc["bt_uuid"] = config.bt_uuid;
+    doc["bt_uuid_rx"] = config.bt_uuid_rx;
+    doc["bt_uuid_tx"] = config.bt_uuid_tx;
+    doc["bt_name"] = config.bt_name;
+    doc["bt_pin"] = config.bt_pin;
+#endif
 
     // serializeJsonPretty(doc, Serial);
     String s = "";
@@ -210,9 +224,23 @@ void DefaultConfig() {
     config.sb_turn_slope = APRS_SB_TURN_SLOPE;
     config.sb_turn_time = APRS_SB_MIN_TURN_TIME;
 
+#ifdef BLUETOOTH
     config.bt_mode = BT_MODE_OFF;
     sprintf(config.bt_name, "APRS-ESP32");
     config.bt_master = true;
+#endif
+
+#if defined(BLE)
+    config.bt_slave = false;
+    config.bt_master = false;
+    config.bt_mode = 1; // 0-None,1-TNC2RAW,2-KISS
+    config.bt_power = 1;
+    sprintf(config.bt_uuid, "6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_uuid_rx, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_uuid_tx, "6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_name, "ESP32APRS");
+    config.bt_pin = 0;
+#endif
 
     SaveConfig();
 }
@@ -321,10 +349,25 @@ void LoadConfig() {
     }
 
     // For Debug
+#ifdef BLUETOOTH
 #warning REMOVE IT!
     config.bt_mode = BT_MODE_TNC2RAW;
     strcpy(config.bt_name, "APRS-ESP32");
     config.bt_master = true;
+#endif
+
+#if defined(BLE)
+#warning REMOVE IT!
+    config.bt_slave = false;
+    config.bt_master = true;
+    config.bt_mode = BT_MODE_TNC2RAW;
+    config.bt_power = 1;
+    sprintf(config.bt_uuid, "6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_uuid_rx, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_uuid_tx, "6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    sprintf(config.bt_name, "ESP32APRS");
+    config.bt_pin = 0;
+#endif
 }
 
 Configuration jsonToBinConfig(JsonObject obj) {
@@ -395,9 +438,23 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.sb_turn_slope = obj["sb_turn_slope"];
     tmpConfig.sb_turn_time = obj["sb_turn_time"];
 
+#ifdef BLUETOOTH
     tmpConfig.bt_mode = obj["bt_mode"];
     strcpy(tmpConfig.bt_name, obj["bt_name"]);
     tmpConfig.bt_master = obj["bt_master"];
+#endif
+
+#if defined(BLE)
+    tmpConfig.bt_slave = obj["bt_slave"];
+    tmpConfig.bt_master = obj["bt_master"];
+    tmpConfig.bt_mode = obj["bt_mode"];
+    tmpConfig.bt_power = obj["bt_power"];
+    strcpy(tmpConfig.bt_uuid, obj["bt_uuid"]);
+    strcpy(tmpConfig.bt_uuid_rx, obj["bt_uuid_rx"]);
+    strcpy(tmpConfig.bt_uuid_tx, obj["bt_uuid_tx"]);
+    strcpy(tmpConfig.bt_name, obj["bt_name"]);
+    tmpConfig.bt_pin = obj["bt_pin"];
+#endif
 
     return tmpConfig;
 }

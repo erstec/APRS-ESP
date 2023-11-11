@@ -28,6 +28,8 @@
 #define DEBUG_RF
 
 // #define BLUETOOTH
+#define BLE
+// #define BLE_SEC
 
 //#define SDCARD
 #define USE_GPS

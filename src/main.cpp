@@ -34,6 +34,13 @@
 #ifdef BLUETOOTH
 #include "BluetoothSerial.h"
 #endif
+#if defined(BLE)
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <BLESecurity.h>
+#endif
 
 #include "rfModem.h"
 
@@ -151,6 +158,94 @@ TinyGPSPlus gps;
 HardwareSerial SerialGPS(SERIAL_GPS_UART);
 #endif
 
+#if defined(BLE)
+BLEServer *pServer = NULL;
+BLECharacteristic *pTxCharacteristic;
+bool BTdeviceConnected = false;
+bool BToldDeviceConnected = false;
+uint8_t BTtxValue = 0;
+
+// #if defined(BLE_SEC)
+// class MySecurity : public BLESecurityCallbacks
+// {
+
+//   uint32_t onPassKeyRequest()
+//   {
+//     ESP_LOGI(LOG_TAG, "PassKeyRequest");
+//     return passkey;
+//   }
+//   void onPassKeyNotify(uint32_t pass_key)
+//   {
+//     ESP_LOGI(LOG_TAG, "The passkey Notify number:%d", pass_key);
+//   }
+//   bool onConfirmPIN(uint32_t pass_key)
+//   {
+//     ESP_LOGI(LOG_TAG, "The passkey YES/NO number:%d", pass_key);
+//     vTaskDelay(5000);
+//     return true;
+//   }
+//   bool onSecurityRequest()
+//   {
+//     ESP_LOGI(LOG_TAG, "SecurityRequest");
+//     return true;
+//   }
+
+//   void onAuthenticationComplete(esp_ble_auth_cmpl_t cmpl)
+//   {
+//     ESP_LOGI(LOG_TAG, "Starting BLE!");
+//   }
+// };
+// #endif
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pServer)
+  {
+    BTdeviceConnected = true;
+  };
+
+  void onDisconnect(BLEServer *pServer)
+  {
+    BTdeviceConnected = false;
+  }
+};
+
+class MyCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    std::string rxValue = pCharacteristic->getValue();
+
+    if (rxValue.length() > 0)
+    {
+      // Serial.println("*********");
+      // Serial.print("Received Value: ");
+      char raw[500];
+      int i = 0;
+      memset(raw, 0, sizeof(raw));
+      for (i = 0; i < rxValue.length(); i++)
+      {
+        if (i > sizeof(raw))
+          break;
+        raw[i] = (char)rxValue[i];
+        if (raw[i] == 0)
+          break;
+      }
+      if (config.bt_mode == 1)
+      { // TNC2RAW MODE
+        pkgTxPush(raw, strlen(raw), 1);
+      }
+      else if (config.bt_mode == 2)
+      {
+        // KISS MODE
+        for (int n = 0; n < i; n++)
+          kiss_serial((uint8_t)raw[n]);
+      }
+    }
+  }
+};
+#endif
+
 #ifdef BLUETOOTH
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
@@ -254,7 +349,7 @@ bool pkgTxSend() {
                 String _empty = "";
                 String _msg = "TX RF";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
-                OledUpdate(0, false); // force update otherwise it will be shown only after TX
+                OledUpdate(0, false, false); // force update otherwise it will be shown only after TX
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
@@ -847,6 +942,45 @@ void setup()
     }
 #endif
 
+#if defined(BLE)
+    if (config.bt_master == true) {
+        log_i("BLE started as %s, mode: %d", config.bt_name, config.bt_mode);
+        
+        // Create the BLE Device
+        BLEDevice::init(config.bt_name);
+#if defined(BLE_SEC)
+        BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT_MITM);  // The line you told me to add
+        BLESecurity *pSecurity = new BLESecurity();
+        pSecurity->setStaticPIN(config.bt_pin);
+#endif
+        // Create the BLE Server
+        pServer = BLEDevice::createServer();
+        pServer->setCallbacks(new MyServerCallbacks());
+
+        // Create the BLE Service
+        BLEService *pService = pServer->createService(config.bt_uuid);
+
+        // Create a BLE Characteristic
+        pTxCharacteristic = pService->createCharacteristic(
+            config.bt_uuid_tx,
+            BLECharacteristic::PROPERTY_NOTIFY);
+        pTxCharacteristic->addDescriptor(new BLE2902());
+
+        BLECharacteristic *pRxCharacteristic = pService->createCharacteristic(
+            config.bt_uuid_rx,
+            BLECharacteristic::PROPERTY_WRITE);
+
+        // pRxCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM | ESP_GATT_PERM_WRITE_ENC_MITM);
+        pRxCharacteristic->setCallbacks(new MyCallbacks());
+
+        // Start the service
+        pService->start();
+
+        // Start advertising
+        pServer->getAdvertising()->start();
+  }
+#endif
+
     // if SmartBeaconing - delay processing GPS data
     if (config.aprs_beacon == 0) {
         log_i("SmartBeaconing, delayed GPS processing");
@@ -1203,6 +1337,23 @@ void loop()
         Bluetooth();
 #endif
 
+#if defined(BLE)
+    if (config.bt_master) {
+        // disconnecting
+        if (!BTdeviceConnected && BToldDeviceConnected) {
+            delay(500);                  // give the bluetooth stack the chance to get things ready
+            pServer->startAdvertising(); // restart advertising
+            log_i("start advertising");
+            BToldDeviceConnected = BTdeviceConnected;
+            }
+        // connecting
+        if (BTdeviceConnected && !BToldDeviceConnected) {
+            // do stuff here on connecting
+            BToldDeviceConnected = BTdeviceConnected;
+        }
+    }
+#endif
+
     if (!fwUpdateProcess) {
         if (millis() > timeCheck) {
             timeCheck = millis() + 10000;
@@ -1261,14 +1412,14 @@ void loop()
                     log_i("WiFi ON");
                     String _msg = "WiFi ON";
                     OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
-                    OledUpdate(0, false);
+                    OledUpdate(0, false, false);
                     delay(2000);
                 } else {
                     config.wifi_mode = WIFI_OFF;
                     log_i("WiFi OFF");
                     String _msg = "WiFi OFF";
                     OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
-                    OledUpdate(0, false);
+                    OledUpdate(0, false, false);
                     delay(2000);
                 }
                 btn_count = 0;
@@ -1501,23 +1652,31 @@ void taskAPRS(void *pvParameters) {
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
 
-#ifdef BLUETOOTH
+#if defined(BLUETOOTH) || defined(BLE)
             if (config.bt_master) { // Output TNC2RAW to BT Serial
               // SerialBT.println(tnc2);
                 if (config.bt_mode == BT_MODE_TNC2RAW) {
                     char *rawP = (char *)malloc(tnc2.length());
                     memcpy(rawP, tnc2.c_str(), tnc2.length());
+#if defined(BLUETOOTH)
                     SerialBT.write((uint8_t *)rawP, tnc2.length());
-                    // pTxCharacteristic->setValue((uint8_t *)rawP, tnc2.length());
-                    // pTxCharacteristic->notify();
+#endif
+#if defined(BLE)
+                    pTxCharacteristic->setValue((uint8_t *)rawP, tnc2.length());
+                    pTxCharacteristic->notify();
+#endif
                     free(rawP);
                 }
                 else if (config.bt_mode == BT_MODE_KISS) {
                     uint8_t pkg[500];
                     int sz = kiss_wrapper(pkg);
+#if defined(BLUETOOTH)
                     SerialBT.write(pkg, sz);
-                    // pTxCharacteristic->setValue(pkg, sz);
-                    // pTxCharacteristic->notify();
+#endif
+#if defined(BLE)
+                    pTxCharacteristic->setValue(pkg, sz);
+                    pTxCharacteristic->notify();
+#endif
                 }
             }
 #endif
@@ -1847,13 +2006,13 @@ void taskOLEDDisplay(void *pvParameters) {
         }
 
 #if defined(ADC_BATTERY)
-        OledUpdate(batteryPercentage, false);
+        OledUpdate(batteryPercentage, false, AFSKInitAct);
         WebDataUpdate(batteryVoltage, false);
 #elif defined(USE_PMU)
-        OledUpdate(batteryPercentage, vbusIn);
+        OledUpdate(batteryPercentage, vbusIn, AFSKInitAct);
         WebDataUpdate(batteryPercentage, vbusIn);
 #else
-        OledUpdate(-1, false);
+        OledUpdate(-1, false), AFSKInitAct;
         WebDataUpdate(-1, false);
 #endif
 
