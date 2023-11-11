@@ -1405,7 +1405,7 @@ void loop()
     } else {
         if (btn_count > 0) {
             // Serial.printf("btn_count=%dms\n", btn_count * 10);
-            if (btn_count > btnCnt1)  // Push BOOT 10sec to Disable/Enable WiFi
+            if (btn_count > btnCnt1 && btn_count < btnCnt2)  // Push BOOT 10sec to Disable/Enable WiFi
             {
                 if (config.wifi_mode == WIFI_OFF) {
                     config.wifi_mode = WIFI_AP_STA_FIX;
@@ -1426,7 +1426,7 @@ void loop()
                 SaveConfig();
                 esp_restart();
             }
-            else if (btn_count > btnCnt1) {    // Config Default
+            else if (btn_count > btnCnt2) {    // Config Default
                 log_i("Factory Default");
                 btn_count = 0;
                 DefaultConfig();
