@@ -145,7 +145,7 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
     // DateTime / Battery
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
-    if (tmstruct.tm_hour > 25 || tmstruct.tm_min > 60 || tmstruct.tm_sec > 60) {
+    if (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59) {
         sprintf(buf, "NO TIME");
     } else {
         sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
