@@ -1165,19 +1165,17 @@ long timeCheck = 0;
 long TimeSyncPeriod = 0;
 
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
-const int btnCnt1 = 100;
-const int btnCnt2 = 200;
+const int btnCnt = 500;
 #else
-const int btnCnt1 = 1000;
-const int btnCnt2 = 2000;
+const int btnCnt = 1000;
 #endif
 
 void loop()
 {
 #if defined(BOARD_ESP32DR)
-    vTaskDelay(5 / portTICK_PERIOD_MS);  // 5 ms // remove?
+    vTaskDelay(5 / portTICK_PERIOD_MS);
 #else
-    vTaskDelay(10 / portTICK_PERIOD_MS);  // 5 ms // remove?
+    vTaskDelay(10 / portTICK_PERIOD_MS);
 #endif
     if (!fwUpdateProcess) {
         if (millis() > timeCheck) {
@@ -1213,24 +1211,39 @@ void loop()
 
     if (rot_sw == LOW || bootPin2 == LOW) {
         btn_count++;
-        if (btn_count > btnCnt1 && btn_count < btnCnt2)  // Push BOOT 10sec
+        if (btn_count > btnCnt && btn_count < btnCnt * 2)  // Push BOOT 5sec
         {
             RX_LED_ON();
             TX_LED_ON();
             String _msg = "WiFi SW";
             OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
-        if (btn_count > btnCnt2)  // Push BOOT 20sec
+        if (btn_count > btnCnt * 2 && btn_count < btnCnt * 3)  // Push BOOT 10sec
         {
             RX_LED_OFF();
             TX_LED_OFF();
-            String _msg = "Factory";
+            String _msg = "RF SW";
             OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
+        if (btn_count > btnCnt * 3 && btn_count < btnCnt * 4)  // Push BOOT 15sec
+        {
+            RX_LED_ON();
+            TX_LED_ON();
+            String _msg = "Reset";
+            OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+        }
+        if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)  // Push BOOT 20sec
+        {
+            RX_LED_OFF();
+            TX_LED_OFF();
+            String _msg = "Cancel";
+            OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+        }
+        if (btn_count > btnCnt *5) btn_count = 0;
     } else {
         if (btn_count > 0) {
             // Serial.printf("btn_count=%dms\n", btn_count * 10);
-            if (btn_count > btnCnt1 && btn_count < btnCnt2)  // Push BOOT 10sec to Disable/Enable WiFi
+            if (btn_count > btnCnt && btn_count < btnCnt * 2)
             {
                 if (config.wifi_mode == WIFI_OFF) {
                     config.wifi_mode = WIFI_AP_STA_FIX;
@@ -1247,16 +1260,46 @@ void loop()
                     OledUpdate(0, false, false);
                     delay(2000);
                 }
-                btn_count = 0;
                 SaveConfig();
                 esp_restart();
             }
-            else if (btn_count > btnCnt2) {    // Config Default
-                log_i("Factory Default");
-                btn_count = 0;
+            else if (btn_count > btnCnt * 2 && btn_count < btnCnt * 3)
+            {
+                if (config.tnc == true) {
+                    config.tnc = false;
+                    log_i("RF OFF");
+                    String _msg = "RF OFF";
+                    OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 3);
+                    OledUpdate(0, false, false);
+                    delay(2000);
+                } else {
+                    config.tnc = true;
+                    log_i("RF ON");
+                    String _msg = "RF ON";
+                    OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 3);
+                    OledUpdate(0, false, false);
+                    delay(2000);
+                }
+                SaveConfig();
+            }
+            else if (btn_count > btnCnt * 3 && btn_count < btnCnt * 4)
+            {
+                log_i("Factory Reset");
+                String _msg = "Reset OK";
+                OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+                OledUpdate(0, false, false);
+                delay(2000);
                 DefaultConfig();
                 SaveConfig();
                 esp_restart();
+            }
+            else if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)
+            {
+                log_i("Cancel");
+                String _msg = "Cancelled";
+                OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 3);
+                OledUpdate(0, false, false);
+                // delay(2000);
             }
             else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
             {

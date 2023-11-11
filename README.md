@@ -98,9 +98,11 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
 
 ## NOTE
-* Short Press of BOOT button >100 ms) - TX Position
-* Long press of BOOT button (10 sec) - Turn WiFi ON/OFF
-* Very Long press of BOOT button (20 sec) - Reset Configuration to Factory Default
+* Short Press of BOOT button (>100 ms) - TX Position
+* Long press of BOOT button (5 sec) - Turn WiFi ON/OFF
+* Long press of BOOT button (10 sec) - Turn RF Modem ON/OFF
+* Long press of BOOT button (15 sec) - Reset Configuration to Factory Default
+* Long press of BOOT button (20 sec) - Cancel button press action
 
 # COPYRIGHT NOTICE
 Firmware part uses ideas and code snippets from:
