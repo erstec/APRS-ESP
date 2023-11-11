@@ -151,13 +151,13 @@ void OledUpdate(int batData, bool usbPlugged) {
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2) , CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
     // Timesync source
-    display.setCursor((display.width() / 2) + (strlen(buf) * CHAR_WIDTH / 2) + (CHAR_WIDTH / 2) - 1, CHAR_HEIGHT * 2);
+    display.setCursor(display.width() - CHAR_WIDTH * 6 - 2, CHAR_HEIGHT * 2);
     if (timeSyncFlag == T_SYNC_NTP) {
         display.print("NTP");
     } else if (timeSyncFlag == T_SYNC_GPS) {
         display.print("GPS");
     } else if (timeSyncFlag == T_SYNC_APRS) {
-        display.print("APRS");
+        display.print("APR");
     } else {
         display.print("NO");
     }
