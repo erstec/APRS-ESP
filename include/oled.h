@@ -14,6 +14,6 @@
 
 void OledStartup();
 void OledPostStartup(String customMsg);
-void OledUpdate(int batData, bool usbPlugged);
+void OledUpdate(int batData, bool usbPlugged, bool afskInit);
 void OledUpdateFWU();
 void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout);
