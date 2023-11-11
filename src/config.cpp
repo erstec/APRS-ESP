@@ -13,6 +13,23 @@
 extern Configuration config;
 extern bool input_HPF;
 
+static void checkCallsignValid(void) {
+    if (strcmp("MYCALL", config.aprs_mycall) == 0
+        || strcmp("NOCALL", config.aprs_mycall) == 0
+        || strcmp("N0CALL", config.aprs_mycall) == 0
+        || strlen(config.aprs_mycall) < 3) {
+        callsignValid = false;
+    } else {
+        callsignValid = true;
+    }
+
+    if (callsignValid) {
+        log_i("Callsign is valid");
+    } else {
+        log_w("Callsign is invalid");
+    }
+}
+
 uint8_t checkSum(uint8_t *ptr, size_t count) {
     uint8_t lrc, tmp;
     uint16_t i;
@@ -134,6 +151,8 @@ void SaveConfig(bool storeBackup) {
     f_json.close();
     
     SPIFFS.end();
+
+    checkCallsignValid();
 }
 
 void DefaultConfig() {
@@ -311,6 +330,8 @@ void LoadConfig() {
         f_json.close();
         SPIFFS.end();
     }
+
+    checkCallsignValid();
 }
 
 Configuration jsonToBinConfig(JsonObject obj) {

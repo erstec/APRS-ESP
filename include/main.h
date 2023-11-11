@@ -172,6 +172,8 @@ typedef struct txQueue_struct {
 
 extern bool fwUpdateProcess;
 
+extern bool callsignValid;
+
 const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};
 const char UNIT[] = {"UNIT.Pkts,Pkts,Pkts,Pkts,Pkts"};
 const char EQNS[] = {"EQNS.0,1,0,0,1,0,0,1,0,0,1,0,0,1,0"};

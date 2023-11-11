@@ -105,6 +105,8 @@ HardwareSerial SerialRF(SERIAL_RF_UART);
 
 bool fwUpdateProcess = false;
 
+bool callsignValid = false;
+
 #if defined(DOARD_TTWR)
 #else
 RTC_DATA_ATTR time_t systemUptime = 0;
@@ -444,16 +446,13 @@ boolean APRSConnect() {
     uint8_t con = aprsClient.connected();
     // Serial.println(con);
     if (con <= 0) {
+        if (!callsignValid) return false;
+        
         if (!aprsClient.connect(config.aprs_host, config.aprs_port)) {
             // Serial.print(".");
             delay(100);
             cnt++;
             if (cnt > 50) return false;
-        }
-        
-        if (strcmp("NOCALL", config.aprs_mycall) == 0) {
-            // config.igate_en = false;
-            return false;
         }
 
         if (strlen(config.aprs_object) >= 3) {
@@ -1260,7 +1259,7 @@ void loop()
             }
             else if (btn_count > 10)  // Push BOOT >100mS to PTT Fix location
             {
-                if (config.tnc) {
+                if (callsignValid && config.tnc) {
                     String tnc2Raw = send_gps_location();
                     if (tnc2Raw.length() > 0) {
                         pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
@@ -1315,9 +1314,9 @@ void sendIsPkg(char *raw) {
     sprintf(str, "%s-%d>APESP1%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
     // client.println(str);
     String tnc2Raw = String(str);
-    if (aprsClient.connected())
+    if (callsignValid && aprsClient.connected())
         aprsClient.println(tnc2Raw); // Send packet to Inet
-    if (config.tnc && config.tnc_digi)
+    if (callsignValid && config.tnc && config.tnc_digi)
         pkgTxPush(str, strlen(str), 0);
 }
 
@@ -1340,9 +1339,9 @@ void sendIsPkgMsg(char *raw) {
         sprintf(str, "%s-%d>APESP1::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
 
     String tnc2Raw = String(str);
-    if (aprsClient.connected())
+    if (callsignValid && aprsClient.connected())
         aprsClient.println(tnc2Raw); // Send packet to Inet
-    if (config.tnc && config.tnc_digi)
+    if (callsignValid && config.tnc && config.tnc_digi)
         pkgTxPush(str, strlen(str), 0);
     
     // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
@@ -1414,7 +1413,7 @@ void taskAPRS(void *pvParameters) {
             RF_Check();
 
             if (AFSKInitAct == true) {
-                if (config.tnc) {
+                if (callsignValid && config.tnc) {
                     String rawData = send_gps_location();
                     if (rawData.length() > 0) {
                         if (aprsClient.connected()) {
@@ -1433,7 +1432,7 @@ void taskAPRS(void *pvParameters) {
             }
         }
 
-        if (config.tnc_telemetry) {
+        if (callsignValid && config.tnc_telemetry) {
             if (igateTLM.TeleTimeout < millis()) {
                 igateTLM.TeleTimeout =
                     millis() + TNC_TELEMETRY_PERIOD;  // 10Min
@@ -1456,10 +1455,10 @@ void taskAPRS(void *pvParameters) {
                         igateTLM.TX, igateTLM.DROP);
                 }
 
-                if (aprsClient.connected()) {
+                if (callsignValid && aprsClient.connected()) {
                     aprsClient.println(String(rawTlm));  // Send packet to Inet
                 }
-                if (config.tnc && config.tnc_digi) {
+                if (callsignValid && config.tnc && config.tnc_digi) {
                     pkgTxPush(rawTlm, strlen(rawTlm), 0);
                 }
                 // APRS_sendTNC2Pkt(String(rawTlm)); // Send packet to RF
@@ -1475,7 +1474,7 @@ void taskAPRS(void *pvParameters) {
         }
 
         // IGate RF->INET
-        if (config.tnc) {
+        if (callsignValid && config.tnc) {
             if (PacketBuffer.getCount() > 0) {
                 String tnc2;
                 PacketBuffer.pop(&incomingPacket);
@@ -1524,7 +1523,7 @@ void taskAPRS(void *pvParameters) {
                 }
 
                 // Digi Repeater Process
-                if (config.tnc_digi) {
+                if (callsignValid && config.tnc_digi) {
                     int dlyFlag = digiProcess(incomingPacket);
                     if (dlyFlag > 0) {
                         int digiDelay;
@@ -1735,7 +1734,7 @@ void taskNetwork(void *pvParameters) {
                                     && line.indexOf("BITS.") < 0)
                                 {
                                     // Is INET2RF configured and MSG_CALL present
-                                    if (config.tnc && config.inet2rf && (msg_call != "")) {
+                                    if (callsignValid && config.tnc && config.inet2rf && (msg_call != "")) {
                                         // Is adresse is in owner callsigns group?
                                         if (msg_call.startsWith(config.aprs_mycall)) {
                                             log_i("MSG to Owner group");
