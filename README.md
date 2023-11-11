@@ -96,13 +96,17 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - For Web interface option use Firmware tab
 - For USB option use script device-update.bat (Windows) or device-update.sh (Linux). Script is self explanatory if you run it without arguments. Also it requires Python 3 and esp-tool library, you can install it using `pip install esptool`
 - **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
+- **After EVERY update - save Backup, as there is no guarantee older can be used**
 
 ## NOTE
-* Short Press of BOOT button (>100 ms) - TX Position
-* Long press of BOOT button (5 sec) - Turn WiFi ON/OFF
-* Long press of BOOT button (10 sec) - Turn RF Modem ON/OFF
-* Long press of BOOT button (15 sec) - Reset Configuration to Factory Default
-* Long press of BOOT button (20 sec) - Cancel button press action
+Press and hold BOOT button or Rotary Wheel:
+* Shortly (>100 ms) - TX Position
+* 5 sec - Turn WiFi ON/OFF
+* 10 sec - Turn RF Modem ON/OFF
+* 15 sec - Reset Configuration to Factory Default
+* 20 sec - Cancel button action
+  
+_Release when see appropriate message on screen_
 
 # COPYRIGHT NOTICE
 Firmware part uses ideas and code snippets from:
