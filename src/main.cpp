@@ -171,7 +171,7 @@ teTimeSync timeSyncFlag = T_SYNC_NONE;
 
 static long gpsUpdTMO = 0;
 
-const char *lastTitle = "LAST HEARD";
+bool AFSKInitAct = false;
 
 int tlmList_Find(char *call) {
     int i;
@@ -228,7 +228,7 @@ bool pkgTxSend() {
                 String _empty = "";
                 String _msg = "TX RF";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
-                OledUpdate(0, false); // force update otherwise it will be shown only after TX
+                OledUpdate(0, false, AFSKInitAct); // force update otherwise it will be shown only after TX
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
@@ -1148,7 +1148,6 @@ void loopPMU()
 #endif
 
 long sendTimer = 0;
-bool AFSKInitAct = false;
 int btn_count = 0;
 long timeCheck = 0;
 long TimeSyncPeriod = 0;
@@ -1222,14 +1221,14 @@ void loop()
                     log_i("WiFi ON");
                     String _msg = "WiFi ON";
                     OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
-                    OledUpdate(0, false);
+                    OledUpdate(0, false, false);
                     delay(2000);
                 } else {
                     config.wifi_mode = WIFI_OFF;
                     log_i("WiFi OFF");
                     String _msg = "WiFi OFF";
                     OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
-                    OledUpdate(0, false);
+                    OledUpdate(0, false, false);
                     delay(2000);
                 }
                 btn_count = 0;
@@ -1786,13 +1785,13 @@ void taskOLEDDisplay(void *pvParameters) {
         }
 
 #if defined(ADC_BATTERY)
-        OledUpdate(batteryPercentage, false);
+        OledUpdate(batteryPercentage, false, AFSKInitAct);
         WebDataUpdate(batteryVoltage, false);
 #elif defined(USE_PMU)
-        OledUpdate(batteryPercentage, vbusIn);
+        OledUpdate(batteryPercentage, vbusIn, AFSKInitAct);
         WebDataUpdate(batteryPercentage, vbusIn);
 #else
-        OledUpdate(-1, false);
+        OledUpdate(-1, false, AFSKInitAct);
         WebDataUpdate(-1, false);
 #endif
 
