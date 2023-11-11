@@ -110,10 +110,12 @@ static void OledDrawMsg() {
     }
 }
 
-void OledUpdate(int batData, bool usbPlugged) {
+void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
 #ifdef USE_SCREEN
-    if (AFSK_modem->sending) return;
-    // if (AFSK_modem->hdlc.receiving) return;
+    if (afskInit) {
+        if (AFSK_modem->sending) return;
+        // if (AFSK_modem->hdlc.receiving) return;
+    }
 
     char buf[24];
 
