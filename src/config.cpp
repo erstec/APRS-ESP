@@ -360,12 +360,13 @@ void LoadConfig() {
 #warning REMOVE IT!
     config.bt_slave = false;
     config.bt_master = true;
-    config.bt_mode = BT_MODE_TNC2RAW;
+    config.bt_mode = BT_MODE_KISS;
     config.bt_power = 1;
-    sprintf(config.bt_uuid, "6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    sprintf(config.bt_uuid_rx, "6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-    sprintf(config.bt_uuid_tx, "6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
-    sprintf(config.bt_name, "ESP32APRS");
+    sprintf(config.bt_uuid, "00000001-ba2a-46c9-ae49-01b0961f68bb");
+    sprintf(config.bt_uuid_rx, "00000002-ba2a-46c9-ae49-01b0961f68bb");
+    sprintf(config.bt_uuid_tx, "00000003-ba2a-46c9-ae49-01b0961f68bb");
+    //sprintf(config.bt_name, "ESP32APRS");
+    sprintf(config.bt_name, "ACME SuperTNC 7");
     config.bt_pin = 0;
 #endif
 }
