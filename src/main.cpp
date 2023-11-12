@@ -19,7 +19,7 @@
 #include "webservice.h"
 #include <WiFiUdp.h>
 #include <WiFi.h>
-// #include <WiFiMulti.h>
+#include <WiFiMulti.h>
 #include <WiFiClient.h>
 #include "cppQueue.h"
 #include "BluetoothSerial.h"
@@ -1622,7 +1622,7 @@ void taskAPRS(void *pvParameters) {
 }
 
 long wifiTTL = 0;
-// WiFiMulti wifiMulti;
+WiFiMulti wifiMulti;
 
 // WiFi connect timeout per AP. Increase when connecting takes longer.
 const uint32_t connectTimeoutMs = 10000;
@@ -1646,7 +1646,6 @@ const uint32_t connectTimeoutMs = 10000;
 // }
 
 void taskNetwork(void *pvParameters) {
-    int c = 0;
     log_i("Task <Network> started");
 
     // WiFi.onEvent(Wifi_connected,SYSTEM_EVENT_STA_CONNECTED);
@@ -1679,6 +1678,10 @@ void taskNetwork(void *pvParameters) {
         //         wifiMulti.addAP(config.wifi_sta[i].wifi_ssid, config.wifi_sta[i].wifi_pass);
         //     }
         // }
+
+        // currently we have only one set of WiFi credentials
+        wifiMulti.addAP(config.wifi_ssid, config.wifi_pass);
+
         WiFi.setTxPower((wifi_power_t)config.wifi_power);
         WiFi.setHostname("APRS_ESP");
     }
@@ -1691,25 +1694,25 @@ void taskNetwork(void *pvParameters) {
         webService();
     }
 
-    // if (wifiMulti.run() == WL_CONNECTED)
-    // {
-    //     log_d("Wi-Fi CONNECTED!");
-    //     log_d("IP address: %s", WiFi.localIP().toString().c_str());
-    //     webService();
-    //     NTP_Timeout = millis() + 2000;
-    // }
-
-    if (config.wifi_mode != WIFI_OFF_FIX) {
-        if (WiFi.begin() == WL_CONNECTED)
-        {
-            log_d("Wi-Fi CONNECTED!");
-            log_d("IP address: %s", WiFi.localIP().toString().c_str());
-            // webService();
-            // NTP_Timeout = millis() + 2000;
-        }
+    if (wifiMulti.run() == WL_CONNECTED)
+    {
+        log_d("Wi-Fi CONNECTED!");
+        log_d("IP address: %s", WiFi.localIP().toString().c_str());
         webService();
         NTP_Timeout = millis() + 2000;
     }
+
+    // if (config.wifi_mode != WIFI_OFF_FIX) {
+    //     if (WiFi.begin() == WL_CONNECTED)
+    //     {
+    //         log_d("Wi-Fi CONNECTED!");
+    //         log_d("IP address: %s", WiFi.localIP().toString().c_str());
+    //         // webService();
+    //         // NTP_Timeout = millis() + 2000;
+    //     }
+    //     webService();
+    //     NTP_Timeout = millis() + 2000;
+    // }
 
     configTime(3600 * config.timeZone, 0, config.ntpServer);
 
@@ -1720,7 +1723,8 @@ void taskNetwork(void *pvParameters) {
             serviceHandle();
         }
 
-        if (WiFi.status() == WL_CONNECTED) 
+        if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
+        // if (WiFi.status() == WL_CONNECTED) 
         {
             if (millis() > NTP_Timeout) {                    
                 NTP_Timeout = millis() + 86400000;
