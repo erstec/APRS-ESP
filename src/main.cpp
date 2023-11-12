@@ -510,8 +510,10 @@ void setupPower()
     PMU.setSysPowerDownVoltage(2600);
 
 
-    //! DC1 ESP32S3 Core VDD , Don't change
-    // PMU.setDC1Voltage(3300);
+    //! DC1 ESP32S3 Core VDD and OLED_VBAT , Don't change
+    // PMU.setDC1Voltage(3400);        // +100mV // ESP32S3 can handle up to 3.6V, SH1106 up to 3.5V
+    // PMU.settDC1WorkModeToPwm(1);    // manually switch Auto -> PWM mode
+    PMU.setDC1Voltage(3300);
 
     //! DC3 Radio & Pixels VDD , Don't change
     PMU.setDC3Voltage(3400);
@@ -576,56 +578,57 @@ void setupPower()
     PMU.disableDLDO1();
     PMU.disableDLDO2();
 
-    Serial.println("DCDC=======================================================================");
-    Serial.printf("DC1  : %s   Voltage:%u mV \n",  PMU.isEnableDC1()  ? "+" : "-", PMU.getDC1Voltage());
-    Serial.printf("DC2  : %s   Voltage:%u mV \n",  PMU.isEnableDC2()  ? "+" : "-", PMU.getDC2Voltage());
-    Serial.printf("DC3  : %s   Voltage:%u mV \n",  PMU.isEnableDC3()  ? "+" : "-", PMU.getDC3Voltage());
-    Serial.printf("DC4  : %s   Voltage:%u mV \n",  PMU.isEnableDC4()  ? "+" : "-", PMU.getDC4Voltage());
-    Serial.printf("DC5  : %s   Voltage:%u mV \n",  PMU.isEnableDC5()  ? "+" : "-", PMU.getDC5Voltage());
-    Serial.println("ALDO=======================================================================");
-    Serial.printf("ALDO1: %s   Voltage:%u mV\n",  PMU.isEnableALDO1()  ? "+" : "-", PMU.getALDO1Voltage());
-    Serial.printf("ALDO2: %s   Voltage:%u mV\n",  PMU.isEnableALDO2()  ? "+" : "-", PMU.getALDO2Voltage());
-    Serial.printf("ALDO3: %s   Voltage:%u mV\n",  PMU.isEnableALDO3()  ? "+" : "-", PMU.getALDO3Voltage());
-    Serial.printf("ALDO4: %s   Voltage:%u mV\n",  PMU.isEnableALDO4()  ? "+" : "-", PMU.getALDO4Voltage());
-    Serial.println("BLDO=======================================================================");
-    Serial.printf("BLDO1: %s   Voltage:%u mV\n",  PMU.isEnableBLDO1()  ? "+" : "-", PMU.getBLDO1Voltage());
-    Serial.printf("BLDO2: %s   Voltage:%u mV\n",  PMU.isEnableBLDO2()  ? "+" : "-", PMU.getBLDO2Voltage());
-    Serial.println("===========================================================================");
+    log_d("DCDC=======================================================================");
+    log_d("DC1  : %s   Voltage:%u mV",  PMU.isEnableDC1()  ? "+" : "-", PMU.getDC1Voltage());
+    log_d("DC2  : %s   Voltage:%u mV",  PMU.isEnableDC2()  ? "+" : "-", PMU.getDC2Voltage());
+    log_d("DC3  : %s   Voltage:%u mV",  PMU.isEnableDC3()  ? "+" : "-", PMU.getDC3Voltage());
+    log_d("DC4  : %s   Voltage:%u mV",  PMU.isEnableDC4()  ? "+" : "-", PMU.getDC4Voltage());
+    log_d("DC5  : %s   Voltage:%u mV",  PMU.isEnableDC5()  ? "+" : "-", PMU.getDC5Voltage());
+    log_d("ALDO=======================================================================");
+    log_d("ALDO1: %s   Voltage:%u mV",  PMU.isEnableALDO1()  ? "+" : "-", PMU.getALDO1Voltage());
+    log_d("ALDO2: %s   Voltage:%u mV",  PMU.isEnableALDO2()  ? "+" : "-", PMU.getALDO2Voltage());
+    log_d("ALDO3: %s   Voltage:%u mV",  PMU.isEnableALDO3()  ? "+" : "-", PMU.getALDO3Voltage());
+    log_d("ALDO4: %s   Voltage:%u mV",  PMU.isEnableALDO4()  ? "+" : "-", PMU.getALDO4Voltage());
+    log_d("BLDO=======================================================================");
+    log_d("BLDO1: %s   Voltage:%u mV",  PMU.isEnableBLDO1()  ? "+" : "-", PMU.getBLDO1Voltage());
+    log_d("BLDO2: %s   Voltage:%u mV",  PMU.isEnableBLDO2()  ? "+" : "-", PMU.getBLDO2Voltage());
+    log_d("===========================================================================");
 
     // Set the time of pressing the button to turn off
     PMU.setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
     uint8_t opt = PMU.getPowerKeyPressOffTime();
-    Serial.print("PowerKeyPressOffTime:");
+    String _str = "";
     switch (opt) {
-    case XPOWERS_POWEROFF_4S: Serial.println("4 Second");
+    case XPOWERS_POWEROFF_4S: _str = "4 Second";
         break;
-    case XPOWERS_POWEROFF_6S: Serial.println("6 Second");
+    case XPOWERS_POWEROFF_6S: _str = "6 Second";
         break;
-    case XPOWERS_POWEROFF_8S: Serial.println("8 Second");
+    case XPOWERS_POWEROFF_8S: _str = "8 Second";
         break;
-    case XPOWERS_POWEROFF_10S: Serial.println("10 Second");
+    case XPOWERS_POWEROFF_10S: _str = "10 Second";
         break;
     default:
         break;
     }
+    log_d("PowerKeyPressOffTime:%s", _str.c_str());
     // Set the button power-on press time
     PMU.setPowerKeyPressOnTime(XPOWERS_POWERON_128MS);
     opt = PMU.getPowerKeyPressOnTime();
-    Serial.print("PowerKeyPressOnTime:");
     switch (opt) {
-    case XPOWERS_POWERON_128MS: Serial.println("128 Ms");
+    case XPOWERS_POWERON_128MS: _str = "128 Ms";
         break;
-    case XPOWERS_POWERON_512MS: Serial.println("512 Ms");
+    case XPOWERS_POWERON_512MS: _str = "512 Ms";
         break;
-    case XPOWERS_POWERON_1S: Serial.println("1 Second");
+    case XPOWERS_POWERON_1S: _str = "1 Second";
         break;
-    case XPOWERS_POWERON_2S: Serial.println("2 Second");
+    case XPOWERS_POWERON_2S: _str = "2 Second";
         break;
     default:
         break;
     }
+    log_d("PowerKeyPressOnTime:%s", _str.c_str());
 
-    Serial.println("===========================================================================");
+    log_d("===========================================================================");
     // It is necessary to disable the detection function of the TS pin on the board
     // without the battery temperature detection function, otherwise it will cause abnormal charging
     PMU.disableTSPinMeasure();
@@ -687,17 +690,15 @@ void setupPower()
         0, 0, 0, 0, 100, 125, 150, 175, 200, 300, 400, 500, 600, 700, 800, 900, 1000
     };
     uint8_t val = PMU.getChargerConstantCurr();
-    Serial.print("Val = "); Serial.println(val);
-    Serial.print("Setting Charge Target Current : ");
-    Serial.println(currTable[val]);
+    log_d("Val = %u", val);
+    log_d("Setting Charge Target Current : %u", currTable[val]);
 
     // Get charging target voltage
     const uint16_t tableVoltage[] = {
         0, 4000, 4100, 4200, 4350, 4400, 255
     };
     val = PMU.getChargeTargetVoltage();
-    Serial.print("Setting Charge Target Voltage : ");
-    Serial.println(tableVoltage[val]);
+    log_d("Setting Charge Target Voltage : %u", tableVoltage[val]);
 
 }
 #endif
@@ -1330,6 +1331,10 @@ void loop()
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         log_d("USER_BUTTON");
+
+        // OledStartup();
+        // PMU.settDC1WorkModeToPwm(1);
+        // PMU.disableDC1();
     }
 #endif
 

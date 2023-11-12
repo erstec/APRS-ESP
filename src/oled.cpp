@@ -117,7 +117,7 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
         // if (AFSK_modem->hdlc.receiving) return;
     }
 
-    char buf[24];
+    char buf[22];   // 21 char + 1 null
 
     bool isValid = gps.location.isValid();
     uint32_t satCnt = gps.satellites.value();
@@ -145,10 +145,12 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
     // DateTime / Battery
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
-    if (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59) {
+    bool timeBad = (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59);
+    if (timeBad) {
         sprintf(buf, "NO TIME");
     } else {
-        sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+        snprintf(buf, 9, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+        buf[8] = 0;
     }
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2) , CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
