@@ -1894,6 +1894,8 @@ void handle_system() {
         }
         SaveConfig();
     } else if (server.hasArg("REBOOT")) {
+        server.send(200, "text/html", "Rebooting...");
+        delay(1000);
         esp_restart();
     }
 

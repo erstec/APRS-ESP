@@ -1629,25 +1629,28 @@ const uint32_t connectTimeoutMs = 10000;
 
 //bool wifiConnected = false;
 
-// void Wifi_connected(WiFiEvent_t event, WiFiEventInfo_t info){
-//   log_d("Successfully connected to Access Point");
-// }
+void Wifi_connected(WiFiEvent_t event, WiFiEventInfo_t info){
+  log_d("Successfully connected to Access Point");
+}
 
-// void Get_IPAddress(WiFiEvent_t event, WiFiEventInfo_t info){
-//   log_d("WIFI is connected!");
-//   log_d("IP address: %s",WiFi.localIP().toString().c_str());
-// }
+void Get_IPAddress(WiFiEvent_t event, WiFiEventInfo_t info){
+  log_d("WIFI is connected!");
+  log_d("IP address: %s",WiFi.localIP().toString().c_str());
+}
 
-// void Wifi_disconnected(WiFiEvent_t event, WiFiEventInfo_t info){
-//   log_d("Disconnected from WIFI access point\n");
+void Wifi_disconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+  log_d("Disconnected from WIFI access point");
 //   log_d("WiFi lost connection. Reason: ");
 //   log_d("%s\n",info.wifi_sta_disconnected.reason);
-//   log_d("Reconnecting...");
-// }
+  log_d("Reconnecting...");
+}
 
 void taskNetwork(void *pvParameters) {
-    int c = 0;
     log_i("Task <Network> started");
+
+    WiFi.onEvent(Wifi_connected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
+    WiFi.onEvent(Get_IPAddress, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(Wifi_disconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 
     // WiFi.onEvent(Wifi_connected,SYSTEM_EVENT_STA_CONNECTED);
     // WiFi.onEvent(Get_IPAddress, SYSTEM_EVENT_STA_GOT_IP);
@@ -1679,7 +1682,9 @@ void taskNetwork(void *pvParameters) {
         //         wifiMulti.addAP(config.wifi_sta[i].wifi_ssid, config.wifi_sta[i].wifi_pass);
         //     }
         // }
+        WiFi.setAutoReconnect(true);
         WiFi.setTxPower((wifi_power_t)config.wifi_power);
+        // WiFi.setHostname("APRS_ESP_" + config.aprs_mycall);
         WiFi.setHostname("APRS_ESP");
     }
 
@@ -1699,14 +1704,8 @@ void taskNetwork(void *pvParameters) {
     //     NTP_Timeout = millis() + 2000;
     // }
 
-    if (config.wifi_mode != WIFI_OFF_FIX) {
-        if (WiFi.begin() == WL_CONNECTED)
-        {
-            log_d("Wi-Fi CONNECTED!");
-            log_d("IP address: %s", WiFi.localIP().toString().c_str());
-            // webService();
-            // NTP_Timeout = millis() + 2000;
-        }
+    if (config.wifi_mode & WIFI_STA_FIX) {
+        WiFi.begin(config.wifi_ssid, config.wifi_pass);
         webService();
         NTP_Timeout = millis() + 2000;
     }
@@ -1850,6 +1849,8 @@ void taskOLEDDisplay(void *pvParameters) {
     log_i("Task <OLEDDisplay> started");
 
     for (;;) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
         printPeriodicDebug();
         
         if (fwUpdateProcess) {
@@ -1875,8 +1876,6 @@ void taskOLEDDisplay(void *pvParameters) {
 #if defined(USE_NEOPIXEL)
         strip.show();
 #endif
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
