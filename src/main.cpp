@@ -1661,8 +1661,11 @@ void taskNetwork(void *pvParameters) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
 
-        if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
+        if (config.wifi_mode != WIFI_OFF_FIX) {
             serviceHandle();
+        }
+
+        if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
             if (WiFi.status() != WL_CONNECTED) {
                 unsigned long int tw = millis();
                 if (tw > wifiTTL) {
