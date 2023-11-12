@@ -1,5 +1,5 @@
 /*********************************************************************
-This is a library for our Monochrome OLEDs based on SH1106 drivers
+This is a library for our Monochrome OLEDs based on SSD1306 drivers
 
   Pick one up today in the adafruit shop!
   ------> http://www.adafruit.com/category/63_98
@@ -16,18 +16,17 @@ BSD license, check license.txt for more information
 All text above, and the splash screen below must be included in any redistribution
 *********************************************************************/
 
-#ifdef __AVR__
-  #include <avr/pgmspace.h>
-#elif defined(ESP8266) || defined(ESP32)
- #include <pgmspace.h>
-#else
- #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-#endif
+/*********************************************************************
+I change the adafruit SSD1306 to SH1106
 
-#if !defined(__ARM_ARCH) && !defined(ENERGIA) && !defined(ESP8266) && !defined(ESP32) && !defined(__arc__)
- #include <util/delay.h>
-#endif
+SH1106 driver similar to SSD1306 so, just change the display() method.
 
+However, SH1106 driver don't provide several functions such as scroll commands.
+
+
+*********************************************************************/
+
+#include <pgmspace.h>
 #include <stdlib.h>
 
 #include <Wire.h>
@@ -108,7 +107,7 @@ static uint8_t buffer[SH1106_LCDHEIGHT * SH1106_LCDWIDTH / 8] = {
 #endif
 };
 
-#define swap(a, b) { int16_t t = a; a = b; b = t; }
+#define sh1106_swap(a, b) { int16_t t = a; a = b; b = t; }
 
 // the most basic function, set a single pixel
 void Adafruit_SH1106::drawPixel(int16_t x, int16_t y, uint16_t color) {
@@ -118,7 +117,7 @@ void Adafruit_SH1106::drawPixel(int16_t x, int16_t y, uint16_t color) {
   // check rotation, move pixel around if necessary
   switch (getRotation()) {
   case 1:
-    swap(x, y);
+    sh1106_swap(x, y);
     x = WIDTH - x - 1;
     break;
   case 2:
@@ -126,7 +125,7 @@ void Adafruit_SH1106::drawPixel(int16_t x, int16_t y, uint16_t color) {
     y = HEIGHT - y - 1;
     break;
   case 3:
-    swap(x, y);
+    sh1106_swap(x, y);
     y = HEIGHT - y - 1;
     break;
   }  
@@ -159,19 +158,12 @@ Adafruit_SH1106::Adafruit_SH1106(int8_t DC, int8_t RST, int8_t CS) : Adafruit_GF
 }
 
 // initializer for I2C - we only indicate the reset pin!
-Adafruit_SH1106::Adafruit_SH1106(uint8_t reset) :
+Adafruit_SH1106::Adafruit_SH1106(int8_t reset) :
 Adafruit_GFX(SH1106_LCDWIDTH, SH1106_LCDHEIGHT) {
   sclk = dc = cs = sid = -1;
   rst = reset;
 }
-
-Adafruit_SH1106::Adafruit_SH1106(int8_t SDA, int8_t SCL) :
-Adafruit_GFX(SH1106_LCDWIDTH, SH1106_LCDHEIGHT) {
-  sclk = dc = cs = sid = -1;
-  sda = SDA;
-  scl = SCL;
-  hwSPI = false;
-}
+  
 
 void Adafruit_SH1106::begin(uint8_t vccstate, uint8_t i2caddr, bool reset) {
   _vccstate = vccstate;
@@ -206,16 +198,12 @@ void Adafruit_SH1106::begin(uint8_t vccstate, uint8_t i2caddr, bool reset) {
   else
   {
     // I2C Init
-    if(sda == -1 || scl == -1){
     Wire.begin();
 #ifdef __SAM3X8E__
     // Force 400 KHz I2C, rawr! (Uses pins 20, 21 for SDA, SCL)
     TWI1->TWI_CWGR = 0;
     TWI1->TWI_CWGR = ((VARIANT_MCK / (2 * 400000)) - 4) * 0x101;
 #endif
-    } else {
-       Wire.begin(sda, scl); 
-    }
   }
 
   if (reset) {
@@ -235,125 +223,126 @@ void Adafruit_SH1106::begin(uint8_t vccstate, uint8_t i2caddr, bool reset) {
 
    #if defined SH1106_128_32
     // Init sequence for 128x32 OLED module
-    sh1106_command(SH1106_DISPLAYOFF);                    // 0xAE
-    sh1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
-    sh1106_command(0x80);                                  // the suggested ratio 0x80
-    sh1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
-    sh1106_command(0x1F);
-    sh1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
-    sh1106_command(0x0);                                   // no offset
-    sh1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0
-    sh1106_command(SH1106_CHARGEPUMP);                    // 0x8D
+    SH1106_command(SH1106_DISPLAYOFF);                    // 0xAE
+    SH1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
+    SH1106_command(0x80);                                  // the suggested ratio 0x80
+    SH1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
+    SH1106_command(0x1F);
+    SH1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
+    SH1106_command(0x0);                                   // no offset
+    SH1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0 
+    SH1106_command(SH1106_CHARGEPUMP);                    // 0x8D
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x10); }
+      { SH1106_command(0x10); }
     else 
-      { sh1106_command(0x14); }
-    sh1106_command(SH1106_MEMORYMODE);                    // 0x20
-    sh1106_command(0x00);                                  // 0x0 act like ks0108
-    sh1106_command(SH1106_SEGREMAP | 0x1);
-    sh1106_command(SH1106_COMSCANDEC);
-    sh1106_command(SH1106_SETCOMPINS);                    // 0xDA
-    sh1106_command(0x02);
-    sh1106_command(SH1106_SETCONTRAST);                   // 0x81
-    sh1106_command(0x8F);
-    sh1106_command(SH1106_SETPRECHARGE);                  // 0xd9
+      { SH1106_command(0x14); }
+    SH1106_command(SH1106_MEMORYMODE);                    // 0x20
+    SH1106_command(0x00);                                  // 0x0 act like ks0108
+    SH1106_command(SH1106_SEGREMAP | 0x1);
+    SH1106_command(SH1106_COMSCANDEC);
+    SH1106_command(SH1106_SETCOMPINS);                    // 0xDA
+    SH1106_command(0x02);
+    SH1106_command(SH1106_SETCONTRAST);                   // 0x81
+    SH1106_command(0x8F);
+    SH1106_command(SH1106_SETPRECHARGE);                  // 0xd9
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x22); }
+      { SH1106_command(0x22); }
     else 
-      { sh1106_command(0xF1); }
-    sh1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
-    sh1106_command(0x40);
-    sh1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
-    sh1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
+      { SH1106_command(0xF1); }
+    SH1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
+    SH1106_command(0x40);
+    SH1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
+    SH1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
   #endif
 
   #if defined SH1106_128_64
     // Init sequence for 128x64 OLED module
-    sh1106_command(SH1106_DISPLAYOFF);                    // 0xAE
-    sh1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
-    sh1106_command(0x80);                                  // the suggested ratio 0x80
-    sh1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
-    sh1106_command(0x3F);
-    sh1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
-    sh1106_command(0x0);                                   // no offset
-    sh1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0
-    sh1106_command(SH1106_CHARGEPUMP);                    // 0x8D
+    SH1106_command(SH1106_DISPLAYOFF);                    // 0xAE
+    SH1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
+    SH1106_command(0x80);                                  // the suggested ratio 0x80
+    SH1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
+    SH1106_command(0x3F);
+    SH1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
+    SH1106_command(0x00);                                   // no offset
+	
+    SH1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0 0x40
+    SH1106_command(SH1106_CHARGEPUMP);                    // 0x8D
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x10); }
+      { SH1106_command(0x10); }
     else 
-      { sh1106_command(0x14); }
-    sh1106_command(SH1106_MEMORYMODE);                    // 0x20
-    sh1106_command(0x00);                                  // 0x0 act like ks0108
-    sh1106_command(SH1106_SEGREMAP | 0x1);
-    sh1106_command(SH1106_COMSCANDEC);
-    sh1106_command(SH1106_SETCOMPINS);                    // 0xDA
-    sh1106_command(0x12);
-    sh1106_command(SH1106_SETCONTRAST);                   // 0x81
+      { SH1106_command(0x14); }
+    SH1106_command(SH1106_MEMORYMODE);                    // 0x20
+    SH1106_command(0x00);                                  // 0x0 act like ks0108
+    SH1106_command(SH1106_SEGREMAP | 0x1);
+    SH1106_command(SH1106_COMSCANDEC);
+    SH1106_command(SH1106_SETCOMPINS);                    // 0xDA
+    SH1106_command(0x12);
+    SH1106_command(SH1106_SETCONTRAST);                   // 0x81
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x9F); }
+      { SH1106_command(0x9F); }
     else 
-      { sh1106_command(0xCF); }
-    sh1106_command(SH1106_SETPRECHARGE);                  // 0xd9
+      { SH1106_command(0xCF); }
+    SH1106_command(SH1106_SETPRECHARGE);                  // 0xd9
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x22); }
+      { SH1106_command(0x22); }
     else 
-      { sh1106_command(0xF1); }
-    sh1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
-    sh1106_command(0x40);
-    sh1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
-    sh1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
+      { SH1106_command(0xF1); }
+    SH1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
+    SH1106_command(0x40);
+    SH1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
+    SH1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
   #endif
-
+  
   #if defined SH1106_96_16
     // Init sequence for 96x16 OLED module
-    sh1106_command(SH1106_DISPLAYOFF);                    // 0xAE
-    sh1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
-    sh1106_command(0x80);                                  // the suggested ratio 0x80
-    sh1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
-    sh1106_command(0x0F);
-    sh1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
-    sh1106_command(0x00);                                   // no offset
-    sh1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0
-    sh1106_command(SH1106_CHARGEPUMP);                    // 0x8D
+    SH1106_command(SH1106_DISPLAYOFF);                    // 0xAE
+    SH1106_command(SH1106_SETDISPLAYCLOCKDIV);            // 0xD5
+    SH1106_command(0x80);                                  // the suggested ratio 0x80
+    SH1106_command(SH1106_SETMULTIPLEX);                  // 0xA8
+    SH1106_command(0x0F);
+    SH1106_command(SH1106_SETDISPLAYOFFSET);              // 0xD3
+    SH1106_command(0x00);                                   // no offset
+    SH1106_command(SH1106_SETSTARTLINE | 0x0);            // line #0
+    SH1106_command(SH1106_CHARGEPUMP);                    // 0x8D
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x10); }
+      { SH1106_command(0x10); }
     else 
-      { sh1106_command(0x14); }
-    sh1106_command(SH1106_MEMORYMODE);                    // 0x20
-    sh1106_command(0x00);                                  // 0x0 act like ks0108
-    sh1106_command(SH1106_SEGREMAP | 0x1);
-    sh1106_command(SH1106_COMSCANDEC);
-    sh1106_command(SH1106_SETCOMPINS);                    // 0xDA
-    sh1106_command(0x2);	//ada x12
-    sh1106_command(SH1106_SETCONTRAST);                   // 0x81
+      { SH1106_command(0x14); }
+    SH1106_command(SH1106_MEMORYMODE);                    // 0x20
+    SH1106_command(0x00);                                  // 0x0 act like ks0108
+    SH1106_command(SH1106_SEGREMAP | 0x1);
+    SH1106_command(SH1106_COMSCANDEC);
+    SH1106_command(SH1106_SETCOMPINS);                    // 0xDA
+    SH1106_command(0x2);	//ada x12
+    SH1106_command(SH1106_SETCONTRAST);                   // 0x81
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x10); }
+      { SH1106_command(0x10); }
     else 
-      { sh1106_command(0xAF); }
-    sh1106_command(SH1106_SETPRECHARGE);                  // 0xd9
+      { SH1106_command(0xAF); }
+    SH1106_command(SH1106_SETPRECHARGE);                  // 0xd9
     if (vccstate == SH1106_EXTERNALVCC) 
-      { sh1106_command(0x22); }
+      { SH1106_command(0x22); }
     else 
-      { sh1106_command(0xF1); }
-    sh1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
-    sh1106_command(0x40);
-    sh1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
-    sh1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
+      { SH1106_command(0xF1); }
+    SH1106_command(SH1106_SETVCOMDETECT);                 // 0xDB
+    SH1106_command(0x40);
+    SH1106_command(SH1106_DISPLAYALLON_RESUME);           // 0xA4
+    SH1106_command(SH1106_NORMALDISPLAY);                 // 0xA6
   #endif
 
-  sh1106_command(SH1106_DISPLAYON);//--turn on oled panel
+  SH1106_command(SH1106_DISPLAYON);//--turn on oled panel
 }
 
 
 void Adafruit_SH1106::invertDisplay(uint8_t i) {
   if (i) {
-    sh1106_command(SH1106_INVERTDISPLAY);
+    SH1106_command(SH1106_INVERTDISPLAY);
   } else {
-    sh1106_command(SH1106_NORMALDISPLAY);
+    SH1106_command(SH1106_NORMALDISPLAY);
   }
 }
 
-void Adafruit_SH1106::sh1106_command(uint8_t c) { 
+void Adafruit_SH1106::SH1106_command(uint8_t c) { 
   if (sid != -1)
   {
     // SPI
@@ -376,21 +365,22 @@ void Adafruit_SH1106::sh1106_command(uint8_t c) {
     WIRE_WRITE(c);
     Wire.endTransmission();
   }
+ 
 }
 
 // startscrollright
 // Activate a right handed scroll for rows start through stop
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
 // display.scrollright(0x00, 0x0F) 
-void Adafruit_SH1106::startscrollright(uint8_t start, uint8_t stop){
-  sh1106_command(SH1106_RIGHT_HORIZONTAL_SCROLL);
-  sh1106_command(0X00);
-  sh1106_command(start);
-  sh1106_command(0X00);
-  sh1106_command(stop);
-  sh1106_command(0X00);
-  sh1106_command(0XFF);
-  sh1106_command(SH1106_ACTIVATE_SCROLL);
+/*void Adafruit_SH1106::startscrollright(uint8_t start, uint8_t stop){
+  SH1106_command(SH1106_RIGHT_HORIZONTAL_SCROLL);
+  SH1106_command(0X00);
+  SH1106_command(start);
+  SH1106_command(0X00);
+  SH1106_command(stop);
+  SH1106_command(0X00);
+  SH1106_command(0XFF);
+  SH1106_command(SH1106_ACTIVATE_SCROLL);
 }
 
 // startscrollleft
@@ -398,14 +388,14 @@ void Adafruit_SH1106::startscrollright(uint8_t start, uint8_t stop){
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
 // display.scrollright(0x00, 0x0F) 
 void Adafruit_SH1106::startscrollleft(uint8_t start, uint8_t stop){
-  sh1106_command(SH1106_LEFT_HORIZONTAL_SCROLL);
-  sh1106_command(0X00);
-  sh1106_command(start);
-  sh1106_command(0X00);
-  sh1106_command(stop);
-  sh1106_command(0X00);
-  sh1106_command(0XFF);
-  sh1106_command(SH1106_ACTIVATE_SCROLL);
+  SH1106_command(SH1106_LEFT_HORIZONTAL_SCROLL);
+  SH1106_command(0X00);
+  SH1106_command(start);
+  SH1106_command(0X00);
+  SH1106_command(stop);
+  SH1106_command(0X00);
+  SH1106_command(0XFF);
+  SH1106_command(SH1106_ACTIVATE_SCROLL);
 }
 
 // startscrolldiagright
@@ -413,16 +403,16 @@ void Adafruit_SH1106::startscrollleft(uint8_t start, uint8_t stop){
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
 // display.scrollright(0x00, 0x0F) 
 void Adafruit_SH1106::startscrolldiagright(uint8_t start, uint8_t stop){
-  sh1106_command(SH1106_SET_VERTICAL_SCROLL_AREA);  
-  sh1106_command(0X00);
-  sh1106_command(SH1106_LCDHEIGHT);
-  sh1106_command(SH1106_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL);
-  sh1106_command(0X00);
-  sh1106_command(start);
-  sh1106_command(0X00);
-  sh1106_command(stop);
-  sh1106_command(0X01);
-  sh1106_command(SH1106_ACTIVATE_SCROLL);
+  SH1106_command(SH1106_SET_VERTICAL_SCROLL_AREA);  
+  SH1106_command(0X00);
+  SH1106_command(SH1106_LCDHEIGHT);
+  SH1106_command(SH1106_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL);
+  SH1106_command(0X00);
+  SH1106_command(start);
+  SH1106_command(0X00);
+  SH1106_command(stop);
+  SH1106_command(0X01);
+  SH1106_command(SH1106_ACTIVATE_SCROLL);
 }
 
 // startscrolldiagleft
@@ -430,20 +420,20 @@ void Adafruit_SH1106::startscrolldiagright(uint8_t start, uint8_t stop){
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
 // display.scrollright(0x00, 0x0F) 
 void Adafruit_SH1106::startscrolldiagleft(uint8_t start, uint8_t stop){
-  sh1106_command(SH1106_SET_VERTICAL_SCROLL_AREA);  
-  sh1106_command(0X00);
-  sh1106_command(SH1106_LCDHEIGHT);
-  sh1106_command(SH1106_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL);
-  sh1106_command(0X00);
-  sh1106_command(start);
-  sh1106_command(0X00);
-  sh1106_command(stop);
-  sh1106_command(0X01);
-  sh1106_command(SH1106_ACTIVATE_SCROLL);
+  SH1106_command(SH1106_SET_VERTICAL_SCROLL_AREA);  
+  SH1106_command(0X00);
+  SH1106_command(SH1106_LCDHEIGHT);
+  SH1106_command(SH1106_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL);
+  SH1106_command(0X00);
+  SH1106_command(start);
+  SH1106_command(0X00);
+  SH1106_command(stop);
+  SH1106_command(0X01);
+  SH1106_command(SH1106_ACTIVATE_SCROLL);
 }
 
 void Adafruit_SH1106::stopscroll(void){
-  sh1106_command(SH1106_DEACTIVATE_SCROLL);
+  SH1106_command(SH1106_DEACTIVATE_SCROLL);
 }
 
 // Dim the display
@@ -463,11 +453,12 @@ void Adafruit_SH1106::dim(boolean dim) {
   }
   // the range of contrast to too small to be really useful
   // it is useful to dim the display
-  sh1106_command(SH1106_SETCONTRAST);
-  sh1106_command(contrast);
-}
+  SH1106_command(SH1106_SETCONTRAST);
+  SH1106_command(contrast);
+}*/
 
-void Adafruit_SH1106::sh1106_data(uint8_t c) {
+void Adafruit_SH1106::SH1106_data(uint8_t c) {
+ 
   if (sid != -1)
   {
     // SPI
@@ -490,75 +481,153 @@ void Adafruit_SH1106::sh1106_data(uint8_t c) {
     WIRE_WRITE(c);
     Wire.endTransmission();
   }
+  
 }
+/*#define SH1106_SETLOWCOLUMN 0x00
+#define SH1106_SETHIGHCOLUMN 0x10
+
+#define SH1106_SETSTARTLINE 0x40*/
 
 void Adafruit_SH1106::display(void) {
-  sh1106_command(SH1106_SETLOWCOLUMN | 0x0);  // low col = 0
-  sh1106_command(SH1106_SETHIGHCOLUMN | 0x0);  // hi col = 0
-  sh1106_command(SH1106_SETSTARTLINE | 0x0); // line #0
+	
+    SH1106_command(SH1106_SETLOWCOLUMN | 0x0);  // low col = 0
+    SH1106_command(SH1106_SETHIGHCOLUMN | 0x0);  // hi col = 0
+    SH1106_command(SH1106_SETSTARTLINE | 0x0); // line #0
+	
+  
 
-  if (sid != -1)
-  {
 
-  	for (int8_t i = (SH1106_LCDHEIGHT/8)-1; i >= 0; i--)
-  	{
-      sh1106_command(0xB0 + i);		// Set row
-      sh1106_command(SH1106_SETLOWCOLUMN);		// Set lower column address
-      sh1106_command(SH1106_SETHIGHCOLUMN); // Set higher column address
-      
-      // SPI
-      *csport |= cspinmask;
-      *dcport |= dcpinmask;
-      *csport &= ~cspinmask;
-    
-      for (uint16_t j = SH1106_LCDWIDTH; j > 0; j--)
-      {
-  		  fastSPIwrite(buffer[i*SH1106_LCDWIDTH+SH1106_LCDWIDTH-j]);
-      }
-      
-      *csport |= cspinmask;
-  	}
-  }
-  else
-  {
-    // save I2C bitrate
-#ifndef ESP32
-#ifndef __SAM3X8E__
-    uint8_t twbrbackup = TWBR;
-    TWBR = 12; // upgrade to 400KHz!
-#endif
-#endif
     //Serial.println(TWBR, DEC);
     //Serial.println(TWSR & 0x3, DEC);
 
     // I2C
-  	for (int8_t i = (SH1106_LCDHEIGHT/8)-1; i >= 0; i--)
-  	{
-      sh1106_command(0xB0 + i);		// Set row
-      sh1106_command(SH1106_SETLOWCOLUMN);		// Set lower column address
-      sh1106_command(SH1106_SETHIGHCOLUMN); // Set higher column address
-      
-      for (uint16_t j = SH1106_LCDWIDTH; j > 0; j--)
-      {
-        // send a bunch of data in one xmission
-        Wire.beginTransmission(_i2caddr);
-        WIRE_WRITE(0x40);
-        for (uint8_t x=0; x<16; x++) {
-          WIRE_WRITE(buffer[i*SH1106_LCDWIDTH+SH1106_LCDWIDTH-j]);
-          j--;
+    //height >>= 3;
+    //width >>= 3;
+	byte height=64;
+	byte width=132; 
+	byte m_row = 0;
+	byte m_col = 2;
+	
+	
+	height >>= 3;
+	width >>= 3;
+	//Serial.println(width);
+	
+	int p = 0;
+	
+	byte i, j, k =0;
+	
+	if(sid != -1)
+	{
+			
+		for ( i = 0; i < height; i++) {
+		
+		// send a bunch of data in one xmission
+        SH1106_command(0xB0 + i + m_row);//set page address
+        SH1106_command(m_col & 0xf);//set lower column address
+        SH1106_command(0x10 | (m_col >> 4));//set higher column address
+		
+        for( j = 0; j < 8; j++){        
+			// SPI
+			*csport |= cspinmask;
+			*dcport |= dcpinmask;
+			*csport &= ~cspinmask;
+			
+            for ( k = 0; k < width; k++, p++) {
+					fastSPIwrite(buffer[p]);
+            }
+            *csport |= cspinmask;
         }
-        j++;
-        Wire.endTransmission();
-      }
+		}
+		
+	}
+	else{
+		
+	 // save I2C bitrate
+	for ( i = 0; i < height; i++) {
+		
+		// send a bunch of data in one xmission
+        SH1106_command(0xB0 + i + m_row);//set page address
+        SH1106_command(m_col & 0xf);//set lower column address
+        SH1106_command(0x10 | (m_col >> 4));//set higher column address
+		
+        for( j = 0; j < 8; j++){        
+			Wire.beginTransmission(_i2caddr);
+            Wire.write(0x40);
+            for ( k = 0; k < width; k++, p++) {
+		Wire.write(buffer[p]);
+            }
+            Wire.endTransmission();
+        	}
+	}
+	}
+}
+
+/*void Adafruit_SH1106::display(void) {
+  SH1106_command(SH1106_COLUMNADDR);
+  SH1106_command(0);   // Column start address (0 = reset)
+  SH1106_command(SH1106_LCDWIDTH-1); // Column end address (127 = reset)
+
+  SH1106_command(SH1106_PAGEADDR);
+  SH1106_command(0); // Page start address (0 = reset)
+  #if SH1106_LCDHEIGHT == 64
+    SH1106_command(7); // Page end address
+  #endif
+  #if SH1106_LCDHEIGHT == 32
+    SH1106_command(3); // Page end address
+  #endif
+  #if SH1106_LCDHEIGHT == 16
+    SH1106_command(1); // Page end address
+  #endif
+
+  if (sid != -1)
+  {
+    // SPI
+    *csport |= cspinmask;
+    *dcport |= dcpinmask;
+    *csport &= ~cspinmask;
+
+    for (uint16_t i=0; i<(SH1106_LCDWIDTH*SH1106_LCDHEIGHT/8); i++) {
+      fastSPIwrite(buffer[i]);
+      //SH1106_data(buffer[i]);
     }
-#ifndef ESP32
+    *csport |= cspinmask;
+  }
+  else
+  {
+    // save I2C bitrate
+#ifndef __SAM3X8E__
+    uint8_t twbrbackup = TWBR;
+    TWBR = 12; // upgrade to 400KHz!
+#endif
+
+    //Serial.println(TWBR, DEC);
+    //Serial.println(TWSR & 0x3, DEC);
+
+    // I2C
+	int k = 0;
+    for (uint16_t i=0; i<(SH1106_LCDWIDTH*SH1106_LCDHEIGHT/8); i++) {
+      // send a bunch of data in one xmission
+	  if(k < 2)
+	  {
+		k++;
+		continue;
+	  }
+      Wire.beginTransmission(_i2caddr);
+      WIRE_WRITE(0x40);
+      for (uint8_t x=0; x<16; x++) {
+  WIRE_WRITE(buffer[i]);
+  i++;
+      }
+      i--;
+      Wire.endTransmission();
+    }
 #ifndef __SAM3X8E__
     TWBR = twbrbackup;
 #endif
-#endif
   }
 }
-
+*/
 // clear everything
 void Adafruit_SH1106::clearDisplay(void) {
   memset(buffer, 0, (SH1106_LCDWIDTH*SH1106_LCDHEIGHT/8));
@@ -589,7 +658,7 @@ void Adafruit_SH1106::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t co
     case 1:
       // 90 degree rotation, swap x & y for rotation, then invert x
       bSwap = true;
-      swap(x, y);
+      sh1106_swap(x, y);
       x = WIDTH - x - 1;
       break;
     case 2:
@@ -601,7 +670,7 @@ void Adafruit_SH1106::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t co
     case 3:
       // 270 degree rotation, swap x & y for rotation, then invert y  and adjust y for w (not to become h)
       bSwap = true;
-      swap(x, y);
+      sh1106_swap(x, y);
       y = HEIGHT - y - 1;
       y -= (w-1);
       break;
@@ -657,7 +726,7 @@ void Adafruit_SH1106::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t co
     case 1:
       // 90 degree rotation, swap x & y for rotation, then invert x and adjust x for h (now to become w)
       bSwap = true;
-      swap(x, y);
+      sh1106_swap(x, y);
       x = WIDTH - x - 1;
       x -= (h-1);
       break;
@@ -670,7 +739,7 @@ void Adafruit_SH1106::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t co
     case 3:
       // 270 degree rotation, swap x & y for rotation, then invert y 
       bSwap = true;
-      swap(x, y);
+      sh1106_swap(x, y);
       y = HEIGHT - y - 1;
       break;
   }
