@@ -19,6 +19,7 @@
 #include "webservice.h"
 #include <WiFiUdp.h>
 #include <WiFi.h>
+// #include <WiFiMulti.h>
 #include <WiFiClient.h>
 #include "cppQueue.h"
 #include "BluetoothSerial.h"
@@ -1621,221 +1622,224 @@ void taskAPRS(void *pvParameters) {
 }
 
 long wifiTTL = 0;
+// WiFiMulti wifiMulti;
 
-bool wifiConnected = false;
+// WiFi connect timeout per AP. Increase when connecting takes longer.
+const uint32_t connectTimeoutMs = 10000;
+
+//bool wifiConnected = false;
+
+// void Wifi_connected(WiFiEvent_t event, WiFiEventInfo_t info){
+//   log_d("Successfully connected to Access Point");
+// }
+
+// void Get_IPAddress(WiFiEvent_t event, WiFiEventInfo_t info){
+//   log_d("WIFI is connected!");
+//   log_d("IP address: %s",WiFi.localIP().toString().c_str());
+// }
+
+// void Wifi_disconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+//   log_d("Disconnected from WIFI access point\n");
+//   log_d("WiFi lost connection. Reason: ");
+//   log_d("%s\n",info.wifi_sta_disconnected.reason);
+//   log_d("Reconnecting...");
+// }
 
 void taskNetwork(void *pvParameters) {
     int c = 0;
     log_i("Task <Network> started");
 
-    if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_AP_FIX) {  // AP=false
-        // WiFi.mode(config.wifi_mode);
-        if (config.wifi_mode == WIFI_AP_STA_FIX) {
-            WiFi.mode(WIFI_AP_STA);
-        } else if (config.wifi_mode == WIFI_AP_FIX) {
-            WiFi.mode(WIFI_AP);
-        }
-        // Configure Wi-Fi as an access point
-        WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass);  // Start HOTspot removing password
-        // will disable security
-        WiFi.softAPConfig(local_IP, gateway, subnet);
-        log_i("Access point running. IP address: %s", WiFi.softAPIP().toString().c_str());
-    } else if (config.wifi_mode == WIFI_STA_FIX) {
-        WiFi.mode(WIFI_STA);
-        WiFi.disconnect();
-        WiFi.softAPdisconnect(true);
-        delay(100);
-        log_i("WiFi Station Only mode");
-    } else {
-        WiFi.mode(WIFI_OFF);
-        WiFi.disconnect(true);
-        WiFi.softAPdisconnect(true);
-        delay(100);
-        // Serial.println(F("WiFi OFF. BT only mode"));
-        log_i("WiFi OFF All mode");
-        // SerialBT.begin("ESP32TNC");
+    // WiFi.onEvent(Wifi_connected,SYSTEM_EVENT_STA_CONNECTED);
+    // WiFi.onEvent(Get_IPAddress, SYSTEM_EVENT_STA_GOT_IP);
+    // WiFi.onEvent(Wifi_disconnected, SYSTEM_EVENT_STA_DISCONNECTED);
+
+    if (config.wifi_mode == WIFI_STA_FIX)
+    { /**< WiFi station mode */
+        WiFi.mode(WIFI_MODE_STA);
+    }
+    else if (config.wifi_mode == WIFI_AP_FIX)
+    { /**< WiFi soft-AP mode */
+        WiFi.mode(WIFI_MODE_AP);
+    }
+    if (config.wifi_mode == WIFI_AP_STA_FIX)
+    { /**< WiFi station + soft-AP mode */
+        WiFi.mode(WIFI_MODE_APSTA);
+    }
+    else
+    {
+        WiFi.mode(WIFI_MODE_NULL);
     }
 
-    if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
+    if (config.wifi_mode & WIFI_STA_FIX)
+    {
+        // for (int i = 0; i < 5; i++)
+        // {
+        //     if (config.wifi_sta[i].enable)
+        //     {
+        //         wifiMulti.addAP(config.wifi_sta[i].wifi_ssid, config.wifi_sta[i].wifi_pass);
+        //     }
+        // }
+        WiFi.setTxPower((wifi_power_t)config.wifi_power);
+        WiFi.setHostname("APRS_ESP");
+    }
+
+    if (config.wifi_mode & WIFI_AP_FIX)
+    {
+        WiFi.softAP(config.wifi_ap_ssid, config.wifi_ap_pass); // Start HOTspot removing password will disable security
+        WiFi.softAPConfig(local_IP, gateway, subnet);
+        log_i("Access point running. IP address: %s", WiFi.softAPIP().toString().c_str());
         webService();
+    }
+
+    // if (wifiMulti.run() == WL_CONNECTED)
+    // {
+    //     log_d("Wi-Fi CONNECTED!");
+    //     log_d("IP address: %s", WiFi.localIP().toString().c_str());
+    //     webService();
+    //     NTP_Timeout = millis() + 2000;
+    // }
+
+    if (config.wifi_mode != WIFI_OFF_FIX) {
+        if (WiFi.begin() == WL_CONNECTED)
+        {
+            log_d("Wi-Fi CONNECTED!");
+            log_d("IP address: %s", WiFi.localIP().toString().c_str());
+            // webService();
+            // NTP_Timeout = millis() + 2000;
+        }
+        webService();
+        NTP_Timeout = millis() + 2000;
     }
 
     configTime(3600 * config.timeZone, 0, config.ntpServer);
 
     for (;;) {
-        // wdtNetworkTimer = millis();
-        vTaskDelay(5 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
 
         if (config.wifi_mode != WIFI_OFF_FIX) {
             serviceHandle();
         }
 
-        if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
-            if (WiFi.status() != WL_CONNECTED) {
-                unsigned long int tw = millis();
-                if (tw > wifiTTL) {
-                    wifiTTL = tw + 60000;
-                    log_i("WiFi connecting...");
-                    // udp.endPacket();
-                    // WiFi.disconnect();
-                    WiFi.setTxPower((wifi_power_t)config.wifi_power);
-                    WiFi.setHostname("APRS_ESP");
-                    WiFi.begin(config.wifi_ssid, config.wifi_pass);
-                    // Wait up to 1 minute for connection...
-                    for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
-                        log_d("Waiting for WiFi connection...");
-                        serviceHandle();
-                        vTaskDelay(1000 / portTICK_PERIOD_MS);
-                        // for (t = millis(); (millis() - t) < 1000; refresh());
-                    }
-                    if (c >= 30) {  // If it didn't connect within 1 min
-                        log_w("Failed. Will retry...");
-                        WiFi.disconnect();
-                        // WiFi.mode(WIFI_OFF);
-                        delay(3000);
-                        // WiFi.mode(WIFI_STA);
-                        // WiFi.reconnect();                        
-                        continue;
-                    }
-
-                    if (!wifiConnected) {
-                        if (WiFi.status() == WL_CONNECTED) {
-                            wifiConnected = true;
-                        }
-                    }
-
-                    log_i("WiFi connected. IP address: %s", WiFi.localIP().toString().c_str());
-
+        if (WiFi.status() == WL_CONNECTED) 
+        {
+            if (millis() > NTP_Timeout) {                    
+                NTP_Timeout = millis() + 86400000;
+                if (config.synctime) {
+                    // Serial.println("Config NTP");
+                    // setSyncProvider(getNtpTime);
+                    log_i("Contacting NTP server");
+                    configTime(3600 * config.timeZone, 0, config.ntpServer);
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
-                    NTP_Timeout = millis() + 5000;
-                }
-            } else {
-                if (millis() > NTP_Timeout) {                    
-                    NTP_Timeout = millis() + 86400000;
-                    if (config.synctime) {
-                        // Serial.println("Config NTP");
-                        // setSyncProvider(getNtpTime);
-                        log_i("Setting up NTP");
-                        configTime(3600 * config.timeZone, 0, config.ntpServer);
-                        vTaskDelay(3000 / portTICK_PERIOD_MS);
-                        time_t systemTime;
-                        time(&systemTime);
-                        setTime(systemTime);
-                        if (systemUptime == 0) {
-                            systemUptime = now();
-                        }
-
-                        timeSyncFlag = T_SYNC_NTP;
+                    time_t systemTime;
+                    time(&systemTime);
+                    setTime(systemTime);
+                    if (systemUptime == 0) {
+                        systemUptime = time(NULL);
                     }
+
+                    timeSyncFlag = T_SYNC_NTP;
                 }
+            }
 
-                if (config.aprs) {
-                    if (aprsClient.connected() == false) {
-                        APRSConnect();
-                    } else {
-                        if (aprsClient.available()) {
-                            String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
+            if (config.aprs) {
+                if (aprsClient.connected() == false) {
+                    APRSConnect();
+                } else {
+                    if (aprsClient.available()) {
+                        String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
 #ifdef DEBUG_IS
-                            log_i("APRS-IS: %s", line.c_str());
+                        log_i("APRS-IS: %s", line.c_str());
 #endif
-                            status.isCount++;
+                        status.isCount++;
 
-                            int start_val = line.indexOf(">", 0);  // find the first position of >
-                            if (start_val > 3) {
-                                // raw = (char *)malloc(line.length() + 1);
-                                String src_call = line.substring(0, start_val);
-                                int msg_call_idx = line.indexOf("::");  // text only
-                                String msg_call = "";
-                                if (msg_call_idx > 0) {
-                                    msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
-                                }
+                        int start_val = line.indexOf(">", 0);  // find the first position of >
+                        if (start_val > 3) {
+                            // raw = (char *)malloc(line.length() + 1);
+                            String src_call = line.substring(0, start_val);
+                            int msg_call_idx = line.indexOf("::");  // text only
+                            String msg_call = "";
+                            if (msg_call_idx > 0) {
+                                msg_call = line.substring(msg_call_idx + 2, msg_call_idx + 9);
+                            }
 
-                                log_i("SRC_CALL: %s", src_call.c_str());
-                                if (msg_call_idx > 0) {
-                                    log_i("MSG_CALL: %s", msg_call.c_str());
-                                }
-                                
-                                char raw[500];
-                                memset(&raw[0], 0, sizeof(raw));
-                                start_val = line.indexOf(":", 10); // Search of info in ax25
-                                if (start_val > 5)
-                                {
-                                    String info = line.substring(start_val + 1);
-                                    // info.toCharArray(&raw[0], info.length(), 0);
-                                    memcpy(raw, info.c_str(), info.length());
-                                    uint16_t type = pkgType(&raw[0]);
-                                    log_d("Type: %d", type);
-                                    pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
+                            log_i("SRC_CALL: %s", src_call.c_str());
+                            if (msg_call_idx > 0) {
+                                log_i("MSG_CALL: %s", msg_call.c_str());
+                            }
+                            
+                            char raw[500];
+                            memset(&raw[0], 0, sizeof(raw));
+                            start_val = line.indexOf(":", 10); // Search of info in ax25
+                            if (start_val > 5)
+                            {
+                                String info = line.substring(start_val + 1);
+                                // info.toCharArray(&raw[0], info.length(), 0);
+                                memcpy(raw, info.c_str(), info.length());
+                                uint16_t type = pkgType(&raw[0]);
+                                log_d("Type: %d", type);
+                                pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
 
-                                    String msgType = "Type: " + pkgGetType(type);
-                                    OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
-                                }
+                                String msgType = "Type: " + pkgGetType(type);
+                                OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
+                            }
 
-                                status.allCount++;
-                                // igateTLM.RX++;
+                            status.allCount++;
+                            // igateTLM.RX++;
 
-                                // Is it not Telemetry?
-                                if (line.indexOf(":T#") < 0
-                                    && line.indexOf("PARM.") < 0
-                                    && line.indexOf("UNIT.") < 0
-                                    && line.indexOf("EQNS.") < 0
-                                    && line.indexOf("BITS.") < 0)
-                                {
-                                    // Is INET2RF configured and MSG_CALL present
-                                    if (callsignValid && config.tnc && config.inet2rf && (msg_call != "")) {
-                                        // Is adresse is in owner callsigns group?
-                                        if (msg_call.startsWith(config.aprs_mycall)) {
-                                            log_i("MSG to Owner group");
-                                            pkgTxPush(line.c_str(), line.length(), 0);
-                                            status.inet2rf++;
-                                            igateTLM.INET2RF++;
-                                            log_i("INET->RF %s", line.c_str());
-                                        } else {
-                                            bool msgForwarded = false;
-                                            // Is it a message for last heard stations?
-                                            for (int i = 0; i < PKGLISTSIZE; i++) {
-                                                if (pkgList[i].time > 0) {
-                                                    if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
-                                                        if (pkgList[i].channel == 0) {  // was heard on RF
-                                                            log_i("MSG to last heard");
-                                                            pkgTxPush(line.c_str(), line.length(), 0);
-                                                            status.inet2rf++;
-                                                            igateTLM.INET2RF++;
-                                                            log_i("INET->RF %s", line.c_str());
-                                                            msgForwarded = true;
-                                                            break;
-                                                        }
+                            // Is it not Telemetry?
+                            if (line.indexOf(":T#") < 0
+                                && line.indexOf("PARM.") < 0
+                                && line.indexOf("UNIT.") < 0
+                                && line.indexOf("EQNS.") < 0
+                                && line.indexOf("BITS.") < 0)
+                            {
+                                // Is INET2RF configured and MSG_CALL present
+                                if (callsignValid && config.tnc && config.inet2rf && (msg_call != "")) {
+                                    // Is adresse is in owner callsigns group?
+                                    if (msg_call.startsWith(config.aprs_mycall)) {
+                                        log_i("MSG to Owner group");
+                                        pkgTxPush(line.c_str(), line.length(), 0);
+                                        status.inet2rf++;
+                                        igateTLM.INET2RF++;
+                                        log_i("INET->RF %s", line.c_str());
+                                    } else {
+                                        bool msgForwarded = false;
+                                        // Is it a message for last heard stations?
+                                        for (int i = 0; i < PKGLISTSIZE; i++) {
+                                            if (pkgList[i].time > 0) {
+                                                if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
+                                                    if (pkgList[i].channel == 0) {  // was heard on RF
+                                                        log_i("MSG to last heard");
+                                                        pkgTxPush(line.c_str(), line.length(), 0);
+                                                        status.inet2rf++;
+                                                        igateTLM.INET2RF++;
+                                                        log_i("INET->RF %s", line.c_str());
+                                                        msgForwarded = true;
+                                                        break;
                                                     }
                                                 }
                                             }
-
-                                            if (!msgForwarded) {
-                                                // Not found in last heard list
-                                                status.dropCount++;
-                                                log_i("MSG not to last heard nor owner group, dropped");
-                                            }
                                         }
-                                    } else {
-                                        // No INET2RF configured or MSG_CALL not present
-                                        status.dropCount++;
-                                        log_i("INET Packet dropped from %s", src_call.c_str());
+
+                                        if (!msgForwarded) {
+                                            // Not found in last heard list
+                                            status.dropCount++;
+                                            log_i("MSG not to last heard nor owner group, dropped");
+                                        }
                                     }
                                 } else {
-                                    // Telemetry found
-                                    igateTLM.DROP++;
+                                    // No INET2RF configured or MSG_CALL not present
                                     status.dropCount++;
-                                    log_i("INET Packet TELEMETRY dropped from %s", src_call.c_str());
+                                    log_i("INET Packet dropped from %s", src_call.c_str());
                                 }
+                            } else {
+                                // Telemetry found
+                                igateTLM.DROP++;
+                                status.dropCount++;
+                                log_i("INET Packet TELEMETRY dropped from %s", src_call.c_str());
                             }
                         }
                     }
-                }
-
-                if (WiFi.status() != WL_CONNECTED && wifiConnected) {
-                    log_w("WiFi disconnected");
-                    wifiConnected = false;
-                    WiFi.disconnect();
-                    wifiTTL = 0;
                 }
             }
         }
