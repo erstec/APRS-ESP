@@ -1671,9 +1671,6 @@ void taskNetwork(void *pvParameters) {
             if (WiFi.status() != WL_CONNECTED) {
                 unsigned long int tw = millis();
                 if (tw > wifiTTL) {
-#ifndef I2S_INTERNAL
-                    AFSK_TimerEnable(false);
-#endif
                     wifiTTL = tw + 60000;
                     log_i("WiFi connecting...");
                     // udp.endPacket();
@@ -1683,7 +1680,7 @@ void taskNetwork(void *pvParameters) {
                     WiFi.begin(config.wifi_ssid, config.wifi_pass);
                     // Wait up to 1 minute for connection...
                     for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
-                        // Serial.write('.');
+                        log_d("Waiting for WiFi connection...");
                         vTaskDelay(1000 / portTICK_PERIOD_MS);
                         // for (t = millis(); (millis() - t) < 1000; refresh());
                     }
@@ -1693,7 +1690,7 @@ void taskNetwork(void *pvParameters) {
                         // WiFi.mode(WIFI_OFF);
                         delay(3000);
                         // WiFi.mode(WIFI_STA);
-                        WiFi.reconnect();
+                        // WiFi.reconnect();
                         continue;
                     }
 
@@ -1707,9 +1704,6 @@ void taskNetwork(void *pvParameters) {
 
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                     NTP_Timeout = millis() + 5000;
-#ifndef I2S_INTERNAL
-                    AFSK_TimerEnable(true);
-#endif
                 }
             } else {
                 if (millis() > NTP_Timeout) {                    

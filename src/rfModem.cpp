@@ -137,6 +137,4 @@ void RF_Check() {
         delay(500);
         RF_Init(true);
     }
-    // SerialGPS.print("$PMTK161,0*28\r\n");
-    // AFSK_TimerEnable(false);
 }
