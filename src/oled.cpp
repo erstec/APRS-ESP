@@ -27,7 +27,7 @@ Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RST_PIN);
 #include <Adafruit_SH1106.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_I2CDevice.h>
-Adafruit_SH1106 display(-1);
+Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 #endif
 
 extern TinyGPSPlus gps;
@@ -53,7 +53,7 @@ void OledStartup() {
 #elif defined(USE_SCREEN_SH1106)
     log_i("SH1106 init");
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
-    // display.stopscroll();
+    display.stopscroll();
 #endif
 
     display.clearDisplay();
