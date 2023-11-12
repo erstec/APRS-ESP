@@ -1617,7 +1617,6 @@ void taskAPRS(void *pvParameters) {
 
 long wifiTTL = 0;
 
-static bool wiFiActive = false;
 bool wifiConnected = false;
 
 void taskNetwork(void *pvParameters) {
@@ -1636,24 +1635,23 @@ void taskNetwork(void *pvParameters) {
         // will disable security
         WiFi.softAPConfig(local_IP, gateway, subnet);
         log_i("Access point running. IP address: %s", WiFi.softAPIP().toString().c_str());
-        wiFiActive = true;
     } else if (config.wifi_mode == WIFI_STA_FIX) {
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
+        WiFi.softAPdisconnect(true);
         delay(100);
         log_i("WiFi Station Only mode");
-        wiFiActive = true;
     } else {
         WiFi.mode(WIFI_OFF);
         WiFi.disconnect(true);
+        WiFi.softAPdisconnect(true);
         delay(100);
         // Serial.println(F("WiFi OFF. BT only mode"));
         log_i("WiFi OFF All mode");
         // SerialBT.begin("ESP32TNC");
-        wiFiActive = false;
     }
 
-    if (wiFiActive) {
+    if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
         webService();
     }
 
@@ -1663,24 +1661,22 @@ void taskNetwork(void *pvParameters) {
         // wdtNetworkTimer = millis();
         vTaskDelay(5 / portTICK_PERIOD_MS);
 
-        if (wiFiActive) {
-            serviceHandle();
-        }
-
         if (config.wifi_mode == WIFI_AP_STA_FIX || config.wifi_mode == WIFI_STA_FIX) {
+            serviceHandle();
             if (WiFi.status() != WL_CONNECTED) {
                 unsigned long int tw = millis();
                 if (tw > wifiTTL) {
                     wifiTTL = tw + 60000;
                     log_i("WiFi connecting...");
                     // udp.endPacket();
-                    WiFi.disconnect();
+                    // WiFi.disconnect();
                     WiFi.setTxPower((wifi_power_t)config.wifi_power);
                     WiFi.setHostname("APRS_ESP");
                     WiFi.begin(config.wifi_ssid, config.wifi_pass);
                     // Wait up to 1 minute for connection...
                     for (c = 0; (c < 30) && (WiFi.status() != WL_CONNECTED); c++) {
                         log_d("Waiting for WiFi connection...");
+                        serviceHandle();
                         vTaskDelay(1000 / portTICK_PERIOD_MS);
                         // for (t = millis(); (millis() - t) < 1000; refresh());
                     }
@@ -1690,7 +1686,7 @@ void taskNetwork(void *pvParameters) {
                         // WiFi.mode(WIFI_OFF);
                         delay(3000);
                         // WiFi.mode(WIFI_STA);
-                        // WiFi.reconnect();
+                        // WiFi.reconnect();                        
                         continue;
                     }
 
