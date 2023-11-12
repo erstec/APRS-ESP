@@ -10,6 +10,7 @@
         "cmath": "cpp",
         "cstdlib": "cpp",
         "random": "cpp",
-        "*.tpp": "cpp"
+        "*.tpp": "cpp",
+        "string_view": "cpp"
     }
 }

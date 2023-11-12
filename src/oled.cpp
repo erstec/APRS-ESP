@@ -53,6 +53,7 @@ void OledStartup() {
 #elif defined(USE_SCREEN_SH1106)
     log_i("SH1106 init");
     display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    display.stopscroll();
 #endif
 
     display.clearDisplay();
@@ -109,12 +110,14 @@ static void OledDrawMsg() {
     }
 }
 
-void OledUpdate(int batData, bool usbPlugged) {
+void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
 #ifdef USE_SCREEN
-    if (AFSK_modem->sending) return;
-    // if (AFSK_modem->hdlc.receiving) return;
+    if (afskInit) {
+        if (AFSK_modem->sending) return;
+        // if (AFSK_modem->hdlc.receiving) return;
+    }
 
-    char buf[24];
+    char buf[22];   // 21 char + 1 null
 
     bool isValid = gps.location.isValid();
     uint32_t satCnt = gps.satellites.value();
@@ -142,21 +145,23 @@ void OledUpdate(int batData, bool usbPlugged) {
     // DateTime / Battery
     struct tm tmstruct;
     getLocalTime(&tmstruct, 0);
-    if (tmstruct.tm_hour > 25 || tmstruct.tm_min > 60 || tmstruct.tm_sec > 60) {
+    bool timeBad = (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59);
+    if (timeBad) {
         sprintf(buf, "NO TIME");
     } else {
-        sprintf(buf, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+        snprintf(buf, 9, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+        buf[8] = 0;
     }
     display.setCursor((display.width() / 2) - (strlen(buf) * CHAR_WIDTH / 2) , CHAR_HEIGHT * 2);   // center on the screen
     display.print(buf);
     // Timesync source
-    display.setCursor((display.width() / 2) + (strlen(buf) * CHAR_WIDTH / 2) + (CHAR_WIDTH / 2) - 1, CHAR_HEIGHT * 2);
+    display.setCursor(display.width() - CHAR_WIDTH * 6 - 2, CHAR_HEIGHT * 2);
     if (timeSyncFlag == T_SYNC_NTP) {
         display.print("NTP");
     } else if (timeSyncFlag == T_SYNC_GPS) {
         display.print("GPS");
     } else if (timeSyncFlag == T_SYNC_APRS) {
-        display.print("APRS");
+        display.print("APR");
     } else {
         display.print("NO");
     }
@@ -197,9 +202,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     // Top line
     display.setCursor(0, 0);
     display.printf("%s-%d>%s", config.aprs_mycall, config.aprs_ssid, config.aprs_path);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     display.setCursor(display.width() - CHAR_WIDTH * 1, 0);
     switch (config.gps_mode) {
@@ -248,10 +250,7 @@ void OledUpdate(int batData, bool usbPlugged) {
     // 1st line
     // Sat count, fix status
     display.setCursor(0, display.height() - CHAR_HEIGHT * 4);
-    display.printf("%d%s ", gps.satellites.value(), isValid ? "+" : "-");
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
+    display.printf("%d%s%s ", gps.satellites.value(), isValid ? "+" : "-", GpsPktCnt() > 0 ? "+" : "-");
 
     // altitude
     sprintf(buf, "%.1fm", gps.altitude.meters());
@@ -262,9 +261,6 @@ void OledUpdate(int batData, bool usbPlugged) {
     // speed
     display.setCursor(0, display.height() - CHAR_HEIGHT * 3);
     display.printf("%.1fkmh", satCnt > 0 ? gps.speed.kmph() : 0.0);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     // course
     sprintf(buf, "%.1f'", gps.course.deg());
@@ -284,47 +280,18 @@ void OledUpdate(int batData, bool usbPlugged) {
     } else {
         display.print("-");
     }
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
 
     // 4th line
     display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
     display.print(deg_to_nmea(lon, false));
     display.print(" dist ");
-    display.print(distance);
-    for (uint8_t i = display.getCursorX(); i < display.width(); i += CHAR_WIDTH) {
-        display.print(" ");
-    }
+    snprintf(buf, 6, "%d", distance);
+    display.print(buf);
 
     OledDrawMsg();
     
     display.display();
 #endif
-
-//     // // active mode / selected mode / free memory
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[active_heuristic])));
-//     // display.print(F("/"));
-//     // displayPrintPgm(
-//     //     (char *)pgm_read_word(&(update_heuristics_map[selected_heuristic])));
-//     // display.print(F("/"));
-//     // display.print(freeMemory());
-//     // display.print(F("/"));
-//     // display.println((char)cur_symbol);
-
-//     // count updates / count tx / count rx / satellites / age
-//     // display.print(cnt);
-//     // display.print(F("/"));
-//     // display.print(cnt_tx);
-//     // display.print(F("tx"));
-//     // display.print(F("/"));
-//     // display.print(cnt_rx);
-//     // display.println(F("rx"));
-//
-//     display.display();
-// #endif
-//     // cnt++;
 }
 
 void OledUpdateFWU() {

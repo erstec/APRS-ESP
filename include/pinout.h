@@ -11,7 +11,7 @@
 
 #if defined(BOARD_ESP32DR)
 
-#define BOARD_NAME          "ESP32DR"
+#define BOARD_NAME          "SA818/868"
 
 // SA8x8 radio module
 //#define VBAT_PIN            35
@@ -134,6 +134,8 @@
 #define PIXELS_PIN          42
 
 #define PMU_IRQ             4
+
+#define USER_BUTTON         3
 
 // DEBUG UART
 #define SERIAL_DEBUG_BAUD   115200

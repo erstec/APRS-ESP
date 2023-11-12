@@ -27,9 +27,6 @@ extern teTimeSync timeSyncFlag;
 #define CONV_BUF_SIZE 15
 static char conv_buf[CONV_BUF_SIZE];
 
-int8_t active_heuristic = H_OFF;
-int8_t selected_heuristic = H_OFF;
-
 // static bool gotGpsFix = false;
 
 #define USE_PRECISE_DISTANCE
@@ -44,29 +41,8 @@ unsigned long age = 0;
 
 bool send_aprs_update = false;
 
-void heuristicDistanceChanged() {
-    bool needs_update = false;
-    switch (active_heuristic) {
-        case H_RANGE_500M:
-            if (distance > 500) {
-                needs_update = true;
-            }
-            break;
-        case H_RANGE_1KM:
-            if (distance > 1000) {
-                needs_update = true;
-            }
-            break;
-        case H_RANGE_5KM:
-            if (distance > 5000) {
-                needs_update = true;
-            }
-            break;
-        default:
-            needs_update = SmartBeaconingProc();
-            break;
-    }
-    if (needs_update) {
+void distanceChanged() {
+    if (SmartBeaconingProc()) {
         send_aprs_update = true;
 #ifndef USE_PRECISE_DISTANCE
         lon_prev = lon;
@@ -87,7 +63,6 @@ void updateDistance() {
 #ifdef USE_GPS
         distance += distanceBetween(lon_prev, lat_prev, lon, lat);
 #endif
-        // heuristicDistanceChanged();
     }
 #ifndef USE_PRECISE_DISTANCE
     else {
@@ -99,17 +74,30 @@ void updateDistance() {
 #endif
 }
 
+static uint32_t gpsPktCnt = 0;
+
+static const uint16_t gpsValidThr = 60 * 100; // 60 sec
+static uint16_t gpsOfflineCnt = gpsValidThr;
+
+uint32_t GpsPktCnt() {
+    return gpsPktCnt;
+}
+
 void GpsUpdate() {
 #ifdef USE_GPS
     //     for (unsigned long start = millis(); millis() - start <
     //     GPS_POLL_DURATION_MS;)
     //     {
+    if (gpsOfflineCnt++ >= gpsValidThr) {
+        if (gpsOfflineCnt >= UINT16_MAX) gpsOfflineCnt = gpsValidThr;
+        gpsPktCnt = 0;
+    }
+
     while (SerialGPS.available()) {
-        char c = SerialGPS.read();
-#ifdef DEBUG_GPS
-        Serial.print(c);  // Debug
-#endif
-        if (gps.encode(c)) {
+        if (gps.encode(SerialGPS.read())) {
+            if (gpsPktCnt++ >= UINT32_MAX) gpsPktCnt = 1;
+            gpsOfflineCnt = 0;
+
             lat = gps.location.lat() * 1000000;
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();

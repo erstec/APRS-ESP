@@ -51,8 +51,6 @@
 
 #define TNC_TELEMETRY_PERIOD    600000UL    // 10 minutes
 
-#define USE_RF
-
 // smart beaconing parameters
 #define APRS_SB_FAST_SPEED      70          // At this speed or above, beacons will be transmitted at the Fast Rate
 #define APRS_SB_FAST_RATE       60          // How often beacons will be sent when you are travelling at or above the Fast Speed
@@ -174,6 +172,8 @@ typedef struct txQueue_struct {
 
 extern bool fwUpdateProcess;
 
+extern bool callsignValid;
+
 const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};
 const char UNIT[] = {"UNIT.Pkts,Pkts,Pkts,Pkts,Pkts"};
 const char EQNS[] = {"EQNS.0,1,0,0,1,0,0,1,0,0,1,0,0,1,0"};
@@ -209,6 +209,10 @@ extern bool psramBusy;
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
 void taskOLEDDisplay(void *pvParameters);
+void taskGPS(void *pvParameters);
+#if !defined(BOARD_ESP32DR)
+void taskTNC(void *pvParameters);
+#endif
 int processPacket(String &tnc2);
 String send_gps_location();
 int digiProcess(AX25Msg &Packet);

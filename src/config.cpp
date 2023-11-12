@@ -13,6 +13,23 @@
 extern Configuration config;
 extern bool input_HPF;
 
+static void checkCallsignValid(void) {
+    if (strcmp("MYCALL", config.aprs_mycall) == 0
+        || strcmp("NOCALL", config.aprs_mycall) == 0
+        || strcmp("N0CALL", config.aprs_mycall) == 0
+        || strlen(config.aprs_mycall) < 3) {
+        callsignValid = false;
+    } else {
+        callsignValid = true;
+    }
+
+    if (callsignValid) {
+        log_i("Callsign is valid");
+    } else {
+        log_w("Callsign is invalid");
+    }
+}
+
 uint8_t checkSum(uint8_t *ptr, size_t count) {
     uint8_t lrc, tmp;
     uint16_t i;
@@ -103,7 +120,6 @@ void SaveConfig(bool storeBackup) {
     doc["tx_timeslot"] = config.tx_timeslot;
     doc["digi_delay"] = config.digi_delay;
     doc["input_hpf"] = config.input_hpf;
-#ifdef USE_RF
     doc["freq_rx"] = config.freq_rx;
     doc["freq_tx"] = config.freq_tx;
     doc["offset_rx"] = config.offset_rx;
@@ -115,7 +131,6 @@ void SaveConfig(bool storeBackup) {
     doc["rf_power"] = config.rf_power;
     doc["volume"] = config.volume;
     doc["rx_att"] = config.rx_att;
-#endif
     doc["timeZone"] = config.timeZone;
     doc["ntpServer"] = config.ntpServer;
     doc["gps_mode"] = config.gps_mode;
@@ -128,11 +143,16 @@ void SaveConfig(bool storeBackup) {
     doc["sb_turn_slope"] = config.sb_turn_slope;
     doc["sb_turn_time"] = config.sb_turn_time;
 
-    serializeJsonPretty(doc, Serial);
+    // serializeJsonPretty(doc, Serial);
+    String s = "";
+    serializeJsonPretty(doc, s);
+    log_d("%s", s.c_str());
     serializeJsonPretty(doc, f_json);
     f_json.close();
     
     SPIFFS.end();
+
+    checkCallsignValid();
 }
 
 void DefaultConfig() {
@@ -175,7 +195,6 @@ void DefaultConfig() {
     sprintf(config.tnc_path, "WIDE1-1");
     config.wifi_power = 44;
     config.input_hpf = true;
-#ifdef USE_RF
 #ifndef BAND_70CM
     config.freq_rx = 144.8000;
     config.freq_tx = 144.8000;
@@ -193,7 +212,6 @@ void DefaultConfig() {
     config.volume = 4;
     config.input_hpf = false;
     config.rx_att = false;
-#endif
     input_HPF = config.input_hpf;
     config.timeZone = 0;
     sprintf(config.ntpServer, "pool.ntp.org");
@@ -312,6 +330,8 @@ void LoadConfig() {
         f_json.close();
         SPIFFS.end();
     }
+
+    checkCallsignValid();
 }
 
 Configuration jsonToBinConfig(JsonObject obj) {
@@ -359,7 +379,6 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.tx_timeslot = obj["tx_timeslot"];
     tmpConfig.digi_delay = obj["digi_delay"];
     tmpConfig.input_hpf = obj["input_hpf"];
-#ifdef USE_RF
     tmpConfig.freq_rx = obj["freq_rx"];
     tmpConfig.freq_tx = obj["freq_tx"];
     tmpConfig.offset_rx = obj["offset_rx"];
@@ -371,7 +390,6 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.rf_power = obj["rf_power"];
     tmpConfig.volume = obj["volume"];
     tmpConfig.rx_att = obj["rx_att"];
-#endif
     tmpConfig.timeZone = obj["timeZone"];
     strcpy(tmpConfig.ntpServer, obj["ntpServer"]);
     tmpConfig.gps_mode = obj["gps_mode"];

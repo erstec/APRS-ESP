@@ -54,7 +54,6 @@ typedef struct Config_Struct {
     uint16_t tx_timeslot;
     uint16_t digi_delay;
     bool input_hpf;
-#ifdef USE_RF
     float freq_rx;
     float freq_tx;
     int offset_rx;
@@ -66,7 +65,6 @@ typedef struct Config_Struct {
     bool rf_power;
     uint8_t volume;
     bool rx_att;
-#endif
     int8_t timeZone;
     char ntpServer[50];
     uint8_t gps_mode;   // 0 - Auto, 1 - GPS only, 2 - Fixed only
