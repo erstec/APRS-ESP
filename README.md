@@ -98,8 +98,8 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 - **DO NOT use device-install scripts for update or firmware binary files without -update suffix as you can LOST ALL CONFIGURATION!**
 - **After EVERY update - save Backup, as there is no guarantee older can be used**
 
-## NOTE
-Press and hold BOOT button or Rotary Wheel:
+## NOTES
+### Press and hold BOOT button or Rotary Wheel:
 * Shortly (>100 ms) - TX Position
 * 5 sec - Turn WiFi ON/OFF
 * 10 sec - Turn RF Modem ON/OFF
@@ -107,6 +107,9 @@ Press and hold BOOT button or Rotary Wheel:
 * 20 sec - Cancel button action
   
 _Release when see appropriate message on screen_
+
+### LilyGo T-TWR Plus OLED data corruption issue:
+* If you have configured WiFi, but it is not connected to the network, but actively trying to do that, you can see corrupted data on OLED screen, which can't be restored without full power cycle of device. This does not affect device operation, but can be annoying. To fix this issue, please disable WiFi in configuration (both AP and STA) (or long press button and release it when OLED show WiFi SW message) or make sure configured WiFi AP are in range. This issue affects only hardware with SH1106 OLED screen.
 
 # COPYRIGHT NOTICE
 Firmware part uses ideas and code snippets from:
