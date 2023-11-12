@@ -230,7 +230,7 @@ bool pkgTxSend() {
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
                 String _empty = "";
-                String _msg = "TX RF";
+                String _msg = "TX";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
                 OledUpdate(0, false, AFSKInitAct); // force update otherwise it will be shown only after TX
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
