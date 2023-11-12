@@ -285,11 +285,8 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit) {
     display.setCursor(0, display.height() - CHAR_HEIGHT * 1);
     display.print(deg_to_nmea(lon, false));
     display.print(" dist ");
-    if (distance > 99999) {
-        display.print("ERR");
-    } else {
-        display.print(distance);
-    }
+    snprintf(buf, 6, "%d", distance);
+    display.print(buf);
 
     OledDrawMsg();
     
