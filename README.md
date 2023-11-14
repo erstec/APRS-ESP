@@ -109,7 +109,7 @@ Bill Of Materials (BOM) is [here](hardware/APRS-ESP32_SA8x8_Rev_D_BOM.txt)
 _Release when see appropriate message on screen_
 
 ### LilyGo T-TWR Plus OLED data corruption issue:
-* Sometimes, if you have configured WiFi, but it is not connected to the network, but actively trying to do that, you can see corrupted data on OLED screen, which can't be restored without full power cycle of device. This does not affect device operation, but can be annoying. To fix this issue, please disable WiFi in configuration (both AP and STA) (or long press button and release it when OLED show WiFi SW message) or make sure configured WiFi AP are in range. This issue affects only hardware with SH1106 OLED screen.
+* Sometimes, if you have configured WiFi, but it is not connected to the network, but actively trying to do that, you can see corrupted data on OLED screen, which can't be restored without full power cycle of device. This does not affect device operation, but can be annoying. To fix this issue, please disable WiFi in configuration (both AP and STA) (or long press button and release it when OLED show WiFi SW message) or make sure configured WiFi AP are in range, or set RF modem to LOW power. This issue affects only hardware with SH1106 OLED screen.
 
 # COPYRIGHT NOTICE
 Firmware part uses ideas and code snippets from:
