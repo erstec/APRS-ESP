@@ -16,6 +16,35 @@ RTC_DATA_ATTR uint8_t digiCount = 0;
 
 extern Configuration config;
 
+#define DIGI_DUPE_SIZE 30
+#define DIGI_DUPE_MS   28000UL
+
+static struct { char key[18]; unsigned long lastMs; } digiDupe[DIGI_DUPE_SIZE];
+
+static bool digiCheckDupe(const char *call, const uint8_t *info, uint8_t infoLen) {
+    char key[18] = {0};
+    int callLen = strlen(call);
+    if (callLen > 12) callLen = 12;
+    memcpy(key, call, callLen);
+    key[callLen] = '\x01';
+    int copyLen = infoLen > 5 ? 5 : infoLen;
+    memcpy(key + callLen + 1, info, copyLen);
+
+    unsigned long now = millis();
+    int oldest = 0;
+    for (int i = 0; i < DIGI_DUPE_SIZE; i++) {
+        if (memcmp(digiDupe[i].key, key, sizeof(key)) == 0) {
+            if (now - digiDupe[i].lastMs < DIGI_DUPE_MS) return true;
+            digiDupe[i].lastMs = now;
+            return false;
+        }
+        if (digiDupe[i].lastMs < digiDupe[oldest].lastMs) oldest = i;
+    }
+    memcpy(digiDupe[oldest].key, key, sizeof(key));
+    digiDupe[oldest].lastMs = now;
+    return false;
+}
+
 int digiProcess(AX25Msg &Packet) {
     int idx, j;
     uint8_t ctmp;
@@ -39,7 +68,37 @@ int digiProcess(AX25Msg &Packet) {
         digiLog.DropRx++;
         return 0;
     }
+    if (!strcmp(&Packet.src.call[0], &config.aprs_mycall[0]) && Packet.src.ssid == config.aprs_ssid) {
+        digiLog.DropRx++;
+        return 0;
+    }
     if (!strncmp(&Packet.src.call[0], "NOGATE", 6)) {
+        digiLog.DropRx++;
+        return 0;
+    }
+
+    // Drop messages addressed to our callsign — we handle them, no need to digi
+    if (Packet.len > 10 && Packet.info[0] == ':') {
+        char ourCall[12];
+        if (config.aprs_ssid > 0)
+            snprintf(ourCall, sizeof(ourCall), "%s-%d", config.aprs_mycall, config.aprs_ssid);
+        else
+            strlcpy(ourCall, config.aprs_mycall, sizeof(ourCall));
+        char dest[10] = {0};
+        strncpy(dest, (const char *)Packet.info + 1, 9);
+        for (int i = 8; i >= 0; i--) { if (dest[i] == ' ') dest[i] = '\0'; else break; }
+        if (strcasecmp(dest, ourCall) == 0) {
+            return 0;
+        }
+    }
+
+    // Suppress duplicate packets (same source + content) within 28s
+    char srcCall[12] = {0};
+    if (Packet.src.ssid > 0)
+        snprintf(srcCall, sizeof(srcCall), "%s-%d", Packet.src.call, Packet.src.ssid);
+    else
+        strlcpy(srcCall, Packet.src.call, sizeof(srcCall));
+    if (digiCheckDupe(srcCall, Packet.info, Packet.len)) {
         digiLog.DropRx++;
         return 0;
     }

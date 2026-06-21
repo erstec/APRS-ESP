@@ -8,6 +8,8 @@
 #include "AFSK.h"
 #include "AX25.h"
 
+#define APRS_TOCALL "APESP1"
+
 void APRS_init(bool rx_att);
 void APRS_poll(void);
 

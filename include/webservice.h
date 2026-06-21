@@ -10,6 +10,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <HTTPClient.h>
 #include <time.h>
 #include <TimeLib.h>

@@ -13,6 +13,29 @@
 extern WiFiClient aprsClient;
 extern Configuration config;
 
+#define IGATE_DUPE_SIZE 50
+#define IGATE_DUPE_SECS 30
+
+static struct { char key[14]; time_t lastGated; } igateDupe[IGATE_DUPE_SIZE];
+
+static bool igateCheckDupe(const char *call, char pktType) {
+    char key[14] = {0};
+    snprintf(key, sizeof(key), "%s\x01%c", call, pktType);
+    time_t now = time(NULL);
+    int oldest = 0;
+    for (int i = 0; i < IGATE_DUPE_SIZE; i++) {
+        if (strcmp(igateDupe[i].key, key) == 0) {
+            if (now - igateDupe[i].lastGated < IGATE_DUPE_SECS) return true;
+            igateDupe[i].lastGated = now;
+            return false;
+        }
+        if (igateDupe[i].lastGated < igateDupe[oldest].lastGated) oldest = i;
+    }
+    strlcpy(igateDupe[oldest].key, key, sizeof(igateDupe[oldest].key));
+    igateDupe[oldest].lastGated = now;
+    return false;
+}
+
 int igateProcess(AX25Msg &Packet) {
     int idx;
     String header;
@@ -21,6 +44,18 @@ int igateProcess(AX25Msg &Packet) {
         // digiLog.ErPkts++;
         return 0;  // NO INFO DATA
     }
+
+    if (!strcmp(&Packet.src.call[0], &config.aprs_mycall[0]) && Packet.src.ssid == config.aprs_ssid) {
+        return 0;
+    }
+
+    char srcCall[12] = {0};
+    if (Packet.src.ssid > 0)
+        snprintf(srcCall, sizeof(srcCall), "%s-%d", Packet.src.call, Packet.src.ssid);
+    else
+        strlcpy(srcCall, Packet.src.call, sizeof(srcCall));
+
+    if (igateCheckDupe(srcCall, Packet.len > 0 ? (char)Packet.info[0] : 0)) return 0;
 
     for (idx = 0; idx < Packet.rpt_count; idx++) {
         if (!strncmp(&Packet.rpt_list[idx].call[0], "RFONLY", 6)) {

@@ -1,6 +1,6 @@
 /*
     Description:    This file is part of the APRS-ESP project.
-                    This file contains the code for work with Configuration, stored in EEPROM.
+                    Configuration is stored in ESP32 NVS (Preferences).
     Author:         Ernest / LY3PH
     License:        GNU General Public License v3.0
     Includes code from:
@@ -76,12 +76,19 @@ typedef struct Config_Struct {
     uint16_t sb_turn_min;
     uint16_t sb_turn_slope;
     uint16_t sb_turn_time;
+
+    uint8_t oled_brightness;
+    uint8_t locator_popup;      // 0=OFF, 1-10 = popup duration in seconds on 6-char locator change
+    uint8_t oled_autodim;       // 0=OFF, 1-60 = inactivity timeout in seconds before dimming
+    uint8_t oled_autodim_level; // 0=display OFF, 1-4 = brightness index to dim to
+    uint8_t aprs_rx_popup;      // 0=OFF, 1-10 = APRS RX popup duration in seconds
+    bool    aprs_sms_rx;        // receive APRS messages addressed to our callsign-SSID
 } Configuration;
 
 void DefaultConfig();
-uint8_t checkSum(uint8_t *ptr, size_t count);
-void SaveConfig(bool storeBackup = true);
+void SaveConfig();
 void LoadConfig();
 bool LoadReConfig();
+void autoUpdateComment();
 
 #endif

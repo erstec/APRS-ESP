@@ -1,0 +1,26 @@
+<form accept-charset="UTF-8" action="/test" method="post">
+  <div class="btn-row">
+    <input type="submit" class="btn btn-danger" name="sendBeacon" value="Send Beacon">
+    <input type="submit" class="btn btn-danger" name="REBOOT" value="Reboot">
+  </div>
+  <div style="margin:14px 0 8px">
+    <label style="color:var(--text-muted);font-size:13px">TNC2 RAW</label><br>
+    <div style="display:flex;gap:8px;margin-top:4px;align-items:center">
+      <input type="text" name="raw" value="{default_raw}" style="width:500px">
+      <input type="submit" class="btn btn-primary" name="sendRaw" value="Send Raw">
+    </div>
+  </div>
+</form>
+
+<hr>
+
+<div id="vumeter" style="width:300px;height:200px;margin:10px 0"></div>
+
+<hr>
+
+<div style="margin-top:10px">
+  <div style="color:var(--text-muted);font-size:12px;margin-bottom:4px">Terminal</div>
+  <textarea id="raw_txt" name="raw_txt" rows="25" cols="80"></textarea>
+</div>
+
+</div></body></html>

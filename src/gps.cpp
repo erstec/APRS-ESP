@@ -9,6 +9,7 @@
 
 #include <WiFi.h>
 #include "gps.h"
+#include "oled.h"
 #include "smartBeaconing.h"
 #include "TinyGPS++.h"
 #include "config.h"
@@ -36,10 +37,66 @@ long lat = 0;
 long lon = 0;
 long lat_prev = 0;
 long lon_prev = 0;
-long distance = 0;
+unsigned long distance = 0;
 unsigned long age = 0;
 
 bool send_aprs_update = false;
+
+int gnssSatsGPS = 0;
+int gnssSatsBDS = 0;
+int gnssSatsGLO = 0;
+
+// Parse any *GSA sentence and update per-constellation satellite-in-use counts.
+// Handles NMEA 4.11 ($GNGSA with sysId field 18) and standard NMEA ($GPGSA,
+// $GLGSA, $BDGSA without sysId — constellation inferred from TalkerID).
+static void parseGSA(const char *nmea) {
+    char buf[82];
+    strncpy(buf, nmea, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = 0;
+
+    char *star = strchr(buf, '*');
+    if (!star) return;
+    *star = 0;
+
+    int commas = 0;
+    for (const char *c = buf; *c; c++) if (*c == ',') commas++;
+
+    int sysId = 0;
+    if (commas >= 18) {
+        // NMEA 4.11: last field before * is sysId
+        char *lastComma = strrchr(buf, ',');
+        sysId = atoi(lastComma + 1);
+        *lastComma = 0;
+    } else if (commas == 17) {
+        // Standard NMEA: derive constellation from TalkerID prefix
+        if      (strncmp(buf, "$GP", 3) == 0) sysId = 1;  // GPS
+        else if (strncmp(buf, "$GL", 3) == 0) sysId = 2;  // GLONASS
+        else if (strncmp(buf, "$BD", 3) == 0 ||
+                 strncmp(buf, "$GB", 3) == 0) sysId = 4;  // BeiDou
+        else return;  // $GNGSA without sysId — cannot determine
+    } else {
+        return;
+    }
+
+    // count non-empty PRN slots in fields 3..14
+    int field = 0, satCount = 0;
+    bool prevComma = false;
+    for (const char *p = buf; *p; p++) {
+        if (*p == ',') {
+            field++;
+            prevComma = true;
+        } else if (prevComma) {
+            if (field >= 3 && field <= 14) satCount++;
+            prevComma = false;
+        }
+    }
+
+    switch (sysId) {
+        case 1: gnssSatsGPS = satCount; break;
+        case 2: gnssSatsGLO = satCount; break;
+        case 4: gnssSatsBDS = satCount; break;
+    }
+}
 
 void distanceChanged() {
     if (SmartBeaconingProc()) {
@@ -61,7 +118,7 @@ long distanceBetween(long lat1, long long1, long lat2, long long2) {
 void updateDistance() {
     if (lon_prev != 0 && lat_prev != 0 && lon != 0 && lat != 0) {
 #ifdef USE_GPS
-        distance += distanceBetween(lon_prev, lat_prev, lon, lat);
+        distance += distanceBetween(lat_prev, lon_prev, lat, lon);
 #endif
     }
 #ifndef USE_PRECISE_DISTANCE
@@ -93,8 +150,26 @@ void GpsUpdate() {
         gpsPktCnt = 0;
     }
 
+    static char gsaBuf[82];
+    static int  gsaLen = 0;
+
     while (SerialGPS.available()) {
-        if (gps.encode(SerialGPS.read())) {
+        char c = SerialGPS.read();
+
+        if (c == '\r') {
+            // ignore
+        } else if (c == '\n') {
+            gsaBuf[gsaLen] = 0;
+            if (gsaLen > 10 && strstr(gsaBuf, "GSA,"))
+                parseGSA(gsaBuf);
+            gsaLen = 0;
+        } else if (gsaLen < (int)sizeof(gsaBuf) - 1) {
+            gsaBuf[gsaLen++] = c;
+        } else {
+            gsaLen = 0;
+        }
+
+        if (gps.encode(c)) {
             if (gpsPktCnt++ >= UINT32_MAX) gpsPktCnt = 1;
             gpsOfflineCnt = 0;
 
@@ -102,27 +177,50 @@ void GpsUpdate() {
             lon = gps.location.lng() * 1000000;
             age = gps.location.age();
 
+            if (config.locator_popup > 0 && gps.location.isValid()) {
+                static char prevLocator[7] = {0};
+                char locCopy[7];
+                char empty[] = "";
+                strlcpy(locCopy, deg_to_qth(lat, lon), sizeof(locCopy));
+                if (prevLocator[0] == '\0') {
+                    strlcpy(prevLocator, locCopy, sizeof(prevLocator));
+                } else if (strncmp(prevLocator, locCopy, 6) != 0) {
+                    strlcpy(prevLocator, locCopy, sizeof(prevLocator));
+                    OledPushMsg("Locator", locCopy, empty, config.locator_popup);
+                }
+            }
+
             if (config.synctime 
                 && (gps.time.age() / 1000) < 10
                 && timeSyncFlag == T_SYNC_NONE
                 && WiFi.status() != WL_CONNECTED) {
-                if (gps.time.hour() != 0 && gps.time.minute() != 0 && gps.time.second() != 0) {
-                    log_d("GPS Time: %02d:%02d:%02d", gps.time.hour(), gps.time.minute(), gps.time.second());
+                if (gps.time.isValid() && gps.date.isValid() && gps.date.year() > 2000
+                    && !(gps.time.hour() == 0 && gps.time.minute() == 0 && gps.time.second() == 0)) {
+                    log_d("GPS DateTime: %04d-%02d-%02d %02d:%02d:%02d UTC",
+                          gps.date.year(), gps.date.month(), gps.date.day(),
+                          gps.time.hour(), gps.time.minute(), gps.time.second());
 
-                    timeval tv;
-                    tv.tv_sec = gps.time.hour() * 3600 + gps.time.minute() * 60 + gps.time.second();
-                    tv.tv_usec = 0;
-                    
-                    timezone tz;
-                    tz.tz_minuteswest = config.timeZone * 60;
-                    tz.tz_dsttime = 0;
-
-                    settimeofday(&tv, &tz);
+                    // Build proper UTC epoch — GPS provides UTC time+date
+                    struct tm t = {};
+                    t.tm_year  = gps.date.year() - 1900;
+                    t.tm_mon   = gps.date.month() - 1;
+                    t.tm_mday  = gps.date.day();
+                    t.tm_hour  = gps.time.hour();
+                    t.tm_min   = gps.time.minute();
+                    t.tm_sec   = gps.time.second();
+                    t.tm_isdst = 0;
+                    setenv("TZ", "UTC0", 1);
+                    tzset();
+                    timeval tv = { mktime(&t), 0 };
+                    settimeofday(&tv, nullptr);
+                    // Restore configured timezone (POSIX sign is inverted vs UTC offset)
+                    char tzBuf[12];
+                    snprintf(tzBuf, sizeof(tzBuf), "UTC%+d", -config.timeZone);
+                    setenv("TZ", tzBuf, 1);
+                    tzset();
 
                     // set internal rtc time
                     setTime(gps.time.hour(), gps.time.minute(), gps.time.second(), gps.date.day(), gps.date.month(), gps.date.year());
-                    // adjust locat timezone
-                    // adjustTime(config.timeZone * SECS_PER_HOUR);
                     
                     timeSyncFlag = T_SYNC_GPS;
 
@@ -165,8 +263,9 @@ void DD_DDDDDtoDDMMSS(float DD_DDDDD, int *DD, int *MM, int *SS) {
 **  DDMM.hhN for latitude and DDDMM.hhW for longitude
 */
 char *deg_to_nmea(long deg, boolean is_lat) {
-    unsigned long b = (deg % 1000000UL) * 60UL;
-    unsigned long a = (deg / 1000000UL) * 100UL + b / 1000000UL;
+    unsigned long abs_deg = (deg < 0) ? (unsigned long)(-deg) : (unsigned long)deg;
+    unsigned long b = (abs_deg % 1000000UL) * 60UL;
+    unsigned long a = (abs_deg / 1000000UL) * 100UL + b / 1000000UL;
     b = (b % 1000000UL) / 10000UL;
     // DDMM.hhN/DDDMM.hhW
     // http://www.aprs.net/vm/DOS/PROTOCOL.HTM

@@ -1,6 +1,7 @@
 #include "Arduino.h"
 #include "AFSK.h"
 #include "AX25.h"
+#include "LibAPRSesp.h"
 // extern "C" {
 // //#include "user_interface.h"
 // }uint32_t freemem = system_get_free_heap_size();
@@ -20,7 +21,7 @@ AX25Call path2;
 
 char CALL[7] = "NOCALL";
 int CALL_SSID = 0;
-char DST[7] = "APESP1";
+char DST[7] = APRS_TOCALL;
 int DST_SSID = 0;
 char PATH1[7] = "WIDE1";
 int PATH1_SSID = 1;
@@ -68,7 +69,7 @@ long semicircles(char *degstr, char hemi)
 	{
 		if (*p == '.') continue;
 		if (!isdigit(*p)) break;
-		ltemp += (*p & 0x0f) * valtable[dgt];
+		ltemp += (*p & 0x0f) * valtable[(unsigned char)dgt];
 		dgt++;
 	}
 	if (hemi) return -ltemp;

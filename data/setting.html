@@ -1,0 +1,212 @@
+<form accept-charset="UTF-8" action="/config" method="post">
+
+<div class="form-section">
+  <h3>Fix Location</h3>
+  <div class="form-row"><label>Latitude (deg)</label><input type="text" name="gpsLat" id="gpsLat" value="{gps_lat}"></div>
+  <div class="form-row"><label>Longitude (deg)</label><input type="text" name="gpsLon" id="gpsLon" value="{gps_lon}"></div>
+  <div class="form-row" style="align-items:start">
+    <label style="padding-top:6px">Map Pin</label>
+    <div>
+      <div id="loc-map" style="height:220px;border-radius:4px;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center">
+        <span id="loc-map-msg" style="color:var(--text-muted);font-size:12px">Loading map…</span>
+      </div>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary" id="gps-fix-btn">Use current GPS location</button>
+        <span id="gps-fix-msg" style="font-size:12px"></span>
+      </div>
+      <div style="margin-top:4px;font-size:11px;color:var(--text-muted)">
+        Click map or drag marker to set Lat / Lon &bull; Full map detail needs internet; overview map works offline
+      </div>
+    </div>
+  </div>
+  <div class="form-row"><label>Altitude (m)</label><input type="text" name="gpsAlt" value="{gps_alt}"></div>
+  <div class="form-row"><label>GPS Mode</label><select name="gps_mode">{gps_mode_options}</select></div>
+  <div class="form-row" style="align-items:start">
+    <label style="padding-top:8px">Symbol</label>
+    <div>
+      <div class="sym-picker" id="symPicker">
+        <div class="sym-tile" data-table="/" data-sym=">"><img src="/static/symbols/symbols030.png" alt=""><span>Car</span></div>
+        <div class="sym-tile" data-table="/" data-sym="-"><img src="/static/symbols/symbols013.png" alt=""><span>House</span></div>
+        <div class="sym-tile" data-table="/" data-sym="["><img src="/static/symbols/symbols059.png" alt=""><span>Hiker</span></div>
+        <div class="sym-tile" data-table="/" data-sym="b"><img src="/static/symbols/symbols066.png" alt=""><span>Bike</span></div>
+        <div class="sym-tile" data-table="/" data-sym="&lt;"><img src="/static/symbols/symbols028.png" alt=""><span>Moto</span></div>
+        <div class="sym-tile" data-table="/" data-sym="k"><img src="/static/symbols/symbols075.png" alt=""><span>Truck</span></div>
+        <div class="sym-tile" data-table="/" data-sym="v"><img src="/static/symbols/symbols086.png" alt=""><span>Van</span></div>
+        <div class="sym-tile" data-table="/" data-sym="s"><img src="/static/symbols/symbols083.png" alt=""><span>Boat</span></div>
+        <div class="sym-tile" data-table="/" data-sym="_"><img src="/static/symbols/symbols063.png" alt=""><span>WX Stn</span></div>
+        <div class="sym-tile" data-table="/" data-sym="O"><img src="/static/symbols/symbols047.png" alt=""><span>Balloon</span></div>
+        <div class="sym-tile" data-table="/" data-sym="&amp;"><img src="/static/symbols/symbols006.png" alt=""><span>iGate</span></div>
+        <div class="sym-tile" data-table="\" data-sym="#"><img src="/static/symbols/symbols2003.png" alt=""><span>Digi</span></div>
+      </div>
+      <div class="sym-custom">
+        Table <input type="text" name="iconTable" id="iconTable" value="{aprs_table}" maxlength="1">
+        Symbol <input type="text" name="iconSymbol" id="iconSymbol" value="{aprs_symbol}" maxlength="1">
+      </div>
+    </div>
+  </div>
+  <div class="form-row"><label>APRS Path</label><input type="text" name="aprsPath" value="{aprs_path}"></div>
+  <div class="form-row"><label>Beacon interval (min)<br><small>0 = SmartBeaconing</small></label><input type="text" name="beaconIntv" value="{aprs_beacon}" style="width:80px"></div>
+  <div class="form-row"><label>Comment</label><input type="text" name="comment" maxlength="{comment_maxlen}" value="{aprs_comment}"></div>
+  <div class="form-row"><label>Sync Time</label><input type="checkbox" name="synctime" value="OK" {synctime_checked}></div>
+</div>
+
+<div class="form-section">
+  <h3>Smart Beaconing</h3>
+  <div class="form-row"><label>Fast Speed (km/h)</label><input type="text" name="sbFastSpeed" value="{sb_fast_speed}" style="width:80px"></div>
+  <div class="form-row"><label>Fast Rate (sec)</label><input type="text" name="sbFastRate" value="{sb_fast_rate}" style="width:80px"></div>
+  <div class="form-row"><label>Slow Speed (km/h)</label><input type="text" name="sbSlowSpeed" value="{sb_slow_speed}" style="width:80px"></div>
+  <div class="form-row"><label>Slow Rate (sec)</label><input type="text" name="sbSlowRate" value="{sb_slow_rate}" style="width:80px"></div>
+  <div class="form-row"><label>Min Turn Time (sec)</label><input type="text" name="sbMinTurnTime" value="{sb_turn_time}" style="width:80px"></div>
+  <div class="form-row"><label>Min Turn Angle (deg)</label><input type="text" name="sbMinTurnAngle" value="{sb_turn_min}" style="width:80px"></div>
+  <div class="form-row"><label>Turn Slope (deg/km)</label><input type="text" name="sbTurnSlope" value="{sb_turn_slope}" style="width:80px"></div>
+</div>
+
+<div class="btn-row">
+  <input class="btn btn-primary" name="commit" type="submit" value="Save Config">
+</div>
+</form>
+
+<div style="margin-top:8px">
+  <button type="button" class="btn btn-danger" id="default-btn"
+    onclick="document.getElementById('default-btn').style.display='none';document.getElementById('default-confirm').style.display='flex'">
+    Default Config
+  </button>
+  <span id="default-confirm" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="color:#e74c3c;font-weight:bold">Reset all settings to defaults? This cannot be undone.</span>
+    <form action="/default" method="post" style="display:inline;margin:0">
+      <input type="submit" class="btn btn-danger" value="Yes, Reset">
+    </form>
+    <button type="button" class="btn btn-primary"
+      onclick="document.getElementById('default-btn').style.display='';document.getElementById('default-confirm').style.display='none'">
+      Cancel
+    </button>
+  </span>
+</div>
+
+</div>
+<script>
+(function() {
+  var tEl = document.getElementById('iconTable');
+  var sEl = document.getElementById('iconSymbol');
+  var tiles = document.querySelectorAll('#symPicker .sym-tile');
+  function sync() {
+    var t = tEl.value, s = sEl.value;
+    tiles.forEach(function(el) {
+      el.classList.toggle('selected', el.dataset.table === t && el.dataset.sym === s);
+    });
+  }
+  tiles.forEach(function(el) {
+    el.addEventListener('click', function() {
+      tEl.value = this.dataset.table;
+      sEl.value = this.dataset.sym;
+      sync();
+    });
+  });
+  tEl.addEventListener('input', sync);
+  sEl.addEventListener('input', sync);
+  sync();
+})();
+</script>
+<script>
+(function() {
+  var latEl = document.getElementById('gpsLat');
+  var lonEl = document.getElementById('gpsLon');
+  var altEl = document.querySelector('[name="gpsAlt"]');
+  var mapDiv = document.getElementById('loc-map');
+  var msgEl = document.getElementById('loc-map-msg');
+  var initLat = parseFloat(latEl.value) || 0;
+  var initLon = parseFloat(lonEl.value) || 0;
+  var map = null, marker = null;
+
+  function syncMarker() {
+    if (!map || !marker) return;
+    var ll = [parseFloat(latEl.value) || 0, parseFloat(lonEl.value) || 0];
+    marker.setLatLng(ll); map.panTo(ll);
+  }
+
+  function initMapWithTiles(tileUrl, maxZoom, minZoom) {
+    mapDiv.innerHTML = '';
+    var hasPos = initLat !== 0 || initLon !== 0;
+    var cLat = hasPos ? initLat : 55.17;
+    var cLon = hasPos ? initLon : 23.88;
+    var zoom  = hasPos ? Math.min(13, maxZoom) : 5;
+    map = L.map('loc-map', {minZoom: minZoom || 0}).setView([cLat, cLon], zoom);
+    L.tileLayer(tileUrl, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: maxZoom
+    }).addTo(map);
+    var pin = L.divIcon({
+      html: '<svg width="24" height="36" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.4 0 0 5.4 0 12c0 8.5 12 24 12 24s12-15.5 12-24C24 5.4 18.6 0 12 0z" fill="#4a9eff" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>',
+      className: '', iconSize: [24, 36], iconAnchor: [12, 36]
+    });
+    marker = L.marker([cLat, cLon], {draggable: true, icon: pin}).addTo(map);
+    function setCoords(ll) {
+      latEl.value = ll.lat.toFixed(5);
+      lonEl.value = ll.lng.toFixed(5);
+    }
+    marker.on('dragend', function(e) { setCoords(e.target.getLatLng()); });
+    map.on('click', function(e) { marker.setLatLng(e.latlng); setCoords(e.latlng); });
+    latEl.addEventListener('change', syncMarker);
+    lonEl.addEventListener('change', syncMarker);
+  }
+
+  function showOffline() {
+    if (msgEl) msgEl.textContent = 'Map unavailable';
+  }
+
+  function loadScript(src, onload, onerror) {
+    var el = document.createElement('script');
+    el.src = src; el.onload = onload; el.onerror = onerror;
+    document.head.appendChild(el);
+  }
+  function loadCss(href) {
+    var el = document.createElement('link');
+    el.rel = 'stylesheet'; el.href = href;
+    document.head.appendChild(el);
+  }
+
+  var btn = document.getElementById('gps-fix-btn');
+  var btnMsg = document.getElementById('gps-fix-msg');
+  if (btn) btn.addEventListener('click', function() {
+    btn.disabled = true;
+    btnMsg.style.color = 'var(--text-muted)';
+    btnMsg.textContent = 'Fetching…';
+    fetch('/api/gps')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.valid) {
+          latEl.value = d.lat.toFixed(5);
+          lonEl.value = d.lon.toFixed(5);
+          if (altEl) altEl.value = d.alt.toFixed(1);
+          btnMsg.style.color = 'var(--accent)';
+          btnMsg.textContent = 'Updated ✔';
+          if (map && marker) { marker.setLatLng([d.lat, d.lon]); map.setView([d.lat, d.lon], map.getMaxZoom()); }
+        } else {
+          btnMsg.style.color = 'var(--danger)';
+          btnMsg.textContent = 'No GPS fix';
+        }
+      })
+      .catch(function() {
+        btnMsg.style.color = 'var(--danger)';
+        btnMsg.textContent = 'Request failed';
+      })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  // Load Leaflet: CDN (full tiles) → local fallback (overview tiles, offline)
+  loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+  loadScript(
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    function() { initMapWithTiles('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 19); },
+    function() {
+      loadCss('/leaflet.min.css');
+      loadScript(
+        '/leaflet.min.js',
+        function() { initMapWithTiles('/static/tiles/{z}/{x}/{y}.png', 5, 5); },
+        showOffline
+      );
+    }
+  );
+})();
+</script>
+</body></html>

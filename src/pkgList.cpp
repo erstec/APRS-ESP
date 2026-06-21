@@ -49,9 +49,10 @@ void sort(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in sort");
+        return;
+    }
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].time < a[o + 1].time) {
@@ -63,7 +64,7 @@ void sort(pkgListType a[], int size) {
             }
         }
     }
-    psramBusy = false;
+    xSemaphoreGive(psramMutex);
 }
 
 void sortPkgDesc(pkgListType a[], int size) {
@@ -72,9 +73,10 @@ void sortPkgDesc(pkgListType a[], int size) {
     char *ptr2;
     char *ptr3;
     ptr1 = (char *)&t;
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in sortPkgDesc");
+        return;
+    }
     for (int i = 0; i < (size - 1); i++) {
         for (int o = 0; o < (size - (i + 1)); o++) {
             if (a[o].pkg < a[o + 1].pkg) {
@@ -86,7 +88,7 @@ void sortPkgDesc(pkgListType a[], int size) {
             }
         }
     }
-    psramBusy = false;
+    xSemaphoreGive(psramMutex);
 }
 
 uint16_t pkgType(const char *raw) {
@@ -188,12 +190,14 @@ uint16_t pkgType(const char *raw) {
 
 pkgListType getPkgList(int idx) {
     pkgListType ret;
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in getPkgList");
+        memset(&ret, 0, sizeof(ret));
+        return ret;
+    }
     memcpy(&ret, &pkgList[idx], sizeof(pkgListType));
-    psramBusy = false;
-    
+    xSemaphoreGive(psramMutex);
+
     return ret;
 }
 
@@ -214,13 +218,14 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
 
     log_d("call: %s, callsign: %s, sz: %d", call, callsign, sz);
 
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in pkgListUpdate");
+        return -1;
+    }
 
     int i = pkgList_Find(callsign, type);
     if (i > PKGLISTSIZE) {
-        psramBusy = false;
+        xSemaphoreGive(psramMutex);
         return -1;
     }
     if (i > -1) { // Found call in old pkg
@@ -243,7 +248,7 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
     } else {
         i = pkgListOld(); // Search free in array
         if (i > PKGLISTSIZE || i < 0) {
-            psramBusy = false;
+            xSemaphoreGive(psramMutex);
             return -1;
         }
         // memset(&pkgList[i], 0, sizeof(pkgListType));
@@ -269,9 +274,20 @@ int pkgListUpdate(char *call, char *raw, uint16_t type, bool channel) {
 
         log_d("NEW: %s, i: %d", pkgList[i].calsign, i);
     }
-    psramBusy = false;
-    
+    xSemaphoreGive(psramMutex);
+
     return i;
+}
+
+int pkgListValidCount() {
+    int count = 0;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(100)) != pdTRUE) return 0;
+    for (int i = 0; i < PKGLISTSIZE; i++) {
+        if (pkgList[i].time == 0) break;
+        count++;
+    }
+    xSemaphoreGive(psramMutex);
+    return count;
 }
 
 void pkgListInit() {

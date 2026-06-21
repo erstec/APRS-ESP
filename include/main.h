@@ -12,8 +12,8 @@
 #define MAIN_H
 
 /// Convert a preprocessor name into a quoted string
-#define xstr(s) str(s)
-#define str(s) #s
+#define STRINGIFY_(s) #s
+#define xstr(s) STRINGIFY_(s)
 
 /// Convert a preprocessor name into a quoted string and if that string is empty use "unset"
 #define optstr(s) (xstr(s)[0] ? xstr(s) : "unset")
@@ -21,16 +21,13 @@
 // #define VERSION "1.10"
 #define VERSION         xstr(APP_VERSION_SHORT)
 #define VERSION_FULL    xstr(APP_VERSION)
+// APRS_TOCALL defined in LibAPRSesp.h
 
 #define DEBUG
-#define DEBUG_IS
 #define DEBUG_TNC
-#define DEBUG_RF
 
 //#define SDCARD
 #define USE_GPS
-//#define USE_BLE
-//#define USE_ROTARY
 #define USE_SMART_BEACONING
 
 #if defined(USE_SCREEN_SSD1306) && defined(USE_SCREEN_SH1106)
@@ -60,7 +57,6 @@
 #define APRS_SB_MIN_TURN_ANGLE  15          // The minimum angle by which you must change course before it will trigger a beacon
 #define APRS_SB_TURN_SLOPE      240         // This number, when divided by your current speed will be added to the Min Turn Angle in order to increase the turn threshold at lower speeds
 
-#define EEPROM_SIZE 2048
 
 #include "pinout.h"
 
@@ -77,7 +73,7 @@
 #define TZ_SEC ((TZ)*3600)
 #define DST_SEC ((DST_MN)*60)
 
-#define FORMAT_SPIFFS_IF_FAILED true
+#define FORMAT_LITTLEFS_IF_FAILED true
 
 #ifdef BOARD_HAS_PSRAM
 #define TLMLISTSIZE 10
@@ -105,14 +101,14 @@
 #include <Arduino.h>
 #include <FS.h>
 #include <SD.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #if defined(CONFIG_IDF_TARGET_ESP32)
 #include "soc/rtc_wdt.h"
 #endif
 #include <AX25.h>
 
 #include "HardwareSerial.h"
-#include "EEPROM.h"
+#include <Preferences.h>
 
 typedef struct igateTLM_struct {
     uint16_t Sequence;
@@ -204,7 +200,7 @@ typedef enum {
 extern teTimeSync timeSyncFlag;
 extern long TimeSyncPeriod;
 
-extern bool psramBusy;
+extern SemaphoreHandle_t psramMutex;
 
 void taskAPRS(void *pvParameters);
 void taskNetwork(void *pvParameters);
@@ -213,7 +209,6 @@ void taskGPS(void *pvParameters);
 #if !defined(BOARD_ESP32DR)
 void taskTNC(void *pvParameters);
 #endif
-int processPacket(String &tnc2);
 String send_gps_location();
 int digiProcess(AX25Msg &Packet);
 bool pkgTxPush(const char *info, size_t len, int dly);

@@ -1,0 +1,74 @@
+<div class="form-section">
+  <h3>Time Setting</h3>
+  <div class="form-row"><label>Current Time</label><span>{current_time}</span></div>
+  <div class="form-row"><label>Set Date / Time</label>
+    <form action="/system" method="post" style="display:flex;gap:8px;align-items:center">
+      <input type="text" name="SetTime" value="{current_time}" placeholder="YYYY-MM-DD HH:MM:SS" style="width:180px">
+      <input class="btn btn-primary" name="updateTime" type="submit" value="Set">
+    </form>
+  </div>
+  <div class="form-row"><label>NTP Host</label>
+    <form action="/system" method="post" style="display:flex;gap:8px;align-items:center">
+      <input type="text" name="SetTimeNtp" value="{ntp_server}">
+      <input class="btn btn-primary" name="updateTimeNtp" type="submit" value="NTP Sync">
+    </form>
+  </div>
+  <div class="form-row"><label>Time Zone (UTC offset)</label>
+    <form action="/system" method="post" style="display:flex;gap:8px;align-items:center">
+      <input type="number" name="SetTimeZone" value="{time_zone}" min="-12" max="14" style="width:80px">
+      <input class="btn btn-primary" name="updateTimeZone" type="submit" value="Apply">
+    </form>
+  </div>
+  <div class="form-row"><label>System</label>
+    <form action="/system" method="post">
+      <input class="btn btn-danger" name="REBOOT" type="submit" value="REBOOT">
+    </form>
+  </div>
+</div>
+
+<hr>
+
+<form id="wifiForm" action="/system" method="post">
+<div class="form-section">
+  <h3>WiFi Network</h3>
+  <div id="wifi-warn" style="display:none;margin:0 0 8px;padding:8px 12px;border:1px solid var(--danger);background:rgba(192,57,43,0.12);border-radius:4px;font-size:12px;color:var(--danger-hover)">
+    WiFi changes require a device reboot to take effect. After saving, please reboot the device manually.
+  </div>
+  <div class="form-row"><label>WiFi AP Enable</label><input type="checkbox" name="wifiAP" value="OK" {wifi_ap_checked}></div>
+  <div class="form-row"><label>WiFi AP SSID</label><input type="text" name="wifi_ssidAP" value="{wifi_ap_ssid}"></div>
+  <div class="form-row"><label>WiFi AP Password</label><input type="password" name="wifi_passAP" value="{wifi_ap_pass}"></div>
+  <hr>
+  <div class="form-row"><label>WiFi Client Enable</label><input type="checkbox" name="wificlient" value="OK" {wifi_client_checked}></div>
+  <div class="form-row"><label>WiFi SSID</label><input type="text" name="wifi_ssid" value="{wifi_ssid}"></div>
+  <div class="form-row"><label>WiFi Password</label><input type="password" name="wifi_pass" value="{wifi_pass}"></div>
+  <div class="form-row"><label>WiFi TX Power</label><select name="wifi_pwr">{wifi_power_options}</select></div>
+</div>
+<div class="btn-row">
+  <input class="btn btn-primary" name="updateWifi" type="submit" value="Update WiFi">
+</div>
+</form>
+<script>
+  (function(){
+    var f = document.getElementById('wifiForm');
+    var w = document.getElementById('wifi-warn');
+    if (f && w) f.addEventListener('change', function(){ w.style.display = 'block'; });
+  })();
+</script>
+
+<hr>
+
+<div class="card" style="margin-top:16px;max-width:400px">
+  <div class="card-title">WiFi Status</div>
+  <table class="status-table">
+    <tr><td>Mode</td><td>{wifi_mode}</td></tr>
+    <tr><td>MAC</td><td>{wifi_mac}</td></tr>
+    <tr><td>Channel</td><td>{wifi_channel}</td></tr>
+    <tr><td>TX Power</td><td>{wifi_tx_power}</td></tr>
+    <tr><td>SSID</td><td>{wifi_ssid_current}</td></tr>
+    <tr><td>Local IP</td><td>{wifi_local_ip}</td></tr>
+    <tr><td>Gateway</td><td>{wifi_gateway_ip}</td></tr>
+    <tr><td>DNS</td><td>{wifi_dns}</td></tr>
+  </table>
+</div>
+
+</div></body></html>

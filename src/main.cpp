@@ -33,6 +33,7 @@
 #include <WiFiUdp.h>
 
 #include "rfModem.h"
+#include "aprsMsg.h"
 
 #ifdef USE_GPS
 #include "TinyGPS++.h"
@@ -66,7 +67,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 #ifdef SDCARD
 #include <SPI.h> //SPI.h must be included as DMD is written by SPI (the IDE complains otherwise)
 #include "FS.h"
-#include "SPIFFS.h"
+#include <LittleFS.h>
 #define SDCARD_CS 13
 #define SDCARD_CLK 14
 #define SDCARD_MOSI 15
@@ -105,6 +106,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, PIXELS_PIN, NEO_GRB + NEO_KHZ800)
 HardwareSerial SerialRF(SERIAL_RF_UART);
 
 bool fwUpdateProcess = false;
+volatile bool menuUpdateNeeded = false;
+volatile bool oledTxBusy       = false;
 
 bool callsignValid = false;
 
@@ -156,6 +159,7 @@ HardwareSerial SerialGPS(SERIAL_GPS_UART);
 
 #ifdef USE_ROTARY
 Rotary rotary = Rotary(PIN_ROT_CLK, PIN_ROT_DT, PIN_ROT_BTN);
+void IRAM_ATTR rotaryISR() { rotary.processISR(); }
 #endif
 
 struct pbuf_t aprs;
@@ -163,18 +167,18 @@ ParseAPRS aprsParse;
 
 // Set your Static IP address for wifi AP
 IPAddress local_IP(192, 168, 4, 1);
-IPAddress gateway(192, 168, 4, 254);
+IPAddress gateway(192, 168, 4, 1);  // must match local_IP — DHCP uses gateway as DNS server for clients
 IPAddress subnet(255, 255, 255, 0);
 
 int pkgTNC_count = 0;
 
 unsigned long NTP_Timeout;
 
-bool psramBusy = false;
+SemaphoreHandle_t psramMutex = NULL;
 
 teTimeSync timeSyncFlag = T_SYNC_NONE;
 
-static long gpsUpdTMO = 0;
+static unsigned long gpsUpdTMO = 0;
 
 bool AFSKInitAct = false;
 
@@ -182,7 +186,6 @@ int tlmList_Find(char *call) {
     int i;
     for (i = 0; i < TLMLISTSIZE; i++) {
         if (strstr(Telemetry[i].callsign, call) != NULL) {
-            psramBusy = false;
             return i;
         }
     }
@@ -205,20 +208,23 @@ int tlmListOld() {
 
 TelemetryType getTlmList(int idx) {
     TelemetryType ret;
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in getTlmList");
+        memset(&ret, 0, sizeof(ret));
+        return ret;
+    }
     memcpy(&ret, &Telemetry[idx], sizeof(TelemetryType));
-    psramBusy = false;
+    xSemaphoreGive(psramMutex);
     return ret;
 }
 
 bool pkgTxSend() {
     if (getReceive())
         return false;
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in pkgTxSend");
+        return false;
+    }
     char info[500];
     for (int i = 0; i < PKGTXSIZE; i++) {
         if (txQueue[i].Active) {
@@ -227,7 +233,7 @@ bool pkgTxSend() {
                 txQueue[i].Active = false;
                 memset(info, 0, sizeof(info));
                 strcpy(info, txQueue[i].Info);
-                psramBusy = false;
+                xSemaphoreGive(psramMutex);
                 digitalWrite(POWER_PIN, config.rf_power); // RF Power set
                 status.txCount++;
                 String _empty = "";
@@ -238,6 +244,7 @@ bool pkgTxSend() {
                 adcActive(false);
 #endif
                 TX_LED_ON();
+                oledTxBusy = true;  // block taskOLEDDisplay from touching I2C during TX
                 APRS_setPreamble(APRS_PREAMBLE);
                 APRS_sendTNC2Pkt(String(info)); // Send packet to RF
                 log_d("TX->RF: %s\n", info);
@@ -260,55 +267,28 @@ bool pkgTxSend() {
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(true);
 #endif
+                oledTxBusy = false;
                 
                 return true;
             }
         }
     }
   
-    psramBusy = false;
-  
+    xSemaphoreGive(psramMutex);
+
     return false;
 }
 
-bool pkgTxDuplicate(AX25Msg ax25) {
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
-    char callsign[12];
-    for (int i = 0; i < PKGTXSIZE; i++) {
-        if (txQueue[i].Active) {
-            if (ax25.src.ssid > 0)
-                sprintf(callsign, "%s-%d", ax25.src.call, ax25.src.ssid);
-            else
-                sprintf(callsign, "%s", ax25.src.call);
-            if (strncmp(&txQueue[i].Info[0], callsign, strlen(callsign)) >= 0) // Check duplicate src callsign
-            {
-                char *ecs1 = strstr(txQueue[i].Info, ":");
-                if (ecs1 == NULL)
-                    continue;
-                ;
-                if (strncmp(ecs1, (const char *)ax25.info, strlen(ecs1)) >= 0) { // Check duplicate aprs info
-                    txQueue[i].Active = false;
-                    psramBusy = false;
-                    return true;
-                }
-            }
-        }
-    }
-    psramBusy = false;
-    
-    return false;
-}
 
 bool pkgTxPush(const char *info, size_t len, int dly) {
     char *ecs = strstr(info, ">");
     if (ecs == NULL)
         return false;
 
-    while (psramBusy)
-        delay(1);
-    psramBusy = true;
+    if (xSemaphoreTake(psramMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        log_e("psramMutex timeout in pkgTxPush");
+        return false;
+    }
     // for (int i = 0; i < PKGTXSIZE; i++)
     // {
     //   if (txQueue[i].Active)
@@ -320,7 +300,7 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
     //       memcpy(&txQueue[i].Info[0], info, len);
     //       txQueue[i].Delay = dly;
     //       txQueue[i].timeStamp = millis();
-    //       psramBusy = false;
+    //       xSemaphoreGive(psramMutex);
     //       return true;
     //     }
     //   }
@@ -338,8 +318,8 @@ bool pkgTxPush(const char *info, size_t len, int dly) {
         }
     }
 
-    psramBusy = false;
-    
+    xSemaphoreGive(psramMutex);
+
     return true;
 }
 
@@ -440,20 +420,87 @@ uint8_t popGwRaw(uint8_t *raw) {
 
 WiFiClient aprsClient;
 
+static bool aprsCheckMsg(const char *from, const char *info) {
+    if (!info || info[0] != ':' || strlen(info) < 11 || info[10] != ':') return false;
+
+    char dest[10] = {0};
+    strncpy(dest, info + 1, 9);
+    for (int i = 8; i >= 0; i--) {
+        if (dest[i] == ' ') dest[i] = '\0'; else break;
+    }
+
+    char ourCall[12];
+    if (config.aprs_ssid > 0)
+        snprintf(ourCall, sizeof(ourCall), "%s-%d", config.aprs_mycall, config.aprs_ssid);
+    else
+        strlcpy(ourCall, config.aprs_mycall, sizeof(ourCall));
+
+    if (strcasecmp(dest, ourCall) != 0) return false;
+
+    const char *body = info + 11;
+    char msgText[70] = {0};
+    char msgId[6]    = {0};
+
+    const char *idOpen = strrchr(body, '{');
+    if (idOpen) {
+        const char *idClose = strchr(idOpen + 1, '}');
+        int textLen = (int)(idOpen - body);
+        if (textLen > 69) textLen = 69;
+        strncpy(msgText, body, textLen);
+        if (idClose) {
+            int idLen = (int)(idClose - idOpen - 1);
+            if (idLen > 5) idLen = 5;
+            strncpy(msgId, idOpen + 1, idLen);
+        }
+    } else {
+        strlcpy(msgText, body, sizeof(msgText));
+    }
+
+    aprsMsgAdd(from, msgText, msgId);
+    log_i("MSG from %s: %s", from, msgText);
+
+    char fromBuf[12], textBuf[70];
+    strlcpy(fromBuf, from,    sizeof(fromBuf));
+    strlcpy(textBuf, msgText, sizeof(textBuf));
+    OledEnqueueMsg("MSG FROM", fromBuf, textBuf, 60);
+
+    if (msgId[0]) {
+        char ackInfo[25];
+        snprintf(ackInfo, sizeof(ackInfo), ":%-9s:ack%s", from, msgId);
+
+        if (aprsClient.connected()) {
+            String ackPkt = String(ourCall) + ">APRS:" + String(ackInfo);
+            aprsClient.println(ackPkt);
+            log_i("MSG ACK IS: %s", ackPkt.c_str());
+        }
+
+        if (callsignValid && config.tnc) {
+            char rfAck[100];
+            if (config.aprs_ssid > 0 && config.aprs_path[0] != 0)
+                snprintf(rfAck, sizeof(rfAck), "%s-%d>%s,%s:%s", config.aprs_mycall, config.aprs_ssid, APRS_TOCALL, config.aprs_path, ackInfo);
+            else if (config.aprs_ssid > 0)
+                snprintf(rfAck, sizeof(rfAck), "%s-%d>%s:%s", config.aprs_mycall, config.aprs_ssid, APRS_TOCALL, ackInfo);
+            else if (config.aprs_path[0] != 0)
+                snprintf(rfAck, sizeof(rfAck), "%s>%s,%s:%s", config.aprs_mycall, APRS_TOCALL, config.aprs_path, ackInfo);
+            else
+                snprintf(rfAck, sizeof(rfAck), "%s>%s:%s", config.aprs_mycall, APRS_TOCALL, ackInfo);
+            pkgTxPush(rfAck, strlen(rfAck), 0);
+            log_i("MSG ACK RF: %s", rfAck);
+        }
+    }
+    return true;
+}
+
 boolean APRSConnect() {
     log_i("Connect APRS-IS Server");
     String login = "";
-    int cnt = 0;
     uint8_t con = aprsClient.connected();
-    // Serial.println(con);
     if (con <= 0) {
         if (!callsignValid) return false;
-        
+
         if (!aprsClient.connect(config.aprs_host, config.aprs_port)) {
-            // Serial.print(".");
-            delay(100);
-            cnt++;
-            if (cnt > 50) return false;
+            log_w("APRS-IS connect failed");
+            return false;
         }
 
         if (strlen(config.aprs_object) >= 3) {
@@ -477,7 +524,7 @@ boolean APRSConnect() {
 
 #if defined(USE_PMU)
 bool vbusIn = false;
-bool pmu_flag = false;
+volatile bool pmu_flag = false;
 
 void setFlag(void)
 {
@@ -494,6 +541,9 @@ void setupPower()
         }
     }
 
+    log_i("PMU power-on  source: %u", (uint8_t)PMU.getPowerOnSource());
+    log_i("PMU power-off source: %u", (uint8_t)PMU.getPowerOffSource());
+
     // Set the minimum common working voltage of the PMU VBUS input,
     // below this value will turn off the PMU
     PMU.setVbusVoltageLimit(XPOWERS_AXP2101_VBUS_VOL_LIM_3V88);
@@ -507,8 +557,8 @@ void setupPower()
     uint16_t vol = PMU.getSysPowerDownVoltage();
     log_i("->  getSysPowerDownVoltage:%u", vol);
 
-    // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
-    PMU.setSysPowerDownVoltage(2600);
+    // 3000mV protects cell from deep discharge; 2600 is absolute spec minimum
+    PMU.setSysPowerDownVoltage(3000);
 
 
     //! DC1 ESP32S3 Core VDD and OLED_VBAT , Don't change
@@ -640,6 +690,8 @@ void setupPower()
     PMU.enableVbusVoltageMeasure();
     PMU.enableBattVoltageMeasure();
     PMU.enableSystemVoltageMeasure();
+    PMU.enableTemperatureMeasure();  // required — without this getTemperature() returns stale power-on default (~38.4°C)
+    PMU.enableGauge();               // enable Coulomb counter for load-compensated SoC%
 
 
     /*
@@ -662,10 +714,15 @@ void setupPower()
     PMU.clearIrqStatus();
     // Enable the required interrupt function
     PMU.enableIRQ(
-        XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
-        XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
-        XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
-        XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
+        XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   // battery hot-swap
+        XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   // USB connect/disconnect
+        XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   // power key
+        XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ   |   // charge phase transitions
+        XPOWERS_AXP2101_CHAGER_TIMER_IRQ                                         |   // safety timer expiry (silent failure otherwise)
+        XPOWERS_AXP2101_DIE_OVER_TEMP_IRQ                                        |   // PMU chip overtemperature
+        XPOWERS_AXP2101_BAT_OVER_VOL_IRQ                                         |   // battery overvoltage (safety)
+        XPOWERS_AXP2101_BAT_CHG_OVER_TEMP_IRQ                                    |   // charger over-temp (future-proof; inert with TS disabled)
+        XPOWERS_AXP2101_WARNING_LEVEL1_IRQ | XPOWERS_AXP2101_WARNING_LEVEL2_IRQ      // hardware low-battery thresholds
     );
 
     // Set the precharge charging current
@@ -674,15 +731,27 @@ void setupPower()
     // Set constant current charge current limit
     //! Using inferior USB cables and adapters will not reach the maximum charging current.
     //! Please pay attention to add a suitable heat sink above the PMU when setting the charging current to 1A
-    PMU.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_1000MA);
+    // 500mA: CC(500) + system load(~300) = ~800mA total from VBUS — safe for 1A adapters.
+    // 1000mA caused VBUS sag on 1A adapters (1300mA demanded), triggering the 3.88V cutoff
+    // and stalling charge at ~90% in CV phase. 2A adapters were unaffected.
+    PMU.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_500MA);
 
-    // Set stop charging termination current
-    PMU.setChargerTerminationCurr(XPOWERS_AXP2101_CHG_ITERM_150MA);
+    // 25mA (minimum): prevents premature CHG_DONE under load — 150mA was firing at ~85% because
+    // device load (WiFi+RF 200-400mA) consumed most of the charge current during CV phase
+    PMU.setChargerTerminationCurr(XPOWERS_AXP2101_CHG_ITERM_25MA);
 
     // Set charge cut-off voltage
     PMU.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
 
-    // Disable the PMU long press shutdown function
+    // Thermal foldback threshold for die temperature: 80°C (chip default, set explicitly)
+    PMU.setThermaThreshold(XPOWERS_AXP2101_THREMAL_80DEG);
+    // Arm the hardware die temperature comparator (required for DIE_OVER_TEMP_IRQ to fire)
+    PMU.enableDieOverTempDetect();
+    // Hardware low-battery thresholds (fuel gauge must be enabled): 15% warn, 5% critical
+    PMU.setLowBatWarnThreshold(2);      // 2 = 15%
+    PMU.setLowBatShutdownThreshold(0);  // 0 = 5%
+
+    // Disable the PMU long press shutdown function (handled in firmware via PKEY_LONG_IRQ)
     PMU.disableLongPressShutdown();
 
 
@@ -727,6 +796,8 @@ void setup()
     memset(txQueue, 0, sizeof(txQueueType) * PKGTXSIZE);
     // memset(TNC2Raw, 0, sizeof(TNC2Raw) * PKGTXSIZE);
 
+    psramMutex = xSemaphoreCreateMutex();
+
     pinMode(BOOT_PIN, INPUT_PULLUP);  // BOOT Button
 
 #if defined(USER_BUTTON)
@@ -742,12 +813,21 @@ void setup()
     SerialGPS.begin(SERIAL_GPS_BAUD, SERIAL_8N1, SERIAL_GPS_RXPIN, SERIAL_GPS_TXPIN);
 #endif
 
-#ifndef USE_ROTARY
+
+#ifdef USE_ROTARY
+    rotary.begin();
+    attachInterrupt(digitalPinToInterrupt(PIN_ROT_CLK), rotaryISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_ROT_DT),  rotaryISR, CHANGE);
+#else
     pinMode(PIN_ROT_BTN, INPUT_PULLUP);
 #endif
 
     TX_LED_OFF();
     RX_LED_OFF();
+
+    if (!LittleFS.begin(false)) {
+        log_e("LittleFS mount failed — reflash filesystem image");
+    }
 
     Serial.println();
     log_i("Start APRS-ESP V%s", VERSION_FULL);
@@ -757,15 +837,6 @@ void setup()
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000L);
 #endif
 
-#if defined(BOARD_TTWR_MOD)
-    // +4.2V EN
-    pinMode(16, OUTPUT);
-    digitalWrite(16, HIGH);
-
-    // OLED EN
-    pinMode(23, OUTPUT);
-    digitalWrite(23, HIGH);
-#endif
 
 #if defined(BOARD_TTWR_V1)
     // +4.2V EN
@@ -803,8 +874,10 @@ void setup()
     strip.show();
 #endif
 
-    OledPostStartup("Load Config...");
+    OledPostStartup("Loading config...");
     LoadConfig();
+    OledSetBrightness(config.oled_brightness);
+    OledPostStartup("Loading config... OK");
 
     // RF SHOULD BE Initialized or there is no reason to startup at all
     while (!RF_Init(true, true)) {};
@@ -827,6 +900,20 @@ void setup()
     // enableCore0WDT();
 
     enableCore1WDT();
+
+#if defined(BOARD_TTWR_PLUS) && defined(USE_GPS)
+    {
+        auto gpsSendCmd = [](const char *cmd) {
+            uint8_t cs = 0;
+            for (const char *p = cmd; *p; p++) cs ^= (uint8_t)*p;
+            SerialGPS.printf("$%s*%02X\r\n", cmd, cs);
+            log_i("GNSS TX: $%s*%02X", cmd, cs);
+        };
+        gpsSendCmd("PCAS04,7");                                // Constellation: GPS+BeiDou+GLONASS (default GPS+BeiDou only)
+        gpsSendCmd("PCAS03,1,0,1,0,1,0,0,0,0,0,,,0,0");       // NMEA output: GGA+GSA+RMC, disable GLL/GSV/VTG/ZDA/ANT
+        gpsSendCmd("PCAS02,1000");                             // Fix rate: 1 Hz
+    }
+#endif
 
     // Task 1
     xTaskCreatePinnedToCore(taskAPRS,   /* Function to implement the task */
@@ -922,6 +1009,11 @@ String send_gps_location() {
         }
     }
 
+    if (_lat == 0.0f && _lon == 0.0f) {
+        log_w("Zero coordinates, skipping TX");
+        return "";
+    }
+
     int lat_dd, lat_mm, lat_ss, lon_dd, lon_mm, lon_ss;
     char strtmp[300], loc[30];
 
@@ -951,9 +1043,9 @@ String send_gps_location() {
     }
 
     if (config.aprs_ssid == 0)
-        sprintf(strtmp, "%s>APESP1", config.aprs_mycall);
+        sprintf(strtmp, "%s>%s", config.aprs_mycall, APRS_TOCALL);
     else
-        sprintf(strtmp, "%s-%d>APESP1", config.aprs_mycall, config.aprs_ssid);
+        sprintf(strtmp, "%s-%d>%s", config.aprs_mycall, config.aprs_ssid, APRS_TOCALL);
 
     tnc2Raw = String(strtmp);
 
@@ -1073,6 +1165,30 @@ void printPeriodicDebug() {
 #endif
 #if defined(USE_PMU)
     batteryPercentage = getBatteryPercentage();
+    if (!vbusIn && PMU.isBatteryConnect()) {
+        static unsigned long lastBatWarnMs = 0;
+        static uint8_t lastBatThreshold = 100;
+        if (batteryPercentage < 20 && millis() - lastBatWarnMs >= 120000UL) {
+            lastBatWarnMs = millis();
+            char cap[] = "Battery";
+            char msg[] = "Low!";
+            char empty[] = "";
+            OledPushMsg(cap, msg, empty, 2);
+        }
+        static const uint8_t thresholds[] = {50, 40, 30, 20, 10};
+        for (uint8_t t : thresholds) {
+            if (batteryPercentage <= t && lastBatThreshold > t) {
+                lastBatThreshold = t;
+                char cap[] = "Battery";
+                char pctMsg[6];
+                snprintf(pctMsg, sizeof(pctMsg), "%d%%", t);
+                char empty[] = "";
+                OledPushMsg(cap, pctMsg, empty, 2);
+                break;
+            }
+        }
+        if (batteryPercentage > 50) lastBatThreshold = 100;
+    }
 #endif
     printTime(strtmp);  // date/time is 10+1 symbols
     stridx = 11;
@@ -1106,70 +1222,135 @@ void loopPMU()
     }
 
     pmu_flag = false;
-    // Get PMU Interrupt Status Register
     uint32_t status = PMU.getIrqStatus();
-    log_i("STATUS => HEX:%x BIN:%b", status, status);
+    log_i("PMU IRQ => HEX:%x", status);
 
-    // if (PMU.isPekeyShortPressIrq()) {
-    //     volumeUp();
-    // }
+    // --- Power key short: battery status popup ---
+    if (PMU.isPekeyShortPressIrq()) {
+        log_i("BTN SW3/PWRON SHORT");
+        if (OledIsPopupActive()) {
+            OledDismissPopup();
+        } else {
+            uint8_t pct = getBatteryPercentage();
+            char batVolt[8], batPct[16];
+            snprintf(batVolt, sizeof(batVolt), "%.2fV", PMU.getBattVoltage() / 1000.0f);
+            const char *suffix;
+            switch (PMU.getChargerStatus()) {
+                case XPOWERS_AXP2101_CHG_TRI_STATE:  suffix = " TRICKLE"; break;
+                case XPOWERS_AXP2101_CHG_PRE_STATE:  suffix = " PRE-CHG"; break;
+                case XPOWERS_AXP2101_CHG_CC_STATE:   suffix = " CHG CC";  break;
+                case XPOWERS_AXP2101_CHG_CV_STATE:   suffix = " CHG CV";  break;
+                case XPOWERS_AXP2101_CHG_DONE_STATE: suffix = " FULL";    break;
+                default: suffix = vbusIn ? " USB" : "";                   break;
+            }
+            snprintf(batPct, sizeof(batPct), "%d%%%s", pct, suffix);
+            OledPushMsgBar("Battery", batVolt, batPct, (int8_t)pct, 2);
+        }
+    }
 
-    if (PMU.isBatChagerStartIrq() || PMU.isBatteryConnect()) {
-        log_i("Battery Charging");
+    // --- Battery inserted ---
+    if (PMU.isBatInsertIrq()) {
+        log_i("Battery Inserted");
+        OledPushMsgDual("Battery", "Inserted", 2);
+        if (PMU.isCharging()) PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+    }
+
+    // --- Charge started ---
+    if (PMU.isBatChagerStartIrq()) {
+        log_i("Charge Start");
         PMU.setChargingLedMode(XPOWERS_CHG_LED_CTRL_CHG);
+        OledPushMsgDual("Charge", "Charging", 2);
     }
 
+    // --- Charge complete ---
     if (PMU.isBatChagerDoneIrq()) {
-        log_i("Battery Charging Done");
+        log_i("Charge Done");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_ON);  // steady = full; BLINK_1HZ was indistinguishable from "no USB"
+        OledPushMsgDual("Charge", "Full!", 2);
     }
 
+    // --- Charge safety timer expired (would be silent without this IRQ) ---
+    if (PMU.isChagerOverTimeoutIrq()) {
+        log_w("Charge safety timer expired");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_4HZ);
+        OledPushMsgDual("Charge", "Timeout!", 3);
+    }
+
+    // --- Battery removed ---
     if (PMU.isBatRemoveIrq()) {
         log_i("Battery Removed");
         PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+        OledPushMsgDual("Battery", "Removed", 2);
     }
 
+    // --- USB connected ---
     if (PMU.isVbusInsertIrq()) {
-        log_i("USB Detected");
+        log_i("USB Connected");
         vbusIn = true;
+        OledPushMsgDual("USB", "Connected", 1);
     }
 
+    // --- USB removed: reset LED since charging stops ---
     if (PMU.isVbusRemoveIrq()) {
         log_i("USB Removed");
         vbusIn = false;
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_1HZ);
+        OledPushMsgDual("USB", "Removed", 1);
     }
 
-    if (PMU.isPekeyLongPressIrq()) {
-    //     vTaskDelete(dataTaskHandler);
-    //     vTaskDelete(clearvolumeSliderTaskHandler);
-    //     vTaskDelete(gnssTaskHandler);
-    //     vTaskDelete(encoderTaskHandler);
-    //     vTaskDelete(updateTaskHandler);
-    //     vTaskDelete(pielxTaskHandler);
+    // --- PMU die overtemperature: charger throttles/stops ---
+    if (PMU.isBatDieOverTemperatureIrq()) {
+        log_e("PMU die over-temperature");
+        PMU.setChargingLedMode(XPOWERS_CHG_LED_BLINK_4HZ);
+        OledPushMsgDual("PMU", "Overtemp!", 4);
+    }
 
-    //     u8g2.setFont(u8g2_font_timR14_tf);
-    //     u8g2.clearBuffer();
-    //     int8_t height = 30 + u8g2.getAscent();
-    //     u8g2.drawStr(20, height, "Power OFF");
-    //     u8g2.sendBuffer();
-    //     delay(3000);
+    // --- Charger over-temperature (TS pin; inert with TS disabled, future-proof) ---
+    if (PMU.isBatChargerOverTemperatureIrq()) {
+        log_e("Charger over-temperature");
+        OledPushMsgDual("Charge", "Overtemp!", 3);
+    }
+
+    // --- Battery overvoltage (hardware safety event) ---
+    if (PMU.isBatOverVoltageIrq()) {
+        log_e("Battery overvoltage!");
+        OledPushMsgDual("Battery", "Overvolt!", 4);
+    }
+
+    // --- Hardware low-battery warnings (fuel gauge threshold crossing) ---
+    if (PMU.isDropWarningLevel1Irq()) {
+        log_w("Battery low: 15%%");
+        char cap[] = "Battery"; char msg[] = "Low 15%!"; char empty[] = "";
+        OledPushMsg(cap, msg, empty, 3);
+    }
+    if (PMU.isDropWarningLevel2Irq()) {
+        log_e("Battery critical: 5%%");
+        char cap[] = "Battery"; char msg[] = "Critical!"; char empty[] = "";
+        OledPushMsg(cap, msg, empty, 4);
+    }
+
+    // --- Power key long press: shutdown ---
+    if (PMU.isPekeyLongPressIrq()) {
+        log_i("Long press — shutdown");
         PMU.shutdown();
     }
 
-    // Clear PMU Interrupt Status Register
     PMU.clearIrqStatus();
 }
 #endif
 
 long sendTimer = 0;
+volatile unsigned long lastTxMs = 0;  // millis() of last actual beacon TX; 0 = never
+#ifndef USE_ROTARY
 int btn_count = 0;
-long timeCheck = 0;
-long TimeSyncPeriod = 0;
-
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
 const int btnCnt = 500;
 #else
 const int btnCnt = 1000;
 #endif
+#endif  // USE_ROTARY
+long timeCheck = 0;
+long TimeSyncPeriod = 0;
 
 void loop()
 {
@@ -1195,20 +1376,15 @@ void loop()
         }
     } // if (!fwUpdateProcess)
         
-    RotaryProcess();
+    if (RotaryProcess()) menuUpdateNeeded = true;
 
     if (fwUpdateProcess) return;
 
-    uint8_t bootPin2 = HIGH;
 #ifndef USE_ROTARY
-    bootPin2 = digitalRead(PIN_ROT_BTN);
-#endif
-    
+    uint8_t bootPin2 = digitalRead(PIN_ROT_BTN);
     String _empty = "";
 
     int rot_sw = digitalRead(BOOT_PIN);
-
-    // log_d("rot_sw=%d bootPin2=%d btn_count=%d", rot_sw, bootPin2, btn_count);
 
     if (rot_sw == LOW || bootPin2 == LOW) {
         btn_count++;
@@ -1228,19 +1404,26 @@ void loop()
         }
         if (btn_count > btnCnt * 3 && btn_count < btnCnt * 4)  // Push BOOT 15sec
         {
+            RX_LED_OFF();
+            TX_LED_OFF();
+            String _msg = "SB SW";
+            OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
+        }
+        if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)  // Push BOOT 20sec
+        {
             RX_LED_ON();
             TX_LED_ON();
             String _msg = "Reset";
             OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
-        if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)  // Push BOOT 20sec
+        if (btn_count >= btnCnt * 5)  // Push BOOT 25sec+
         {
             RX_LED_OFF();
             TX_LED_OFF();
             String _msg = "Cancel";
             OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
         }
-        if (btn_count > btnCnt *5) btn_count = 0;
+        if (btn_count > btnCnt * 6) btn_count = btnCnt * 6;  // clamp, don't wrap
     } else {
         if (btn_count > 0) {
             // Serial.printf("btn_count=%dms\n", btn_count * 10);
@@ -1292,6 +1475,22 @@ void loop()
             }
             else if (btn_count > btnCnt * 3 && btn_count < btnCnt * 4)
             {
+                static int bootBeaconLastFixed = 10;
+                if (config.aprs_beacon == 0) {
+                    config.aprs_beacon = bootBeaconLastFixed > 0 ? bootBeaconLastFixed : 10;
+                } else {
+                    bootBeaconLastFixed = config.aprs_beacon;
+                    config.aprs_beacon = 0;
+                }
+                SaveConfig();
+                sendTimer = millis();
+                char msgSB[]  = "SB ON";
+                char msgFix[] = "SB OFF";
+                OledPushMsg("", config.aprs_beacon == 0 ? msgSB : msgFix, (char *)_empty.c_str(), 3);
+                OledUpdate(0, false, false);
+            }
+            else if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)
+            {
                 log_i("Factory Reset");
                 String _msg = "Reset OK";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 15);
@@ -1301,7 +1500,7 @@ void loop()
                 SaveConfig();
                 esp_restart();
             }
-            else if (btn_count > btnCnt * 4 && btn_count < btnCnt * 5)
+            else if (btn_count >= btnCnt * 5)
             {
                 log_i("Cancel");
                 String _msg = "Cancelled";
@@ -1325,17 +1524,75 @@ void loop()
             btn_count = 0;
         }
     }
+#endif  // USE_ROTARY
 
-#if defined(USER_BUTTON)
-    if (digitalRead(USER_BUTTON) == LOW) {
-        while (digitalRead(USER_BUTTON) == LOW) {
-            vTaskDelay(10 / portTICK_PERIOD_MS);
+#if defined(BOARD_TTWR_PLUS)
+    {
+        static uint32_t sw4Ms = 0, sw1Ms = 0;
+        static bool sw4Prev = HIGH, sw1Prev = HIGH;
+        bool sw4 = digitalRead(USER_BUTTON);
+        bool sw1 = digitalRead(BOOT_PIN);
+
+        if (sw4 == LOW && sw4Prev == HIGH) sw4Ms = millis();
+        if (sw4 == LOW && sw4Ms && (millis() - sw4Ms >= 2000)) {
+            log_i("BTN SW4/IO3 LONG -> RF toggle");
+            sw4Ms = 0;
+            config.tnc = !config.tnc;
+            SaveConfig();
+            char msgOn[] = "RF ON";  char msgOff[] = "RF OFF";  char empty[] = "";
+            OledPushMsg("", config.tnc ? msgOn : msgOff, empty, 3);
         }
-        log_d("USER_BUTTON");
+        if (sw4 == HIGH && sw4Prev == LOW && sw4Ms) {
+            uint32_t held = millis() - sw4Ms;  sw4Ms = 0;
+            if (held >= 50) {
+                log_i("BTN SW4/IO3 SHORT (%ums) -> beacon", held);
+                if (OledIsPopupActive()) {
+                    OledDismissPopup();
+                } else {
+                    char empty[] = "";
+                    if (!config.tnc) {
+                        char msg[] = "RF IS OFF";  OledPushMsg("", msg, empty, 3);
+                    } else if (config.gps_mode == GPS_MODE_GPS && !gps.location.isValid()) {
+                        char msg[] = "NO GPS FIX";  OledPushMsg("", msg, empty, 3);
+                    } else if (lastTxMs > 0 && millis() - lastTxMs < 30000UL) {
+                        char waitMsg[16], tooFast[] = "Too fast!";
+                        snprintf(waitMsg, sizeof(waitMsg), "Wait %ds!", (int)((30000UL - (millis() - lastTxMs) + 999) / 1000));
+                        OledPushMsg("", tooFast, waitMsg, 3);
+                    } else {
+                        menuMode = MENU_HIDDEN;  // must precede flag: OledPushMsg I2C takes ~25ms during which taskAPRS reads the flag
+                        send_aprs_update = true;
+                        char msg[] = "Beacon TX";  OledPushMsg("", msg, empty, 1);
+                    }
+                }
+            }
+        }
+        sw4Prev = sw4;
 
-        // OledStartup();
-        // PMU.settDC1WorkModeToPwm(1);
-        // PMU.disableDC1();
+        if (sw1 == LOW && sw1Prev == HIGH) sw1Ms = millis();
+        if (sw1 == LOW && sw1Ms && (millis() - sw1Ms >= 2000)) {
+            log_i("BTN SW1/IO0 LONG -> RF power toggle");
+            sw1Ms = 0;
+            config.rf_power = !config.rf_power;
+            SaveConfig();
+#ifdef POWER_PIN
+            digitalWrite(POWER_PIN, config.rf_power);
+#endif
+            char msgHi[] = "RF High";  char msgLo[] = "RF Low";  char empty[] = "";
+            OledPushMsg("", config.rf_power ? msgHi : msgLo, empty, 3);
+        }
+        if (sw1 == HIGH && sw1Prev == LOW && sw1Ms) {
+            uint32_t held = millis() - sw1Ms;  sw1Ms = 0;
+            if (held >= 50) {
+                log_i("BTN SW1/IO0 SHORT (%ums) -> display toggle", held);
+                if (OledIsPopupActive()) {
+                    OledDismissPopup();
+                } else {
+                    OledResetActivity();
+                    OledTogglePower();
+                }
+            }
+        }
+        sw1Prev = sw1;
     }
 #endif
 
@@ -1346,28 +1603,10 @@ void loop()
 #endif
 }
 
-String sendIsAckMsg(String toCallSign, char *msgId) {
-    char str[300];
-    char call[11];
-    int i;
-    memset(&call[0], 0, 11);
-    strcpy(&call[0], toCallSign.c_str());
-    i = strlen(call);
-    for (; i < 9; i++)
-        call[i] = 0x20;
-    memset(&str[0], 0, 300);
-
-    if (config.aprs_ssid > 0)
-        sprintf(str, "%s-%d>APESP1,%s::%s:ack%s", config.aprs_mycall, config.aprs_ssid, VERSION, call, msgId);
-    else
-        sprintf(str, "%s>APESP1,%s::%s:ack%s", config.aprs_mycall, VERSION, call, msgId);
-  
-    return String(str);
-}
 
 void sendIsPkg(char *raw) {
     char str[300];
-    sprintf(str, "%s-%d>APESP1%s:%s", config.aprs_mycall, config.aprs_ssid, VERSION, raw);
+    sprintf(str, "%s-%d>%s%s:%s", config.aprs_mycall, config.aprs_ssid, APRS_TOCALL, VERSION, raw);
     // client.println(str);
     String tnc2Raw = String(str);
     if (callsignValid && aprsClient.connected())
@@ -1390,9 +1629,9 @@ void sendIsPkgMsg(char *raw) {
         call[i] = 0x20;
 
     if (config.aprs_ssid == 0)
-        sprintf(str, "%s>APESP1::%s:%s", config.aprs_mycall, call, raw);
+        sprintf(str, "%s>%s::%s:%s", config.aprs_mycall, APRS_TOCALL, call, raw);
     else
-        sprintf(str, "%s-%d>APESP1::%s:%s", config.aprs_mycall, config.aprs_ssid, call, raw);
+        sprintf(str, "%s-%d>%s::%s:%s", config.aprs_mycall, config.aprs_ssid, APRS_TOCALL, call, raw);
 
     String tnc2Raw = String(str);
     if (callsignValid && aprsClient.connected())
@@ -1458,9 +1697,10 @@ void taskAPRS(void *pvParameters) {
 
         send_aprs_update = false;
 
-        if (sendByTime || sendByFlag) {
+        if ((sendByTime || sendByFlag) && menuMode == MENU_HIDDEN) {
             sendTimer = now;
-            
+            lastTxMs  = now;
+
             if (sendByTime) log_i("Send by Time");
             if (sendByFlag) log_i("Send by Flag");
 
@@ -1499,14 +1739,14 @@ void taskAPRS(void *pvParameters) {
                 }
                 char rawTlm[100];
                 if (config.aprs_ssid == 0) {
-                    sprintf(rawTlm, "%s>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
-                            config.aprs_mycall, igateTLM.Sequence,
+                    sprintf(rawTlm, "%s>%s:T#%03d,%d,%d,%d,%d,%d,00000000",
+                            config.aprs_mycall, APRS_TOCALL, igateTLM.Sequence,
                             igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                             igateTLM.TX, igateTLM.DROP);
                 } else {
                     sprintf(
-                        rawTlm, "%s-%d>APESP1:T#%03d,%d,%d,%d,%d,%d,00000000",
-                        config.aprs_mycall, config.aprs_ssid, igateTLM.Sequence,
+                        rawTlm, "%s-%d>%s:T#%03d,%d,%d,%d,%d,%d,00000000",
+                        config.aprs_mycall, config.aprs_ssid, APRS_TOCALL, igateTLM.Sequence,
                         igateTLM.RF2INET, igateTLM.INET2RF, igateTLM.RX,
                         igateTLM.TX, igateTLM.DROP);
                 }
@@ -1534,7 +1774,6 @@ void taskAPRS(void *pvParameters) {
             if (PacketBuffer.getCount() > 0) {
                 String tnc2;
                 PacketBuffer.pop(&incomingPacket);
-//TODO          processPacket();
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
 #ifdef DEBUG_TNC                
@@ -1559,8 +1798,13 @@ void taskAPRS(void *pvParameters) {
                 // free(rawP);
                 pkgListUpdate(call, (char *)tnc2.c_str(), type, 0);
 
-                String msgType = "Type: " + pkgGetType(type);
-                OledPushMsg("RF RX", call, (char *)msgType.c_str(), 3);
+                bool msgForUs = (type & FILTER_MESSAGE) && config.aprs_sms_rx
+                                && aprsCheckMsg(call, (const char *)incomingPacket.info);
+
+                if (!msgForUs && config.aprs_rx_popup > 0) {
+                    String msgType = "Type: " + pkgGetType(type);
+                    OledPushMsg("RF RX", call, (char *)msgType.c_str(), config.aprs_rx_popup);
+                }
 
                 // IGate Process
                 if (config.rf2inet && aprsClient.connected()) {
@@ -1590,15 +1834,15 @@ void taskAPRS(void *pvParameters) {
                         } else {
                             if (config.digi_delay == 0) {  // Auto mode
                                 if (digiCount > 20)
-                                    digiDelay = random(5000);
+                                    digiDelay = random(10, 5000);
                                 else if (digiCount > 10)
-                                    digiDelay = random(3000);
+                                    digiDelay = random(10, 3000);
                                 else if (digiCount > 0)
-                                    digiDelay = random(1500);
+                                    digiDelay = random(10, 1500);
                                 else
-                                    digiDelay = random(500);
+                                    digiDelay = random(10, 500);
                             } else {
-                                digiDelay = random(config.digi_delay);
+                                digiDelay = random(10, config.digi_delay > 10 ? config.digi_delay : 20);
                             }
                         }
                         String digiPkg;
@@ -1664,7 +1908,7 @@ void taskNetwork(void *pvParameters) {
     { /**< WiFi soft-AP mode */
         WiFi.mode(WIFI_MODE_AP);
     }
-    if (config.wifi_mode == WIFI_AP_STA_FIX)
+    else if (config.wifi_mode == WIFI_AP_STA_FIX)
     { /**< WiFi station + soft-AP mode */
         WiFi.mode(WIFI_MODE_APSTA);
     }
@@ -1682,7 +1926,6 @@ void taskNetwork(void *pvParameters) {
         //         wifiMulti.addAP(config.wifi_sta[i].wifi_ssid, config.wifi_sta[i].wifi_pass);
         //     }
         // }
-        WiFi.setAutoReconnect(true);
         WiFi.setTxPower((wifi_power_t)config.wifi_power);
         // WiFi.setHostname("APRS_ESP_" + config.aprs_mycall);
         WiFi.setHostname("APRS_ESP");
@@ -1706,7 +1949,11 @@ void taskNetwork(void *pvParameters) {
 
     if (config.wifi_mode & WIFI_STA_FIX) {
         WiFi.begin(config.wifi_ssid, config.wifi_pass);
-        webService();
+        WiFi.setAutoReconnect(false);  // after begin() — begin() resets this to true internally
+        wifiTTL = millis() + connectTimeoutMs;
+        if (!(config.wifi_mode & WIFI_AP_FIX)) {  // skip if webService() already called in AP block
+            webService();
+        }
         NTP_Timeout = millis() + 2000;
     }
 
@@ -1746,9 +1993,7 @@ void taskNetwork(void *pvParameters) {
                 } else {
                     if (aprsClient.available()) {
                         String line = aprsClient.readStringUntil('\n');  //read the value at Server answer sleep line by line
-#ifdef DEBUG_IS
                         log_i("APRS-IS: %s", line.c_str());
-#endif
                         status.isCount++;
 
                         int start_val = line.indexOf(">", 0);  // find the first position of >
@@ -1778,8 +2023,13 @@ void taskNetwork(void *pvParameters) {
                                 log_d("Type: %d", type);
                                 pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
 
-                                String msgType = "Type: " + pkgGetType(type);
-                                OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), 3);
+                                bool msgForUs2 = (type & FILTER_MESSAGE) && config.aprs_sms_rx
+                                                 && aprsCheckMsg(src_call.c_str(), &raw[0]);
+
+                                if (!msgForUs2 && config.aprs_rx_popup > 0) {
+                                    String msgType = "Type: " + pkgGetType(type);
+                                    OledPushMsg("APRS-IS RX", (char *)src_call.c_str(), (char *)msgType.c_str(), config.aprs_rx_popup);
+                                }
                             }
 
                             status.allCount++;
@@ -1842,40 +2092,67 @@ void taskNetwork(void *pvParameters) {
                 }
             }
         }
+
+        if ((config.wifi_mode & WIFI_STA_FIX) && WiFi.status() != WL_CONNECTED) {
+            if (millis() > wifiTTL) {
+                wifiTTL = millis() + 30000;
+                WiFi.reconnect();
+                log_d("WiFi STA reconnect attempt");
+            }
+        }
     }
 }
 
 void taskOLEDDisplay(void *pvParameters) {
     log_i("Task <OLEDDisplay> started");
+    unsigned long lastFullUpdate = 0;
 
     for (;;) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
 
-        printPeriodicDebug();
-        
         if (fwUpdateProcess) {
+            printPeriodicDebug();
             OledUpdateFWU();
             continue;
         }
 
+        bool fullCycle = (millis() - lastFullUpdate >= 1000);
+        bool doOled    = menuUpdateNeeded || fullCycle;
+
+        if (fullCycle) {
+            lastFullUpdate = millis();
+            printPeriodicDebug();
+        }
+
+
+        if (doOled && !oledTxBusy) {
+            menuUpdateNeeded = false;
 #if defined(ADC_BATTERY)
-        OledUpdate(batteryPercentage, false, AFSKInitAct);
-        WebDataUpdate(batteryVoltage, false);
+            OledUpdate(batteryPercentage, false, AFSKInitAct);
+            if (fullCycle) WebDataUpdate(batteryVoltage, false);
 #elif defined(USE_PMU)
-        OledUpdate(batteryPercentage, vbusIn, AFSKInitAct);
-        WebDataUpdate(batteryPercentage, vbusIn);
+            OledUpdate(batteryPercentage, vbusIn, AFSKInitAct, PMU.isCharging());
+            if (fullCycle) WebDataUpdate(batteryPercentage, vbusIn);
 #else
-        OledUpdate(-1, false, AFSKInitAct);
-        WebDataUpdate(-1, false);
+            OledUpdate(-1, false, AFSKInitAct);
+            if (fullCycle) WebDataUpdate(-1, false);
 #endif
+        }
 
+        if (fullCycle && (menuMode == MENU_RX_LIST || menuMode == MENU_RX_DETAIL)) {
+            sort(pkgList, PKGLISTSIZE);
+            rxListCount = pkgListValidCount();
+        }
+
+        if (fullCycle) {
+            OledCheckAutoDim();
 #if defined(USE_PMU)
-        loopPMU();
+            loopPMU();
 #endif
-
 #if defined(USE_NEOPIXEL)
-        strip.show();
+            strip.show();
 #endif
+        }
     }
 }
 
@@ -1884,7 +2161,7 @@ void updateGps(void) {
 
     // If startup dealy not expired
     if (!gpsUnlock) {
-        if ((long)millis() - gpsUpdTMO < 0) {
+        if (millis() < gpsUpdTMO) {
             return;
         } else {
             log_i("GPS Unlocked");
