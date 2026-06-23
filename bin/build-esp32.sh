@@ -23,16 +23,15 @@ basename=firmware-$1-$VERSION
 
 pio run --environment $1 # -v
 
-echo "Copying ESP32 bin file"
-SRCBIN=.pio/build/$1/firmware.factory.bin
-cp $SRCBIN $OUTDIR/$basename.bin
-
 echo "Copying ESP32 update bin file"
-SRCBIN=.pio/build/$1/firmware.bin
-cp $SRCBIN $OUTDIR/$basename-update.bin
+cp .pio/build/$1/firmware.bin $OUTDIR/$basename-update.bin
 
 echo "Building LittleFS filesystem for ESP32 targets"
 pio run --environment $1 -t buildfs
 cp .pio/build/$1/littlefs.bin $OUTDIR/littlefs-$1-$VERSION.bin
+
+echo "Copying ESP32 factory bin file (includes LittleFS)"
+cp .pio/build/$1/firmware.factory.bin $OUTDIR/$basename-factory.bin
+
 cp bin/device-install.* $OUTDIR
 cp bin/device-update.* $OUTDIR

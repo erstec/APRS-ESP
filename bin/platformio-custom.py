@@ -34,7 +34,6 @@ def esp32_create_combined_bin(source, target, env):
     app_offset = 0x10000
 
     new_file_name = env.subst("$BUILD_DIR/${PROGNAME}.factory.bin")
-    sections = env.subst(env.get("FLASH_EXTRA_IMAGES"))
     firmware_name = env.subst("$BUILD_DIR/${PROGNAME}.bin")
     chip = env.get("BOARD_MCU")
     flash_size = env.BoardConfig().get("upload.flash_size")
@@ -47,22 +46,22 @@ def esp32_create_combined_bin(source, target, env):
     if memory_type == "opi_opi" or memory_type == "opi_qspi":
         flash_mode = "dout"
     cmd = [
-        "--chip",
-        chip,
+        "--chip", chip,
         "merge_bin",
-        "-o",
-        new_file_name,
-        "--flash_mode",
-        flash_mode,
-        "--flash_freq",
-        flash_freq,
-        "--flash_size",
-        flash_size,
+        "-o", new_file_name,
+        "--flash_mode", flash_mode,
+        "--flash_freq", flash_freq,
+        "--flash_size", flash_size,
     ]
 
     print("    Offset | File")
-    for section in sections:
-        sect_adr, sect_file = section.split(" ", 1)
+    for item in env.get("FLASH_EXTRA_IMAGES", []):
+        if isinstance(item, (list, tuple)):
+            # espressif32 6.x: list of (addr, file) tuples
+            sect_adr, sect_file = str(item[0]), env.subst(str(item[1]))
+        else:
+            # espressif32 5.x: "addr file" strings
+            sect_adr, sect_file = env.subst(str(item)).split(" ", 1)
         print(" -  {} | {}".format(sect_adr, sect_file))
         cmd += [sect_adr, sect_file]
 
