@@ -493,9 +493,14 @@ void Adafruit_SH1106::sh1106_data(uint8_t c) {
 }
 
 void Adafruit_SH1106::display(void) {
+  // Re-assert critical registers on every frame — RF TX noise can corrupt these
+  // without being detected, since display() does not normally reset them (only begin() does).
+  sh1106_command(SH1106_DISPLAYON);            // ensure display is on (noise can blank it)
+  sh1106_command(SH1106_SEGREMAP | 0x1);      // segment remap: col 127 = SEG0
+  sh1106_command(SH1106_COMSCANDEC);          // COM scan: row 63 → row 0
   sh1106_command(SH1106_SETLOWCOLUMN | 0x0);  // low col = 0
-  sh1106_command(SH1106_SETHIGHCOLUMN | 0x0);  // hi col = 0
-  sh1106_command(SH1106_SETSTARTLINE | 0x0); // line #0
+  sh1106_command(SH1106_SETHIGHCOLUMN | 0x0); // hi col = 0
+  sh1106_command(SH1106_SETSTARTLINE | 0x0);  // line #0
 
   if (sid != -1)
   {

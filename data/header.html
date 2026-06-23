@@ -1,0 +1,32 @@
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/style.css">
+<script>if(localStorage.getItem('aprs-theme')==='light')document.documentElement.classList.add('light');</script>
+{auto_refresh}
+{page_scripts}
+</head><body>
+<div class="topnav">
+  <span>APRS-ESP32 &mdash; {my_station}</span>
+  <button id="theme-btn" class="theme-toggle" onclick="(function(){document.documentElement.classList.toggle('light');localStorage.setItem('aprs-theme',document.documentElement.classList.contains('light')?'light':'dark');var b=document.getElementById('theme-btn');b.textContent=document.documentElement.classList.contains('light')?'Dark mode':'Light mode';})()">Light mode</button>
+</div>
+<nav class="page-nav">
+  <a href="/" class="nav-link {nav_dash}">Dashboard</a>
+  {nav_storage_tab}
+  <a href="/config" class="nav-link {nav_setting}">Setting</a>
+  <a href="/radio" class="nav-link {nav_radio}">Radio</a>
+  <a href="/service" class="nav-link {nav_service}">Service</a>
+  <a href="/system" class="nav-link {nav_system}">System</a>
+  <a href="/test" class="nav-link {nav_test}">Test</a>
+  <a href="/files" class="nav-link {nav_files}">Files</a>
+  <a href="/firmware" class="nav-link {nav_firmware}">Firmware</a>
+  <a href="/configuration" class="nav-link {nav_config}">Configuration</a>
+</nav>
+<div class="site-footer">APRS-ESP {version} &mdash; {my_station}</div>
+<script>
+  (function(){
+    var b = document.getElementById('theme-btn');
+    if(document.documentElement.classList.contains('light')) b.textContent = 'Dark mode';
+  })();
+</script>
+<div class="page-content">

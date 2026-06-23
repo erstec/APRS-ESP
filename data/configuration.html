@@ -1,0 +1,33 @@
+<div class="card" style="max-width:500px">
+  <div class="card-title">Device Info</div>
+  <p class="info-line">Hardware: <b>{board_name}</b></p>
+  <p class="info-line">Firmware: <b>V{version}</b></p>
+  <p class="info-line">Chip ID: <b>{chip_id}</b></p>
+  <p class="info-line" style="margin-top:8px">Maintained by <b>LY3PH</b></p>
+  <p class="info-line"><a href="https://github.com/erstec/APRS-ESP" target="_blank">Project page at GitHub</a></p>
+</div>
+
+<div class="form-section" style="max-width:500px">
+  <h3>Configuration Backup</h3>
+  <form method="POST" action="#" enctype="multipart/form-data" id="download_form">
+    <div class="btn-row">
+      <input type="submit" class="btn btn-primary" name="backupConfig" value="Download Config Backup">
+    </div>
+  </form>
+</div>
+
+<div class="form-section" style="max-width:500px">
+  <h3>Configuration Restore</h3>
+  <form method="POST" action="#" enctype="multipart/form-data" id="upload_form">
+    <div class="form-row"><label>Config file (.json)</label><input type="file" name="update" accept=".json" onchange="sub(this)"></div>
+    <div class="btn-row">
+      <input type="submit" class="btn btn-danger" name="restoreConfig" value="Restore Config">
+    </div>
+    <div id="prg"></div>
+    <div id="prgbar"><div id="bar" style="width:0%"></div></div>
+  </form>
+</div>
+
+<script src="/jquery.min.js"></script>
+<script src="/configuration.js"></script>
+</div></body></html>

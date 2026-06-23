@@ -27,6 +27,13 @@ extern Configuration config;
 
 static Location lastLoc = { .valid = false };
 
+// Convert TinyGPS++ time.value() (HHMMSSCC, i.e. HHMMSS * 100 + centiseconds) to seconds since midnight
+static int32_t timeToSecs(uint32_t v) {
+    return (int32_t)(v / 1000000) * 3600
+         + (int32_t)((v / 10000) % 100) * 60
+         + (int32_t)((v / 100) % 100);
+}
+
 int smartBeaconSpeedRate(float speed) {
     float SB_FAST_SPEED = config.sb_fast_speed / 3.6; // [m/s]
     int SB_FAST_RATE = config.sb_fast_rate;
@@ -42,18 +49,11 @@ int smartBeaconSpeedRate(float speed) {
 
 // returns the angle between two bearings
 float getBearingAngle(float alpha, float beta) {
-    float delta = fmod(abs(alpha - beta), 360);
+    float delta = fmod(fabsf(alpha - beta), 360.0f);
     if (delta <= 180) 
         return delta;
     else 
         return (360 - delta);
-}
-
-// obtain max speed in [m/s] from moved distance, last and current location
-float getSpeed(Location location) {
-    float dist = gps.distanceBetween(lastLoc.location.lat(), lastLoc.location.lng(), location.location.lat(), location.location.lng());
-    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
-    return max(max(dist / t_diff, (float)location.speed.mps()), (float)lastLoc.speed.mps());
 }
 
 bool smartBeaconCornerPeg(Location location) {
@@ -62,7 +62,8 @@ bool smartBeaconCornerPeg(Location location) {
     float SB_TURN_SLOPE = config.sb_turn_slope * 1.0;
 
     float speed = location.speed.mps();
-    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
+    int32_t t_diff = timeToSecs(location.time.value()) - timeToSecs(lastLoc.time.value());
+    if (t_diff < 0) t_diff += 86400;
     float turn = getBearingAngle(location.course.deg(), lastLoc.course.deg());
 
     // no bearing / stillstand -> no corner pegging
@@ -88,8 +89,8 @@ bool smartBeaconCheck(Location location) {
     if (smartBeaconCornerPeg(location))
         return true;
     float dist = gps.distanceBetween(location.location.lat(), location.location.lng(), lastLoc.location.lat(), lastLoc.location.lng());
-    time_t t_diff = (location.time.value() / 100) - (lastLoc.time.value() / 100);
-    // log_d("location.time.value(): %ld", location.time.value());     // /100 => in seconds
+    int32_t t_diff = timeToSecs(location.time.value()) - timeToSecs(lastLoc.time.value());
+    if (t_diff < 0) t_diff += 86400;
     float speed = location.speed.mps();
     //if (location.speed.isValid() && location.course.isValid())
     int speed_rate = smartBeaconSpeedRate(speed);
@@ -122,42 +123,3 @@ bool SmartBeaconingProc() {
 
     return false;
 }
-
-// bool SmartBeaconingProc() {
-// #ifdef USE_SMART_BEACONING
-
-//     // https://github.com/ge0rg/aprsdroid/blob/master/src/location/SmartBeaconing.scala
-
-//     float speed = gps.speed.kmph();
-//     float course_prev = gps.course.deg();
-//     float heading_change_since_beacon = abs(course_prev - gps.course.deg());
-//     long beacon_rate, secs_since_beacon, turn_time;
-
-//     if (speed < APRS_SB_LOW_SPEED) {
-//         beacon_rate = config.sb_slow_rate;
-//     } else {
-//         // Adjust beacon rate according to speed
-//         if (speed > APRS_SB_HIGH_SPEED) {
-//             beacon_rate = config.sb_fast_rate;
-//         } else {
-//             beacon_rate = config.sb_fast_rate * APRS_SB_HIGH_SPEED / speed;
-//         }
-
-//         // Corner pegging - ALWAYS occurs if not "stopped"
-//         // Note turn threshold is speed-dependent
-
-//         // what is mph?
-//         float turn_threshold = APRS_SB_TURN_MIN + config.sb_turn_slope / (speed * 2.23693629);
-
-//         if ((heading_change_since_beacon > APRS_SB_TURN_TH) && (secs_since_beacon > turn_time)) {
-//             secs_since_beacon = beacon_rate;
-//         }
-//     }
-
-//     if (secs_since_beacon > beacon_rate) {
-//         return true;
-//     } else {
-//         return false;
-//     }
-// #endif
-// }

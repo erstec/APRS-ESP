@@ -12,9 +12,6 @@ rm -f $OUTDIR/firmware*
 mkdir -p $OUTDIR/
 rm -r $OUTDIR/* || true
 
-# Important to pull latest version of libs into all device flavors, otherwise some devices might be stale
-platformio pkg update 
-
 cp bin/device-install.* $OUTDIR
 cp bin/device-update.* $OUTDIR
 

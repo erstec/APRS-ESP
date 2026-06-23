@@ -31,6 +31,7 @@ uint16_t pkgType(const char *raw);
 pkgListType getPkgList(int idx);
 
 void pkgListInit();
+int  pkgListValidCount();
 
 String pkgGetType(uint32_t type);
 

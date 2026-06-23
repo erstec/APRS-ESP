@@ -1248,7 +1248,7 @@ static bool check_valid_data(const adc_digi_output_data_t *data)
 
 esp_err_t adc_init()
 {
-  esp_err_t error_code;
+  // esp_err_t error_code;
 
   continuous_adc_init(adc1_chan_mask, adc2_chan_mask, channel, sizeof(channel) / sizeof(adc_channel_t));
   // continuous_adc_init(0, 0, channel, 1);
@@ -1946,8 +1946,6 @@ bool sqlActive = false;
 void AFSK_Poll(bool isRF)
 {
   int mV;
-  int x = 0;
-
   if (!hw_afsk_dac_isr)
   {
     memset(resultADC, 0xcc, TIMES * sizeof(uint8_t));

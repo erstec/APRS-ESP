@@ -1,0 +1,39 @@
+<div class="dash-grid">
+
+  <div class="card">
+    <div class="card-title" id="d-time">System Status &mdash; {last_readings_time}</div>
+    <div class="stat-row"><span class="stat-label">CPU Temp</span><span class="stat-value" id="d-cpu-temp">{cpu_temp} &deg;C</span></div>
+    <div class="stat-row"><span class="stat-label">Free Heap</span><span class="stat-value" id="d-free-heap">{free_heap} bytes</span></div>
+    <div class="stat-row"><span class="stat-label">Uptime</span><span class="stat-value" id="d-uptime">{uptime}</span></div>
+    <div class="stat-row"><span class="stat-label">WiFi RSSI</span><span class="stat-value" id="d-wifi-rssi">{wifi_rssi} dBm</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Battery Status</div>
+    <table class="data-table" id="d-battery">{battery_rows}</table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">GNSS Status</div>
+    <table class="data-table" id="d-gnss">{gnss_rows}</table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Statistics</div>
+    <div class="stat-row"><span class="stat-label">All / Drop</span><span class="stat-value" id="d-stats-all">{stats_all}</span></div>
+    <div class="stat-row"><span class="stat-label">RF &rarr; INET / INET &rarr; RF</span><span class="stat-value" id="d-stats-rf">{stats_rf}</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Last Stations</div>
+    <table class="data-table" id="d-stations">{last_stations_rows}</table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Top Send</div>
+    <table class="data-table" id="d-top-send">{top_send_rows}</table>
+  </div>
+
+</div>
+<script src="/dashboard.js"></script>
+</div></body></html>

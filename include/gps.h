@@ -17,10 +17,14 @@ extern long lat;
 extern long lon;
 extern long lat_prev;
 extern long lon_prev;
-extern long distance;
+extern unsigned long distance;
 extern unsigned long age;
 
 extern bool send_aprs_update;
+
+extern int gnssSatsGPS;
+extern int gnssSatsBDS;
+extern int gnssSatsGLO;
 
 uint32_t GpsPktCnt();
 

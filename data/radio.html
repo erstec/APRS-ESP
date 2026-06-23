@@ -1,0 +1,81 @@
+<form accept-charset="UTF-8" action="/radio" method="post">
+
+<div class="form-section">
+  <h3>RF Module SA818 / SA868</h3>
+  <div class="form-row"><label>TX Frequency</label><input type="number" name="tx_freq" min="{tx_freq_min}" max="{tx_freq_max}" step="0.0125" value="{tx_freq}"></div>
+  <div class="form-row"><label>RX Frequency</label><input type="number" name="rx_freq" min="{rx_freq_min}" max="{rx_freq_max}" step="0.0125" value="{rx_freq}"></div>
+  <div class="form-row"><label>Narrow / Wide</label><select name="nw_band">
+    <option value="1" {nw_wide_sel}>25.0 kHz</option>
+    <option value="0" {nw_narrow_sel}>12.5 kHz</option>
+  </select></div>
+  <div class="form-row"><label>RF Power</label><select name="rf_power">
+    <option value="1" {rf_power_high_sel}>HIGH</option>
+    <option value="0" {rf_power_low_sel}>LOW</option>
+  </select></div>
+  {rx_att_section}
+  <div class="form-row"><label>Volume (keep at 4)</label>
+    <span><input type="range" name="volume" min="1" max="8" value="{volume}" onchange="showVoxValue(this.value)"> <span id="voxShow">{volume}</span></span>
+  </div>
+  <div class="form-row"><label>SQL Level</label>
+    <span><input type="range" name="sql_level" min="0" max="8" value="{sql_level}" onchange="showSqlValue(this.value)"> <span id="sqlShow">{sql_level}</span></span>
+  </div>
+  <div class="form-row"><label>OLED Brightness</label>
+    <span><input type="range" name="oled_brightness" min="0" max="4" step="1" value="{oled_brightness_idx}" onchange="document.getElementById('brightShow').textContent=['Min','Low','Medium','High','Max'][this.value]"> <span id="brightShow">{oled_brightness_name}</span></span>
+  </div>
+  <div class="form-row"><label>Auto-Dim Timeout</label>
+    <select name="oled_autodim">
+      <option value="0" {autodim_off}>OFF</option>
+      <option value="5" {autodim_5}>5 s</option>
+      <option value="10" {autodim_10}>10 s</option>
+      <option value="20" {autodim_20}>20 s</option>
+      <option value="30" {autodim_30}>30 s</option>
+      <option value="60" {autodim_60}>60 s</option>
+    </select>
+  </div>
+  <div class="form-row"><label>Auto-Dim Level</label>
+    <select name="oled_autodim_level">
+      <option value="0" {autodim_lvl_0}>Display OFF</option>
+      <option value="1" {autodim_lvl_1}>Min</option>
+      <option value="2" {autodim_lvl_2}>Low</option>
+      <option value="3" {autodim_lvl_3}>Medium</option>
+      <option value="4" {autodim_lvl_4}>High</option>
+    </select>
+  </div>
+  <div class="form-row"><label>RX Popup Duration</label>
+    <select name="aprs_rx_popup">
+      <option value="0" {rx_popup_off}>OFF</option>
+      <option value="1" {rx_popup_1}>1 s</option>
+      <option value="2" {rx_popup_2}>2 s</option>
+      <option value="3" {rx_popup_3}>3 s</option>
+      <option value="4" {rx_popup_4}>4 s</option>
+      <option value="5" {rx_popup_5}>5 s</option>
+      <option value="6" {rx_popup_6}>6 s</option>
+      <option value="7" {rx_popup_7}>7 s</option>
+      <option value="8" {rx_popup_8}>8 s</option>
+      <option value="9" {rx_popup_9}>9 s</option>
+      <option value="10" {rx_popup_10}>10 s</option>
+    </select>
+  </div>
+  <div class="form-row"><label>Locator Change Popup</label>
+    <select name="locator_popup">
+      <option value="0" {locator_popup_off}>OFF</option>
+      <option value="1" {locator_popup_1}>1 s</option>
+      <option value="2" {locator_popup_2}>2 s</option>
+      <option value="3" {locator_popup_3}>3 s</option>
+      <option value="4" {locator_popup_4}>4 s</option>
+      <option value="5" {locator_popup_5}>5 s</option>
+      <option value="6" {locator_popup_6}>6 s</option>
+      <option value="7" {locator_popup_7}>7 s</option>
+      <option value="8" {locator_popup_8}>8 s</option>
+      <option value="9" {locator_popup_9}>9 s</option>
+      <option value="10" {locator_popup_10}>10 s</option>
+    </select>
+  </div>
+</div>
+
+<div class="btn-row">
+  <input class="btn btn-primary" name="commit" type="submit" value="Save Config">
+</div>
+</form>
+
+</div></body></html>

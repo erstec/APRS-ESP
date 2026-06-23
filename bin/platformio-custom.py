@@ -2,11 +2,29 @@ import subprocess
 import configparser
 import traceback
 import sys
-from os.path import join
+import os
+from os.path import join, isabs
 from readprops import readProps
 
 Import("env")
 platform = env.PioPlatform()
+
+def _get_fs_offset(env):
+    csv_path = env.subst("$PARTITIONS_TABLE_CSV")
+    if not isabs(csv_path):
+        csv_path = join(env.subst("$PROJECT_DIR"), csv_path)
+    try:
+        with open(csv_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = [p.strip() for p in line.split(',')]
+                if len(parts) >= 4 and parts[2] in ('spiffs', 'littlefs', 'fat'):
+                    return int(parts[3], 16)
+    except Exception as e:
+        print("Warning: could not read partition CSV {}: {}".format(csv_path, e))
+    return None
 
 def esp32_create_combined_bin(source, target, env):
     # this sub is borrowed from ESPEasy build toolchain. It's licensed under GPL V3
@@ -45,20 +63,39 @@ def esp32_create_combined_bin(source, target, env):
     print("    Offset | File")
     for section in sections:
         sect_adr, sect_file = section.split(" ", 1)
-        print(f" -  {sect_adr} | {sect_file}")
+        print(" -  {} | {}".format(sect_adr, sect_file))
         cmd += [sect_adr, sect_file]
 
-    print(f" - {hex(app_offset)} | {firmware_name}")
+    print(" - {} | {}".format(hex(app_offset), firmware_name))
     cmd += [hex(app_offset), firmware_name]
+
+    littlefs_bin = join(env.subst("$BUILD_DIR"), "littlefs.bin")
+    fs_offset = _get_fs_offset(env)
+    if os.path.exists(littlefs_bin) and fs_offset is not None:
+        print(" -  {} | {}".format(hex(fs_offset), littlefs_bin))
+        cmd += [hex(fs_offset), littlefs_bin]
+    else:
+        print("   (LittleFS not included — run buildfs target to add)")
 
     print('Using esptool.py arguments: %s' % ' '.join(cmd))
 
     esptool.main(cmd)
 
+
+def esp32_merge_littlefs(source, target, env):
+    """Re-create factory bin with LittleFS after buildfs completes."""
+    firmware_bin = env.subst("$BUILD_DIR/${PROGNAME}.bin")
+    if not os.path.exists(firmware_bin):
+        print("Skipping full factory merge: build firmware first ('pio run')")
+        return
+    esp32_create_combined_bin(source, target, env)
+
+
 if (platform.name == "espressif32"):
     sys.path.append(join(platform.get_package_dir("tool-esptoolpy")))
     import esptool
-    env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", esp32_create_combined_bin)    
+    env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", esp32_create_combined_bin)
+    env.AddPostAction("$BUILD_DIR/littlefs.bin", esp32_merge_littlefs)
 
 Import("projenv")
 
@@ -69,5 +106,5 @@ print("Using APRS-ESP platformio-custom.py, firmware version " + verObj['long'])
 # General options that are passed to the C and C++ compilers
 projenv.Append(CCFLAGS=[
     "-DAPP_VERSION=" + verObj['long'],
-    "-DAPP_VERSION_SHORT=" + verObj['short']    
+    "-DAPP_VERSION_SHORT=" + verObj['short']
 ])

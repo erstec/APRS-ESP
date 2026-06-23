@@ -8,687 +8,229 @@
 */
 #include "AFSK.h"
 #include "webservice.h"
+#include "oled.h"
 #include "base64.hpp"
 #include "utilities.h"
 #include <LibAPRSesp.h>
 #include <TinyGPS++.h>
 #include "gps.h"
+#include <vector>
+#include <utility>
+#include <ArduinoJson.h>
 
 WebServer server(80);
+DNSServer dnsServer;
 
-String webString;
 
-bool defaultSetting = false;
+static void wsBegin() {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", "");
+}
+static void ws(const char *s) { server.sendContent(s); }
+static void ws(const String &s) { server.sendContent(s); }
+static void wsEnd() { server.sendContent(""); }
+
+
 
 static int batData = 0;
 static bool usbPlugged = false;
 
 extern TinyGPSPlus gps;
 
+#ifdef USE_PMU
+#include <XPowersLib.h>
+extern XPowersPMU PMU;
+extern bool vbusIn;
+#endif
+
+static String buildBatteryRows() {
+    String rows = "";
+#ifdef USE_PMU
+    bool batPresent = PMU.isBatteryConnect();
+    const char *state;
+    if (!batPresent) {
+        state = "No Battery";
+    } else {
+        switch (PMU.getChargerStatus()) {
+            case XPOWERS_AXP2101_CHG_TRI_STATE:  state = "Trickle chg"; break;
+            case XPOWERS_AXP2101_CHG_PRE_STATE:  state = "Pre-charge";  break;
+            case XPOWERS_AXP2101_CHG_CC_STATE:   state = "Charging CC"; break;
+            case XPOWERS_AXP2101_CHG_CV_STATE:   state = "Charging CV"; break;
+            case XPOWERS_AXP2101_CHG_DONE_STATE: state = "Full";        break;
+            default: state = vbusIn ? "Standby" : "Discharging";        break;
+        }
+    }
+    rows += "<tr><td>State</td><td align=\"right\">" + String(state) + "</td></tr>";
+    rows += "<tr><td>Battery</td><td align=\"right\">" +
+            (batPresent ? String((int)PMU.getBattVoltage()) + " mV / " + String((int)PMU.getBatteryPercent()) + "%" : "absent") +
+            "</td></tr>";
+    rows += "<tr><td>VBUS</td><td align=\"right\">" +
+            (vbusIn ? String((int)PMU.getVbusVoltage()) + " mV" : "&#8212;") +
+            "</td></tr>";
+    rows += "<tr><td>Sys Voltage</td><td align=\"right\">" + String((int)PMU.getSystemVoltage()) + " mV</td></tr>";
+    rows += "<tr><td>PMU Temp</td><td align=\"right\">" + String(PMU.getTemperature(), 1) + " &deg;C</td></tr>";
+#else
+    String batStr = batData > 0 ? String(batData) + "%" : "N/A";
+    rows += "<tr><td>Battery</td><td align=\"right\">" + batStr + "</td></tr>";
+    if (usbPlugged) rows += "<tr><td>USB</td><td align=\"right\">Plugged</td></tr>";
+#endif
+    return rows;
+}
+
 void WebDataUpdate(int _batData, bool _usbPlugged) {
     batData = _batData;
     usbPlugged = _usbPlugged;
 }
 
-void serviceHandle() { server.handleClient(); }
+void serviceHandle() {
+    dnsServer.processNextRequest();
+    server.handleClient();
+}
+using TplVars = std::vector<std::pair<String, String>>;
+static void streamTemplate(const char *path, const TplVars &vars);
+
 void setHTML(byte page) {
-    webString = "<html><head>\n";
-    webString += "<meta charset=\"utf-8\">";
-    webString += "<style>\n";
-    webString += "body{background-color: #5f5f5f;font-family:\"Segoe UI\",Tahoma,sans-serif;color:#f1f1f1;font-weight: normal;display: inline-block;}\n";
-    webString += "hdr1{background-color: powderblue;color: white;vertical-align: middle;text-align: center;font-size: 16px;font-weight: bold;}\n";
-    webString += "a{color: powderblue; text-decoration: none;}\n</style>\n";
-    if (page == 0)
-        webString += "<meta http-equiv=\"refresh\" content=\"10;url=http://" + WiFi.localIP().toString() + "\"> \n";
-    webString += "<meta http - equiv = \"content-type\" content = \"text/html; charset=utf-8\" / > \n";
+    wsBegin();
 
-    webString +=
-        "<style>\n"
-        ".topnav{"
-        "position:relative;"
-        "z-index:2;"
-        "font-size:25px;"
-        "background-color:#5f5f5f;"
-        "color:#f1f1f1;"
-        "width:100%;"
-        "padding:10px;"
-        "letter-spacing:3px;"
-        "box-shadow:0 10px 10px 0 rgba(0,0,0,0.16);"
-        "font-family:\"Segoe UI\",Tahoma,sans-serif;"
-        "}\n"
-        ".L1{"
-        "text-align: center;"
-        "width: 50%;"
-        "margin: 1px;"
-        "background: darkgray;"
-        "color: white;"
-        "font-size: 15px;"
-        "font-family:\"Segoe UI\",Tahoma,sans-serif;"
-        "border-radius: 0px;"
-        "font-weight: bold;"
-        "}\n";
-    webString += F(".col-pad{width: 500px;}");
-    webString +=
-        F(".form-control{display:block;width:100%;height:22px;padding:6px "
-          "5px;font-size:14px;line-height:1.42857143;color:#555;background-"
-          "color:#fff;background-image:none;border:1px solid "
-          "#ccc;border-radius:0px;-webkit-box-shadow:inset 0 1px 1px "
-          "rgba(0,0,0,.075);box-shadow:inset 0 1px 1px "
-          "rgba(0,0,0,.075);-webkit-transition:border-color ease-in-out "
-          ".15s,box-shadow ease-in-out .15s;transition:border-color "
-          "ease-in-out .15s,box-shadow ease-in-out .15s}");
-    webString += F(
-        ".btn{display:inline-block;margin-bottom:0;font-weight:400;text-align:"
-        "center;vertical-align:middle;cursor:pointer;background-image:none;"
-        "border:1px solid transparent;white-space:nowrap;padding:0px "
-        "10px;font-size:14px;line-height:1.42857143;border-radius:0px;-webkit-"
-        "user-select:none;-moz-user-select:none;-ms-user-select:none;user-"
-        "select:none}.btn:focus,.btn:active:focus,.btn.active:focus{outline:"
-        "thin dotted;outline:5px auto "
-        "-webkit-focus-ring-color;outline-offset:-2px}.btn:hover,.btn:focus{"
-        "color:#333;text-decoration:none}.btn:active,.btn.active{outline:0;"
-        "background-image:none;-webkit-box-shadow:inset 0 3px 5px "
-        "rgba(0,0,0,.125);box-shadow:inset 0 3px 5px "
-        "rgba(0,0,0,.125)}.btn.disabled,.btn[disabled],fieldset[disabled] "
-        ".btn{cursor:not-allowed;pointer-events:none;opacity:.65;filter:alpha("
-        "opacity=65);-webkit-box-shadow:none;box-shadow:none}.btn-default{"
-        "color:#333;background-color:#fff;border-color:#ccc}.btn-default:hover,"
-        ".btn-default:focus,.btn-default:active,.btn-default.active,.open "
-        ".dropdown-toggle.btn-default{color:#333;background-color:#ebebeb;"
-        "border-color:#adadad}.btn-default:active,.btn-default.active,.open "
-        ".dropdown-toggle.btn-default{background-image:none}.btn-default."
-        "disabled,.btn-default[disabled],fieldset[disabled] "
-        ".btn-default,.btn-default.disabled:hover,.btn-default[disabled]:hover,"
-        "fieldset[disabled] "
-        ".btn-default:hover,.btn-default.disabled:focus,.btn-default[disabled]:"
-        "focus,fieldset[disabled] "
-        ".btn-default:focus,.btn-default.disabled:active,.btn-default[disabled]"
-        ":active,fieldset[disabled] "
-        ".btn-default:active,.btn-default.disabled.active,.btn-default["
-        "disabled].active,fieldset[disabled] "
-        ".btn-default.active{background-color:#fff;border-color:#ccc}.btn-"
-        "default .badge{color:#fff;background-color:#333}");
-    webString +=
-        F(".btn-danger {color: #fff;background-color: #d9534f;border-color: "
-          "#d43f3a;}");
-    webString +=
-        F(".btn-primary {color: #fff;background-color: #428bca;border-color: "
-          "#357ebd;}");
-    webString +=
-        F(".clearfix:after, .container:after, .container-fluid:after, "
-          ".row:after, .form-horizontal .form-group:after, .btn-toolbar:after, "
-          ".btn-group-vertical>.btn-group:after, .nav:after, .navbar:after, "
-          ".navbar-header:after, .navbar-collapse:after, .pager:after, "
-          ".panel-body:after, .modal-footer:after {clear: both;}");
-    webString +=
-        F(".clearfix:before, .clearfix:after, .container:before, "
-          ".container:after, .container-fluid:before, .container-fluid:after, "
-          ".row:before, .row:after, .form-horizontal .form-group:before, "
-          ".form-horizontal .form-group:after, .btn-toolbar:before, "
-          ".btn-toolbar:after, .btn-group-vertical>.btn-group:before, "
-          ".btn-group-vertical>.btn-group:after, .nav:before, .nav:after, "
-          ".navbar:before, .navbar:after, .navbar-header:before, "
-          ".navbar-header:after, .navbar-collapse:before, "
-          ".navbar-collapse:after, .pager:before, .pager:after, "
-          ".panel-body:before, .panel-body:after, .modal-footer:before, "
-          ".modal-footer:after {content: \" \";display: table;}");
-    webString += F(
-        ".nav{margin-bottom:0;padding-left:0;list-style:none}.nav>li{position:"
-        "relative;display:block}.nav>li>a{position:relative;display:block;"
-        "padding:2px 10px}.nav>li>a:hover,.nav>li>a:focus{text-decoration:none;background-"
-        "color:#eee}.nav>li.disabled>a{color:#999}.nav>li.disabled>a:hover,."
-        "nav>li.disabled>a:focus{color:#999;text-decoration:none;background-"
-        "color:transparent;cursor:not-allowed}.nav .open>a,.nav "
-        ".open>a:hover,.nav "
-        ".open>a:focus{background-color:#eee;border-color:#428bca}.nav "
-        ".nav-divider{height:1px;margin:9px "
-        "0;overflow:hidden;background-color:#e5e5e5}.nav>li>a>img{max-width:"
-        "none}.nav-tabs{border-bottom:1px solid "
-        "#ddd}.nav-tabs>li{float:left;margin-bottom:-1px}.nav-tabs>li>a{margin-"
-        "right:0px;line-height:1.42857143;border:1px solid "
-        "#ddd;border-radius:0 0 0 0;text-decoration:none;color:darkgray;}.nav-tabs>li>a:hover{border-color:#eee #eee "
-        "#ddd}.nav-tabs>li.active>a,.nav-tabs>li.active>a:hover,.nav-tabs>li."
-        "active>a:focus{color:#428bca;background-color:#e5e5e5;border:1px "
-        "solid "
-        "#ddd;border-bottom-color:transparent;cursor:default}.nav-tabs.nav-"
-        "justified{width:100%;border-bottom:0}.nav-tabs.nav-justified>li{float:"
-        "none}.nav-tabs.nav-justified>li>a{text-align:center;margin-bottom:5px}"
-        ".nav-tabs.nav-justified>.dropdown "
-        ".dropdown-menu{top:auto;left:auto}@media "
-        "(min-width:768px){.nav-tabs.nav-justified>li{display:table-cell;width:"
-        "1%}.nav-tabs.nav-justified>li>a{margin-bottom:0}}.nav-tabs.nav-"
-        "justified>li>a{margin-right:0;border-radius:0px}.nav-tabs.nav-"
-        "justified>.active>a,.nav-tabs.nav-justified>.active>a:hover,.nav-tabs."
-        "nav-justified>.active>a:focus{border:1px solid #ddd}@media "
-        "(min-width:768px){.nav-tabs.nav-justified>li>a{border-bottom:1px "
-        "solid #ddd;border-radius:0 0 0 0}.nav-tabs.nav-justified>.active>a,.nav-tabs.nav-justified>.active>a:"
-        "hover,.nav-tabs.nav-justified>.active>a:focus{border-bottom-color:#"
-        "fff}}.nav-pills>li{float:left}.nav-pills>li>a{border-radius:0px}.nav-"
-        "pills>li+li{margin-left:2px}.nav-pills>li.active>a,.nav-pills>li."
-        "active>a:hover,.nav-pills>li.active>a:focus{color:#fff;background-"
-        "color:#428bca}.nav-stacked>li{float:none}.nav-stacked>li+li{margin-"
-        "top:2px;margin-left:0}.nav-justified{width:100%}.nav-justified>li{"
-        "float:none}.nav-justified>li>a{text-align:center;margin-bottom:5px}."
-        "nav-justified>.dropdown .dropdown-menu{top:auto;left:auto}@media "
-        "(min-width:768px){.nav-justified>li{display:table-cell;width:1%}.nav-"
-        "justified>li>a{margin-bottom:0}}.nav-tabs-justified{border-bottom:0}."
-        "nav-tabs-justified>li>a{margin-right:0;border-radius:0px}.nav-tabs-"
-        "justified>.active>a,.nav-tabs-justified>.active>a:hover,.nav-tabs-"
-        "justified>.active>a:focus{border:1px solid #ddd}@media "
-        "(min-width:768px){.nav-tabs-justified>li>a{border-bottom:1px solid "
-        "#ddd;border-radius:0 0 0 0}.nav-tabs-justified>.active>a,.nav-tabs-justified>.active>a:hover,."
-        "nav-tabs-justified>.active>a:focus{border-bottom-color:#fff}}.tab-"
-        "content>.tab-pane{display:none}.tab-content>.active{display:block}."
-        "nav-tabs "
-        ".dropdown-menu{margin-top:-1px;border-top-right-radius:0;border-top-"
-        "left-radius:0}");
-    webString += F(
-        ".form-group{margin-bottom:15px}.radio,.checkbox{display:block;min-"
-        "height:20px;margin-top:10px;margin-bottom:10px;padding-left:20px}."
-        "radio label,.checkbox "
-        "label{display:inline;font-weight:400;cursor:pointer}.radio "
-        "input[type=radio],.radio-inline input[type=radio],.checkbox "
-        "input[type=checkbox],.checkbox-inline "
-        "input[type=checkbox]{float:left;margin-left:-20px}.radio+.radio,."
-        "checkbox+.checkbox{margin-top:-5px}.radio-inline,.checkbox-inline{"
-        "display:inline-block;padding-left:20px;margin-bottom:0;vertical-align:"
-        "middle;font-weight:400;cursor:pointer}.radio-inline+.radio-inline,."
-        "checkbox-inline+.checkbox-inline{margin-top:0;margin-left:10px}input["
-        "type=radio][disabled],input[type=checkbox][disabled],.radio[disabled],"
-        ".radio-inline[disabled],.checkbox[disabled],.checkbox-inline[disabled]"
-        ",fieldset[disabled] input[type=radio],fieldset[disabled] "
-        "input[type=checkbox],fieldset[disabled] .radio,fieldset[disabled] "
-        ".radio-inline,fieldset[disabled] .checkbox,fieldset[disabled] "
-        ".checkbox-inline{cursor:not-allowed}.input-sm{height:30px;padding:5px "
-        "10px;font-size:12px;line-height:1.5;border-radius:0px}select.input-sm{"
-        "height:30px;line-height:30px}textarea.input-sm,select[multiple].input-"
-        "sm{height:auto}.input-lg{height:46px;padding:10px "
-        "16px;font-size:18px;line-height:1.33;border-radius:0px}select.input-"
-        "lg{height:46px;line-height:46px}textarea.input-lg,select[multiple]."
-        "input-lg{height:auto}.has-feedback{position:relative}.has-feedback "
-        ".form-control{padding-right:42.5px}.has-feedback "
-        ".form-control-feedback{position:absolute;top:25px;right:0;display:"
-        "block;width:34px;height:34px;line-height:34px;text-align:center}.has-"
-        "success .help-block,.has-success .control-label,.has-success "
-        ".radio,.has-success .checkbox,.has-success .radio-inline,.has-success "
-        ".checkbox-inline{color:#3c763d}.has-success "
-        ".form-control{border-color:#3c763d;-webkit-box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075);box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075)}.has-success "
-        ".form-control:focus{border-color:#2b542c;-webkit-box-shadow:inset 0 "
-        "1px 1px rgba(0,0,0,.075),0 0 6px #67b168;box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075),0 0 6px #67b168}.has-success "
-        ".input-group-addon{color:#3c763d;border-color:#3c763d;background-"
-        "color:#dff0d8}.has-success "
-        ".form-control-feedback{color:#3c763d}.has-warning "
-        ".help-block,.has-warning .control-label,.has-warning "
-        ".radio,.has-warning .checkbox,.has-warning .radio-inline,.has-warning "
-        ".checkbox-inline{color:#8a6d3b}.has-warning "
-        ".form-control{border-color:#8a6d3b;-webkit-box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075);box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075)}.has-warning "
-        ".form-control:focus{border-color:#66512c;-webkit-box-shadow:inset 0 "
-        "1px 1px rgba(0,0,0,.075),0 0 6px #c0a16b;box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075),0 0 6px #c0a16b}.has-warning "
-        ".input-group-addon{color:#8a6d3b;border-color:#8a6d3b;background-"
-        "color:#fcf8e3}.has-warning "
-        ".form-control-feedback{color:#8a6d3b}.has-error "
-        ".help-block,.has-error .control-label,.has-error .radio,.has-error "
-        ".checkbox,.has-error .radio-inline,.has-error "
-        ".checkbox-inline{color:#a94442}.has-error "
-        ".form-control{border-color:#a94442;-webkit-box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075);box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075)}.has-error "
-        ".form-control:focus{border-color:#843534;-webkit-box-shadow:inset 0 "
-        "1px 1px rgba(0,0,0,.075),0 0 6px #ce8483;box-shadow:inset 0 1px 1px "
-        "rgba(0,0,0,.075),0 0 6px #ce8483}.has-error "
-        ".input-group-addon{color:#a94442;border-color:#a94442;background-"
-        "color:#f2dede}.has-error "
-        ".form-control-feedback{color:#a94442}.form-control-static{margin-"
-        "bottom:0}.help-block{display:block;margin-top:5px;margin-bottom:10px;"
-        "color:#737373}@media (min-width:768px){.form-inline "
-        ".form-group{display:inline-block;margin-bottom:0;vertical-align:"
-        "middle}.form-inline "
-        ".form-control{display:inline-block;width:auto;vertical-align:middle}."
-        "form-inline .input-group>.form-control{width:100%}.form-inline "
-        ".control-label{margin-bottom:0;vertical-align:middle}.form-inline "
-        ".radio,.form-inline "
-        ".checkbox{display:inline-block;margin-top:0;margin-bottom:0;padding-"
-        "left:0;vertical-align:middle}.form-inline .radio "
-        "input[type=radio],.form-inline .checkbox "
-        "input[type=checkbox]{float:none;margin-left:0}.form-inline "
-        ".has-feedback .form-control-feedback{top:0}}.form-horizontal "
-        ".control-label,.form-horizontal .radio,.form-horizontal "
-        ".checkbox,.form-horizontal .radio-inline,.form-horizontal "
-        ".checkbox-inline{margin-top:0;margin-bottom:0;padding-top:0px}.form-"
-        "horizontal .radio,.form-horizontal "
-        ".checkbox{min-height:27px}.form-horizontal "
-        ".form-group{margin-left:-15px;margin-right:-15px}.form-horizontal "
-        ".form-control-static{padding-top:7px}@media "
-        "(min-width:768px){.form-horizontal "
-        ".control-label{text-align:right}}.form-horizontal .has-feedback "
-        ".form-control-feedback{top:0;right:15px}");
-    webString += F(
-        ".col-xs-1,.col-sm-1,.col-md-1,.col-lg-1,.col-xs-2,.col-sm-2,.col-md-2,"
-        ".col-lg-2,.col-xs-3,.col-sm-3,.col-md-3,.col-lg-3,.col-xs-4,.col-sm-4,"
-        ".col-md-4,.col-lg-4,.col-xs-5,.col-sm-5,.col-md-5,.col-lg-5,.col-xs-6,"
-        ".col-sm-6,.col-md-6,.col-lg-6,.col-xs-7,.col-sm-7,.col-md-7,.col-lg-7,"
-        ".col-xs-8,.col-sm-8,.col-md-8,.col-lg-8,.col-xs-9,.col-sm-9,.col-md-9,"
-        ".col-lg-9,.col-xs-10,.col-sm-10,.col-md-10,.col-lg-10,.col-xs-11,.col-"
-        "sm-11,.col-md-11,.col-lg-11,.col-xs-12,.col-sm-12,.col-md-12,.col-lg-"
-        "12{position:relative;min-height:1px;padding-left:10px;padding-right:"
-        "10px}.col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-"
-        "xs-7,.col-xs-8,.col-xs-9,.col-xs-10,.col-xs-11,.col-xs-12{float:left}."
-        "col-xs-12{width:100%}.col-xs-11{width:91.66666667%}.col-xs-10{width:"
-        "83.33333333%}.col-xs-9{width:75%}.col-xs-8{width:66.66666667%}.col-xs-"
-        "7{width:58.33333333%}.col-xs-6{width:50%}.col-xs-5{width:41.66666667%}"
-        ".col-xs-4{width:33.33333333%}.col-xs-3{width:25%}.col-xs-2{width:16."
-        "66666667%}.col-xs-1{width:8.33333333%}.col-xs-pull-12{right:100%}.col-"
-        "xs-pull-11{right:91.66666667%}.col-xs-pull-10{right:83.33333333%}.col-"
-        "xs-pull-9{right:75%}.col-xs-pull-8{right:66.66666667%}.col-xs-pull-7{"
-        "right:58.33333333%}.col-xs-pull-6{right:50%}.col-xs-pull-5{right:41."
-        "66666667%}.col-xs-pull-4{right:33.33333333%}.col-xs-pull-3{right:25%}."
-        "col-xs-pull-2{right:16.66666667%}.col-xs-pull-1{right:8.33333333%}."
-        "col-xs-pull-0{right:0}.col-xs-push-12{left:100%}.col-xs-push-11{left:"
-        "91.66666667%}.col-xs-push-10{left:83.33333333%}.col-xs-push-9{left:75%"
-        "}.col-xs-push-8{left:66.66666667%}.col-xs-push-7{left:58.33333333%}."
-        "col-xs-push-6{left:50%}.col-xs-push-5{left:41.66666667%}.col-xs-push-"
-        "4{left:33.33333333%}.col-xs-push-3{left:25%}.col-xs-push-2{left:16."
-        "66666667%}.col-xs-push-1{left:8.33333333%}.col-xs-push-0{left:0}.col-"
-        "xs-offset-12{margin-left:100%}.col-xs-offset-11{margin-left:91."
-        "66666667%}.col-xs-offset-10{margin-left:83.33333333%}.col-xs-offset-9{"
-        "margin-left:75%}.col-xs-offset-8{margin-left:66.66666667%}.col-xs-"
-        "offset-7{margin-left:58.33333333%}.col-xs-offset-6{margin-left:50%}."
-        "col-xs-offset-5{margin-left:41.66666667%}.col-xs-offset-4{margin-left:"
-        "33.33333333%}.col-xs-offset-3{margin-left:25%}.col-xs-offset-2{margin-"
-        "left:16.66666667%}.col-xs-offset-1{margin-left:8.33333333%}.col-xs-"
-        "offset-0{margin-left:0}@media "
-        "(min-width:768px){.col-sm-1,.col-sm-2,.col-sm-3,.col-sm-4,.col-sm-5,."
-        "col-sm-6,.col-sm-7,.col-sm-8,.col-sm-9,.col-sm-10,.col-sm-11,.col-sm-"
-        "12{float:left}.col-sm-12{width:100%}.col-sm-11{width:91.66666667%}."
-        "col-sm-10{width:83.33333333%}.col-sm-9{width:75%}.col-sm-8{width:66."
-        "66666667%}.col-sm-7{width:58.33333333%}.col-sm-6{width:50%}.col-sm-5{"
-        "width:41.66666667%}.col-sm-4{width:33.33333333%}.col-sm-3{width:25%}."
-        "col-sm-2{width:16.66666667%}.col-sm-1{width:8.33333333%}.col-sm-pull-"
-        "12{right:100%}.col-sm-pull-11{right:91.66666667%}.col-sm-pull-10{"
-        "right:83.33333333%}.col-sm-pull-9{right:75%}.col-sm-pull-8{right:66."
-        "66666667%}.col-sm-pull-7{right:58.33333333%}.col-sm-pull-6{right:50%}."
-        "col-sm-pull-5{right:41.66666667%}.col-sm-pull-4{right:33.33333333%}."
-        "col-sm-pull-3{right:25%}.col-sm-pull-2{right:16.66666667%}.col-sm-"
-        "pull-1{right:8.33333333%}.col-sm-pull-0{right:0}.col-sm-push-12{left:"
-        "100%}.col-sm-push-11{left:91.66666667%}.col-sm-push-10{left:83."
-        "33333333%}.col-sm-push-9{left:75%}.col-sm-push-8{left:66.66666667%}."
-        "col-sm-push-7{left:58.33333333%}.col-sm-push-6{left:50%}.col-sm-push-"
-        "5{left:41.66666667%}.col-sm-push-4{left:33.33333333%}.col-sm-push-3{"
-        "left:25%}.col-sm-push-2{left:16.66666667%}.col-sm-push-1{left:8."
-        "33333333%}.col-sm-push-0{left:0}.col-sm-offset-12{margin-left:100%}."
-        "col-sm-offset-11{margin-left:91.66666667%}.col-sm-offset-10{margin-"
-        "left:83.33333333%}.col-sm-offset-9{margin-left:75%}.col-sm-offset-8{"
-        "margin-left:66.66666667%}.col-sm-offset-7{margin-left:58.33333333%}."
-        "col-sm-offset-6{margin-left:50%}.col-sm-offset-5{margin-left:41."
-        "66666667%}.col-sm-offset-4{margin-left:33.33333333%}.col-sm-offset-3{"
-        "margin-left:25%}.col-sm-offset-2{margin-left:16.66666667%}.col-sm-"
-        "offset-1{margin-left:8.33333333%}.col-sm-offset-0{margin-left:0}}@"
-        "media "
-        "(min-width:992px){.col-md-1,.col-md-2,.col-md-3,.col-md-4,.col-md-5,."
-        "col-md-6,.col-md-7,.col-md-8,.col-md-9,.col-md-10,.col-md-11,.col-md-"
-        "12{float:left}.col-md-12{width:100%}.col-md-11{width:91.66666667%}."
-        "col-md-10{width:83.33333333%}.col-md-9{width:75%}.col-md-8{width:66."
-        "66666667%}.col-md-7{width:58.33333333%}.col-md-6{width:50%}.col-md-5{"
-        "width:41.66666667%}.col-md-4{width:33.33333333%}.col-md-3{width:25%}."
-        "col-md-2{width:16.66666667%}.col-md-1{width:8.33333333%}.col-md-pull-"
-        "12{right:100%}.col-md-pull-11{right:91.66666667%}.col-md-pull-10{"
-        "right:83.33333333%}.col-md-pull-9{right:75%}.col-md-pull-8{right:66."
-        "66666667%}.col-md-pull-7{right:58.33333333%}.col-md-pull-6{right:50%}."
-        "col-md-pull-5{right:41.66666667%}.col-md-pull-4{right:33.33333333%}."
-        "col-md-pull-3{right:25%}.col-md-pull-2{right:16.66666667%}.col-md-"
-        "pull-1{right:8.33333333%}.col-md-pull-0{right:0}.col-md-push-12{left:"
-        "100%}.col-md-push-11{left:91.66666667%}.col-md-push-10{left:83."
-        "33333333%}.col-md-push-9{left:75%}.col-md-push-8{left:66.66666667%}."
-        "col-md-push-7{left:58.33333333%}.col-md-push-6{left:50%}.col-md-push-"
-        "5{left:41.66666667%}.col-md-push-4{left:33.33333333%}.col-md-push-3{"
-        "left:25%}.col-md-push-2{left:16.66666667%}.col-md-push-1{left:8."
-        "33333333%}.col-md-push-0{left:0}.col-md-offset-12{margin-left:100%}."
-        "col-md-offset-11{margin-left:91.66666667%}.col-md-offset-10{margin-"
-        "left:83.33333333%}.col-md-offset-9{margin-left:75%}.col-md-offset-8{"
-        "margin-left:66.66666667%}.col-md-offset-7{margin-left:58.33333333%}."
-        "col-md-offset-6{margin-left:50%}.col-md-offset-5{margin-left:41."
-        "66666667%}.col-md-offset-4{margin-left:33.33333333%}.col-md-offset-3{"
-        "margin-left:25%}.col-md-offset-2{margin-left:16.66666667%}.col-md-"
-        "offset-1{margin-left:8.33333333%}.col-md-offset-0{margin-left:0}}@"
-        "media "
-        "(min-width:1200px){.col-lg-1,.col-lg-2,.col-lg-3,.col-lg-4,.col-lg-5,."
-        "col-lg-6,.col-lg-7,.col-lg-8,.col-lg-9,.col-lg-10,.col-lg-11,.col-lg-"
-        "12{float:left}.col-lg-12{width:100%}.col-lg-11{width:91.66666667%}."
-        "col-lg-10{width:83.33333333%}.col-lg-9{width:75%}.col-lg-8{width:66."
-        "66666667%}.col-lg-7{width:58.33333333%}.col-lg-6{width:50%}.col-lg-5{"
-        "width:41.66666667%}.col-lg-4{width:33.33333333%}.col-lg-3{width:25%}."
-        "col-lg-2{width:16.66666667%}.col-lg-1{width:8.33333333%}.col-lg-pull-"
-        "12{right:100%}.col-lg-pull-11{right:91.66666667%}.col-lg-pull-10{"
-        "right:83.33333333%}.col-lg-pull-9{right:75%}.col-lg-pull-8{right:66."
-        "66666667%}.col-lg-pull-7{right:58.33333333%}.col-lg-pull-6{right:50%}."
-        "col-lg-pull-5{right:41.66666667%}.col-lg-pull-4{right:33.33333333%}."
-        "col-lg-pull-3{right:25%}.col-lg-pull-2{right:16.66666667%}.col-lg-"
-        "pull-1{right:8.33333333%}.col-lg-pull-0{right:0}.col-lg-push-12{left:"
-        "100%}.col-lg-push-11{left:91.66666667%}.col-lg-push-10{left:83."
-        "33333333%}.col-lg-push-9{left:75%}.col-lg-push-8{left:66.66666667%}."
-        "col-lg-push-7{left:58.33333333%}.col-lg-push-6{left:50%}.col-lg-push-"
-        "5{left:41.66666667%}.col-lg-push-4{left:33.33333333%}.col-lg-push-3{"
-        "left:25%}.col-lg-push-2{left:16.66666667%}.col-lg-push-1{left:8."
-        "33333333%}.col-lg-push-0{left:0}.col-lg-offset-12{margin-left:100%}."
-        "col-lg-offset-11{margin-left:91.66666667%}.col-lg-offset-10{margin-"
-        "left:83.33333333%}.col-lg-offset-9{margin-left:75%}.col-lg-offset-8{"
-        "margin-left:66.66666667%}.col-lg-offset-7{margin-left:58.33333333%}."
-        "col-lg-offset-6{margin-left:50%}.col-lg-offset-5{margin-left:41."
-        "66666667%}.col-lg-offset-4{margin-left:33.33333333%}.col-lg-offset-3{"
-        "margin-left:25%}.col-lg-offset-2{margin-left:16.66666667%}.col-lg-"
-        "offset-1{margin-left:8.33333333%}.col-lg-offset-0{margin-left:0}}");
-    // webString += "<link rel=\"stylesheet\"
-    // href=\"//maxcdn.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css\"
-    // />\n";
-    webString += "</style>\n";
+    String autoRefresh = "";
 
+    String pageScripts = "";
     if (page == 0) {
-        //
+        pageScripts = "<script src=\"/jquery.min.js\"></script>\n"
+                      "<script src=\"/dashboard.js\"></script>\n";
     } else if (page == 6) {
-        webString +=
-            "<script "
-            "src=\"https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js\"></"
-            "script>\n";
-        webString +=
-            "<script "
-            "src=\"https://code.highcharts.com/highcharts.js\"></script>\n";
-        webString +=
-            "<script "
-            "src=\"https://code.highcharts.com/highcharts-more.js\"></"
-            "script>\n";
-        webString += "<script language=\"JavaScript\">";
-        webString +=
-            "$(document).ready(function() {\nvar chart = {\ntype: "
-            "'gauge',plotBorderWidth: 1,plotBackgroundColor: {linearGradient: "
-            "{ x1: 0, y1: 0, x2: 0, y2: 1 },stops: [[0, '#FFFFC6'],[0.3, "
-            "'#FFFFFF'],[1, '#FFF4C6']]},plotBackgroundImage: null,height: "
-            "200};\n";
-        webString += "var credits = {enabled: false};\n";
-        webString += "var title = {text: 'RX VU Meter'};\n";
-        webString +=
-            "var pane = [{startAngle: -45,endAngle: 45,background: "
-            "null,center: ['50%', '145%'],size: 300}];\n";
-        webString +=
-            "var yAxis = [{min: -40,max: 1,minorTickPosition: "
-            "'outside',tickPosition: 'outside',labels: {rotation: "
-            "'auto',distance: 20},\n";
-        webString +=
-            "plotBands: [{from: -10,to: 1,color: '#C02316',innerRadius: "
-            "'100%',outerRadius: '105%'},{from: -20,to: -10,color: "
-            "'#00C000',innerRadius: '100%',outerRadius: '105%'},{from: -30,to: "
-            "-20,color: '#AFFF0F',innerRadius: '100%',outerRadius: "
-            "'105%'},{from: -40,to: -30,color: '#C0A316',innerRadius: "
-            "'100%',outerRadius: '105%'}],\n";
-        webString +=
-            "pane: 0,title: {text: '<span "
-            "style=\"font-size:12px\">dBV</span>',y: -40}}];\n";
-        webString +=
-            "var plotOptions = {gauge: {dataLabels: {enabled: false},dial: "
-            "{radius: '100%'}}};\n";
-        webString += "var series= [{data: [-40],yAxis: 0}];\n";
-        webString +=
-            "var json = {};\n json.chart = chart;\n json.credits = credits;\n "
-            "json.title = title;\n json.pane = pane;\n json.yAxis = yAxis;\n "
-            "json.plotOptions = plotOptions;\n json.series = series;\n";
-
-        // Add some life
-        webString +=
-            "var chartFunction = function (chart) { \n";  // the chart may be
-                                                          // destroyed
-        webString +=
-            "var Vrms=0;\nvar dBV=-40;\nvar active=0;var raw=\"\";var "
-            "timeStamp;\n";
-        webString += "setInterval(function () {\n if (chart.series) {\n";
-        webString += "var left = chart.series[0].points[0];\n";
-        webString += "$.getJSON(\"./realtime\", function(json){\n";
-        webString += "active=parseInt(json.Active);\n";
-        // webString += "if(active==1){\n";
-        webString += "Vrms=parseFloat(json.mVrms)/1000;\n";
-        webString += "dBV=20.0*Math.log10(Vrms);\n";
-        webString += "if(dBV<-40) dBV=-40;\n";
-        webString += "raw=json.RAW;\n";
-        webString += "timeStamp=Number(json.timeStamp);\n";
-        webString += "});\n";
-        webString +=
-            "if(active==1){\nleft.update(dBV,false);\nchart.redraw();\n";
-        webString += "var date=new Date(timeStamp * 1000);\n";
-        webString +=
-            "var "
-            "head=date+\"[\"+Vrms.toFixed(3)+\"Vrms,\"+dBV.toFixed(1)+\"dBV]"
-            "\\n\";\n";
-        webString +=
-            "document.getElementById(\"raw_txt\").value+=head+atob(raw)+"
-            "\"\\n\";\n";
-        webString += "}\n";
-        webString += "}}, 1000);};\n";
-        webString += "$('#vumeter').highcharts(json, chartFunction);\n";
-        webString += "});\n</script>\n";
+        pageScripts = "<script src=\"/jquery.min.js\"></script>\n"
+                      "<script src=\"/highcharts.js\"></script>\n"
+                      "<script src=\"/highcharts-more.js\"></script>\n"
+                      "<script src=\"/vu.js\"></script>\n";
     } else if (page == 7) {
-        webString += "<script language=\"JavaScript\">";
-        webString += "function showVoxValue(newValue) { document.getElementById(\"voxShow\").innerHTML=newValue; }";
-        webString += "\n</script>\n";
-        webString += "<script language=\"JavaScript\">";
-        webString += "function showSqlValue(newValue) { document.getElementById(\"sqlShow\").innerHTML=newValue; }";
-        webString += "\n</script>\n";
+        pageScripts = "<script src=\"/radio.js\"></script>\n";
     }
 
-    String strActiveP1 = "";
-    String strActiveP2 = "";
-    String strActiveP3 = "";
-    String strActiveP4 = "";
-    String strActiveP5 = "";
-    String strActiveP6 = "";
-    String strActiveP7 = "";
-    String strActiveP8 = "";
-    String strActiveP9 = "";
-
-    if (page == 8)
-        strActiveP9 = "class=active";
-    else if (page == 7)
-        strActiveP8 = "class=active";
-    else if (page == 6)
-        strActiveP7 = "class=active";
-    else if (page == 5)
-        strActiveP6 = "class=active";
-    else if (page == 4)
-        strActiveP5 = "class=active";
-    else if (page == 3)
-        strActiveP4 = "class=active";
-    else if (page == 2)
-        strActiveP3 = "class=active";
-    else if (page == 1)
-        strActiveP2 = "class=active";
-    else if (page == 0)
-        strActiveP1 = "class=active";
-    webString += "</head><body>\n";
     String myStation;
     if (config.aprs_ssid == 0)
         myStation = String(config.aprs_mycall);
     else
         myStation = String(config.aprs_mycall) + "-" + String(config.aprs_ssid);
-    webString +=
-        "<div class='w3-card-2 topnav notranslate' id='topnav'><b>APRS-ESP32 "
-        "Internet Gateway - " +
-        myStation + "</div>\n";
-    webString += "<div class=\"row\">\n";
-    webString += "<ul class=\"nav nav-tabs\" style=\"margin-top: 10px;margin-bottom: 10px;\">\n";
-    webString += "<li role=\"presentation\"" + strActiveP1 +
-                 ">\n<a href=\"/\" id=\"channel_link_private_view\">Dash "
-                 "Board</a>\n</li>\n";
+
+    String storageTab = "";
 #ifdef SDCARD
-    webString += "<li role=\"presentation\"" + strActiveP2 +
-                 ">\n<a href=\"/data\" "
-                 "id=\"channel_link_api_keys\">Storage</a>\n</li>\n";
+    storageTab = "<a href=\"/data\" class=\"nav-link " + String(page == 1 ? "active" : "") + "\">Storage</a>";
 #endif
-    webString += "<li role=\"presentation\"" + strActiveP3 +
-                 ">\n<a href=\"/config\" "
-                 "id=\"channel_link_settings\">Setting</a>\n</li>\n";
 
-    webString +=
-        "<li role=\"presentation\"" + strActiveP8 +
-        ">\n<a href=\"/radio\" id=\"channel_link_radio\">Radio</a>\n</li>\n";
-
-    webString += "<li role=\"presentation\"" + strActiveP4 +
-                 ">\n<a href=\"/service\" "
-                 "id=\"channel_link_service\">Service</a>\n</li>\n";
-    webString +=
-        "<li role=\"presentation\"" + strActiveP5 +
-        ">\n<a href=\"/system\" id=\"channel_link_system\">System</a>\n</li>\n";
-    webString +=
-        "<li role=\"presentation\"" + strActiveP7 +
-        ">\n<a href=\"/test\" id=\"channel_link_system\">Test</a>\n</li>\n";
-    webString += "<li role=\"presentation\"" + strActiveP6 +
-                 ">\n<a href=\"/firmware\" "
-                 "id=\"channel_link_firmware\">Firmware</a>\n</li>\n";
-    webString += "<li role=\"presentation\"" + strActiveP9 +
-                 ">\n<a href=\"/configuration\" "
-                 "id=\"channel_link_config\">Configuration</a>\n</li>\n";
-    webString += "</ul>\n</div>";
-
-    if (page == 0) {
-        char strTime[30];
-        struct tm tmstruct;
-        tmstruct.tm_year = 0;
-        time_t tn = now() - systemUptime;
-        getLocalTime(&tmstruct, 0);
-        sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
-                (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
-                tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min,
-                tmstruct.tm_sec);
-
-        webString += "<table style=\"width:800px;\"><tr><td>";
-        webString += "<div style=\"width:300px\"><b>Last Readings at " + String(strTime) + "</b></div>\n";
-
-        webString += "<span>&nbsp;</span>\n";
-
-        webString += "<div>CPU Temp: " + String(temperatureRead(), 1) + "&deg;C</div> \n";
-        webString += "<div>Free Heap: " + String(ESP.getFreeHeap()) + " bytes</div> \n";
-        sprintf(strTime, "%d days %02d:%02d:%02d", day(tn) - 1, hour(tn), minute(tn), second(tn));
-        webString += "<div>System Uptime: " + String(strTime) + "</div> \n";
-        webString += "<div>WiFi RSSI: " + String(WiFi.RSSI()) + " dBm</div> \n";
-        
-        String batStr = "";
-        String usbStr = "";
-#if defined(ADC_BATTERY)
-        if (config.wifi_mode == WIFI_OFF) {
-#endif
-            if (batData > 0) {
-                batStr = String(batData) + "%";
-            } else {
-                batStr = "N/A";
-            }
-#if defined(ADC_BATTERY)
-        } else {
-            if (batData == 1) {
-                batStr = "YES";
-            } else {
-                batStr = "NO";
-            }
-        }
-#endif
-        if (usbPlugged) {
-            usbStr = " - USB Plugged";
-        }
-
-        webString += "<div>Battery: " + batStr + " " + usbStr + "</div>\n";
-
-        webString += "<span>&nbsp;</span>\n";
-
-        webString += "</td></tr>\n";
-
-        webString += "<tr align=\"left\"><td>\n";
-
-        bool gpsValid = gps.location.isValid() && gps.altitude.isValid() && gps.speed.isValid() && gps.course.isValid() && gps.satellites.isValid() && gps.hdop.isValid();
-        bool gpsOnline = GpsPktCnt() > 0;
-
-        webString += "<div class=\"L1\">GNSS STATUS</div>";
-        webString += "<table border=\"0\" width=\"400\">";
-        // if (config.gps_mode != GPS_MODE_FIXED) {
-        if (gpsOnline) {
-            webString += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
-            webString += "<tr><td>Coords</td><td align=\"right\">" + (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") + " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
-            webString += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? (String(gps.altitude.meters(), 1) + " m") : "-") +"</td></tr>";
-            webString += "<tr><td>Speed / Course</td><td align=\"right\">" + (gpsValid ? (String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;") : "- / -") + "</td></tr>";
-            webString += "<tr><td>Sats / HDOP</td><td align=\"right\">" + (gpsValid ? (String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1)) : "- / -") +"</td></tr>";
-        } else {
-            webString += "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
-        }
-        webString += "</table>";
-
-        webString += "<span>&nbsp;</span>\n";
-
-        webString += "<div class=\"L1\">STATISTICS</div>";
-        webString += "<table border=\"0\" width=\"400\">";
-        webString += "<tr><td>ALL DATA / DROP</td><td align=\"right\">" + String(status.allCount) + " / " + String(status.dropCount) + "</td></tr>";
-        webString += "<tr><td>RF->INET / INET->RF</td><td align=\"right\">" + String(status.rf2inet) + " / " + String(status.inet2rf) + "</td></tr>";
-        // webString += "<tr><td>ERROR</td><td align=\"right\">" +
-        //              String(status.errorCount) + "</td></tr>";
-        webString += "</table>";
-        
-        webString += "<span>&nbsp;</span>\n";
-        
-        webString += "<div class=\"L1\">LAST STATIONS</div>";
-        webString += "<table border=\"0\" width=\"400\">";
-        sort(pkgList, PKGLISTSIZE);
-
-        for (int i = 0; i < PKGLISTSIZE; i++) {
-            if (i > 20) break;
-            if (pkgList[i].time > 0) {
-                pkgList[i].calsign[10] = 0;
-                // time_t tm = pkgList[i].time;
-                localtime_r(&pkgList[i].time, &tmstruct);
-                sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
-                String str = String(strTime);
-                webString += "<tr><td align=\"left\">" + str + 
-                        "</td><td align=\"center\">" + String(pkgList[i].calsign) + 
-                        "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") + 
-                        "</td><td align=\"right\">" + pkgGetType(pkgList[i].type) + "</td></tr>";
-            }
-        }
-        webString += "</table>";
-
-        webString += "<span>&nbsp;</span>\n";
-
-        webString += "<div class=\"L1\">TOP SEND</div>";
-        webString += "<table border=\"0\" width=\"200\">";
-        sortPkgDesc(pkgList, PKGLISTSIZE);
-        for (int i = 0; i < PKGLISTSIZE; i++) {
-            if (i > 20) break;
-            if (pkgList[i].time > 0) {
-                pkgList[i].calsign[10] = 0;
-                webString += "<tr><td align=\"left\">" +
-                             String(pkgList[i].calsign) +
-                             "</td><td align=\"right\">" +
-                             String(pkgList[i].pkg, DEC) + "</td></tr>";
-            }
-        }
-        webString += "</table>";
-
-        webString += "</td></tr></table><br/>\n";
-    } else if (page == 1) {
-        // webString += "PAGE 2</br>\n";
-    } else if (page == 2) {
-        // webString += "PAGE 3</br>\n";
+    if (page == 9) {
+        pageScripts = "<link rel=\"stylesheet\" href=\"/codemirror.min.css\">\n"
+                      "<link rel=\"stylesheet\" href=\"/cm-theme-dracula.min.css\">\n"
+                      "<script src=\"/jquery.min.js\"></script>\n"
+                      "<script src=\"/codemirror.min.js\"></script>\n"
+                      "<script src=\"/cm-mode-js.min.js\"></script>\n"
+                      "<script src=\"/cm-mode-css.min.js\"></script>\n"
+                      "<script src=\"/cm-mode-xml.min.js\"></script>\n"
+                      "<script src=\"/cm-mode-html.min.js\"></script>\n"
+                      "<script src=\"/files.js\"></script>\n";
     }
-    // webString += "</body></html>\n";
-}
 
-////////////////////////////////////////////////////////////
-// handler for web server request: http://IpAddress/      //
-////////////////////////////////////////////////////////////
+    streamTemplate("/header.html", {
+        {"auto_refresh",     autoRefresh},
+        {"page_scripts",     pageScripts},
+        {"my_station",       myStation},
+        {"version",          String(VERSION_FULL)},
+        {"nav_storage_tab",  storageTab},
+        {"nav_dash",         page == 0 ? String("active") : String("")},
+        {"nav_setting",      page == 2 ? String("active") : String("")},
+        {"nav_radio",        page == 7 ? String("active") : String("")},
+        {"nav_service",      page == 3 ? String("active") : String("")},
+        {"nav_system",       page == 4 ? String("active") : String("")},
+        {"nav_test",         page == 6 ? String("active") : String("")},
+        {"nav_firmware",     page == 5 ? String("active") : String("")},
+        {"nav_config",       page == 8 ? String("active") : String("")},
+        {"nav_files",        page == 9 ? String("active") : String("")}
+    });
+}
 
 void handle_root() {
     setHTML(0);
-    webString += "</body></html>\n";
-    server.send(200, "text/html", webString);  // send to someones browser when asked
-    delay(100);
-    webString.clear();
+
+    char strTime[30];
+    char uptimeBuf[30];
+    struct tm tmstruct;
+    tmstruct.tm_year = 0;
+    getLocalTime(&tmstruct, 0);
+    sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
+            (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
+            tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+
+    uint64_t tn = esp_timer_get_time() / 1000000ULL;
+    sprintf(uptimeBuf, "%llu days %02d:%02d:%02d", tn / 86400,
+            (int)(tn % 86400) / 3600, (int)(tn % 3600) / 60, (int)(tn % 60));
+
+    bool gpsValid = gps.location.isValid() && gps.altitude.isValid() &&
+                    gps.speed.isValid() && gps.course.isValid() &&
+                    gps.satellites.isValid() && gps.hdop.isValid();
+    bool gpsOnline = GpsPktCnt() > 0;
+
+    String gnssRows = "";
+    if (gpsOnline) {
+        gnssRows += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") +
+                    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
+        gnssRows += "<tr><td>Coords</td><td align=\"right\">" +
+                    (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") +
+                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? String(gps.altitude.meters(), 1) + " m" : "-") + "</td></tr>";
+        gnssRows += "<tr><td>Speed / Course</td><td align=\"right\">" +
+                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>Sats / HDOP</td><td align=\"right\">" +
+                    (gpsValid ? String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1) : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>GPS / BDS / GLO</td><td align=\"right\">" +
+                    String(gnssSatsGPS) + " / " + String(gnssSatsBDS) + " / " + String(gnssSatsGLO) + "</td></tr>";
+    } else {
+        gnssRows = "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
+    }
+
+    String lastStationsRows = "";
+    sort(pkgList, PKGLISTSIZE);
+    for (int i = 0; i < PKGLISTSIZE && i <= 20; i++) {
+        if (pkgList[i].time > 0) {
+            pkgList[i].calsign[10] = 0;
+            localtime_r(&pkgList[i].time, &tmstruct);
+            sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+            lastStationsRows += "<tr><td align=\"left\">" + String(strTime) +
+                "</td><td align=\"center\">" + String(pkgList[i].calsign) +
+                "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") +
+                "</td><td align=\"right\">" + pkgGetType(pkgList[i].type) + "</td></tr>";
+        }
+    }
+
+    String topSendRows = "";
+    sortPkgDesc(pkgList, PKGLISTSIZE);
+    for (int i = 0; i < PKGLISTSIZE && i <= 20; i++) {
+        if (pkgList[i].time > 0) {
+            pkgList[i].calsign[10] = 0;
+            topSendRows += "<tr><td align=\"left\">" + String(pkgList[i].calsign) +
+                           "</td><td align=\"right\">" + String(pkgList[i].pkg, DEC) + "</td></tr>";
+        }
+    }
+
+    String cpuTemp   = String(temperatureRead(), 1);
+    String freeHeap  = String(ESP.getFreeHeap());
+    String statsAll  = String(status.allCount) + " / " + String(status.dropCount);
+    String statsRf   = String(status.rf2inet)  + " / " + String(status.inet2rf);
+
+    streamTemplate("/dashboard.html", {
+        {"last_readings_time", String(strTime)},
+        {"cpu_temp",           cpuTemp},
+        {"free_heap",          freeHeap},
+        {"uptime",             String(uptimeBuf)},
+        {"wifi_rssi",          String(WiFi.RSSI())},
+        {"battery_rows",       buildBatteryRows()},
+        {"gnss_rows",          gnssRows},
+        {"stats_all",          statsAll},
+        {"stats_rf",           statsRf},
+        {"last_stations_rows", lastStationsRows},
+        {"top_send_rows",      topSendRows}
+    });
+    wsEnd();
 }
 
 #ifdef SDCARD
@@ -709,107 +251,78 @@ void handle_storage() {
     }
 
     setHTML(1);
+
     uint8_t cardType = SD.cardType();
+    String cardTypeStr = "UNKNOWN";
+    if      (cardType == CARD_NONE) cardTypeStr = "NOT FOUND";
+    else if (cardType == CARD_MMC)  cardTypeStr = "MMC";
+    else if (cardType == CARD_SD)   cardTypeStr = "SDSC";
+    else if (cardType == CARD_SDHC) cardTypeStr = "SDHC";
 
-    webString += "<b>SD CARD TYPE:</b> ";
-    if (cardType == CARD_NONE) {
-        webString += "NOT FOUND\n";
-    } else {
-        if (cardType == CARD_MMC) {
-            webString += "MMC\n";
-        } else if (cardType == CARD_SD) {
-            webString += "SDSC\n";
-        } else if (cardType == CARD_SDHC) {
-            webString += "SDHC\n";
-        } else {
-            webString += "UNKNOWN\n";
-        }
-        unsigned long cardSize = SD.cardSize() / (1024 * 1024);
+    String cardStats = "";
+    String fileSection = "";
+    if (cardType != CARD_NONE) {
+        unsigned long cardSize  = SD.cardSize()   / (1024 * 1024);
         unsigned long cardTotal = SD.totalBytes() / (1024 * 1024);
-        unsigned long cardUsed = SD.usedBytes() / (1024 * 1024);
-
-        webString += "</br>";
-        webString += "<b>SD Card Size: </b>";
-        webString += String((double)cardSize / 1000, 1) + "GB</br>\n";
-        webString += "<b>Total space: </b>";
-        webString += String((unsigned long)cardTotal) + "MB</br>\n";
-        webString += "<b>Used space: </b>";
-        webString += String((unsigned long)cardUsed) + "MB</br>\n";
-
-        webString += "</br><br>Listing directory: </b>" + dirname + "</br>\n";
+        unsigned long cardUsed  = SD.usedBytes()  / (1024 * 1024);
+        cardStats = "<br><b>SD Card Size:</b> " + String((double)cardSize / 1000, 1) + "GB<br>\n"
+                    "<b>Total space:</b> " + String(cardTotal) + "MB<br>\n"
+                    "<b>Used space:</b> "  + String(cardUsed)  + "MB<br>\n"
+                    "<br>Listing directory: " + dirname + "<br>\n";
 
         File root = SD.open(dirname);
-        if (!root) {
-            webString += "Failed to open directory\n";
-            // return;
-        }
-        if (!root.isDirectory()) {
-            webString += "Not a directory";
-            // return;
-        }
-
-        File file = root.openNextFile();
-        webString +=
-            "<table border=\"1\"><tr align=\"center\" "
-            "bgcolor=\"#03DDFC\"><td><b>DIRECTORY</b></td><td "
-            "width=\"150\"><b>FILE NAME</b></td><td "
-            "width=\"100\"><b>SIZE(Byte)</b></td><td width=\"170\"><b>DATE "
-            "TIME</b></td><td><b>DEL</b></td></tr>";
-        while (file) {
-            if (file.isDirectory()) {
-                // webString += "<tr><td>DIR : ");
-                webString += "<tr><td>" + String(file.name()) + "</td>";
-                time_t t = file.getLastWrite();
-                struct tm *tmstruct = localtime(&t);
-                sprintf(strTime,
-                        "<td></td><td></td><td align=\"right\">%d-%02d-%02d "
-                        "%02d:%02d:%02d</td>",
-                        (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1,
-                        tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min,
-                        tmstruct->tm_sec);
-                webString += String(strTime);
-                // if (levels) {
-                //	listDir(fs, file.name(), levels - 1);
-                // }
-                webString += "<td></td></tr>\n";
-            } else {
-                /*Serial.print("  FILE: ");
-                Serial.print(file.name());*/
-                String fName = String(file.name()).substring(1);
-                webString +=
-                    "<tr><td>/</td><td align=\"right\"><a "
-                    "href=\"/download?FILE=" +
-                    fName + "\" target=\"_blank\">" + fName + "</a></td>";
-                // Serial.print("  SIZE: ");
-                webString +=
-                    "<td align=\"right\">" + String(file.size()) + "</td>";
-                time_t t = file.getLastWrite();
-                struct tm *tmstruct = localtime(&t);
-                sprintf(strTime,
-                        "<td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>",
-                        (tmstruct->tm_year) + 1900, (tmstruct->tm_mon) + 1,
-                        tmstruct->tm_mday, tmstruct->tm_hour, tmstruct->tm_min,
-                        tmstruct->tm_sec);
-                webString += String(strTime);
-                webString +=
-                    "<td align=\"center\"><a href=\"/delete?FILE=" + fName +
-                    "\">X</a></td></tr>\n";
+        if (!root || !root.isDirectory()) {
+            fileSection = root ? "<p>Not a directory</p>" : "<p>Failed to open directory</p>";
+        } else {
+            fileSection = "<table border=\"1\"><tr align=\"center\" bgcolor=\"#03DDFC\">"
+                          "<td><b>DIRECTORY</b></td><td width=\"150\"><b>FILE NAME</b></td>"
+                          "<td width=\"100\"><b>SIZE(Byte)</b></td>"
+                          "<td width=\"170\"><b>DATE TIME</b></td><td><b>DEL</b></td></tr>";
+            char fmtBuf[80];
+            File file = root.openNextFile();
+            while (file) {
+                if (file.isDirectory()) {
+                    time_t t = file.getLastWrite();
+                    struct tm *ts = localtime(&t);
+                    sprintf(fmtBuf, "<td></td><td></td><td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>",
+                            (ts->tm_year)+1900, (ts->tm_mon)+1, ts->tm_mday, ts->tm_hour, ts->tm_min, ts->tm_sec);
+                    fileSection += "<tr><td>" + String(file.name()) + "</td>" + String(fmtBuf) + "<td></td></tr>\n";
+                } else {
+                    String fName = String(file.name()).substring(1);
+                    time_t t = file.getLastWrite();
+                    struct tm *ts = localtime(&t);
+                    sprintf(fmtBuf, "<td align=\"right\">%d-%02d-%02d %02d:%02d:%02d</td>",
+                            (ts->tm_year)+1900, (ts->tm_mon)+1, ts->tm_mday, ts->tm_hour, ts->tm_min, ts->tm_sec);
+                    fileSection += "<tr><td>/</td><td align=\"right\"><a href=\"/download?FILE=" + fName +
+                                   "\" target=\"_blank\">" + fName + "</a></td>"
+                                   "<td align=\"right\">" + String(file.size()) + "</td>" +
+                                   String(fmtBuf) +
+                                   "<td align=\"center\"><a href=\"/delete?FILE=" + fName + "\">X</a></td></tr>\n";
+                }
+                file = root.openNextFile();
             }
-            file = root.openNextFile();
+            fileSection += "</table>";
         }
-        webString += "</table>";
     }
 
-    webString +=
-        "</br><div><a href=\"/data?SD_INIT=OK\">[SD INIT]</a></div> \n";
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
-
-    delay(100);
+    streamTemplate("/storage.html", {
+        {"card_type",    cardTypeStr},
+        {"card_stats",   cardStats},
+        {"file_section", fileSection}
+    });
+    wsEnd();
 }
 
 #endif
+
+static void streamTemplate(const char *path, const TplVars &vars) {
+    File f = LittleFS.open(path, "r");
+    if (!f) { ws("[template missing: "); ws(path); ws("]"); return; }
+    String content = f.readString();
+    f.close();
+    for (auto &kv : vars) content.replace("{" + kv.first + "}", kv.second);
+    ws(content);
+}
 
 void handle_setting() {
     // byte *ptr;
@@ -818,9 +331,7 @@ void handle_setting() {
     // bool davisEn = false;
     // bool moniEn = false;
 
-    if (defaultSetting) {
-        DefaultConfig();
-    } else {
+    {
 #ifndef I2S_INTERNAL
         AFSK_TimerEnable(false);
 #endif
@@ -958,166 +469,35 @@ void handle_setting() {
 #endif
     }
 
-    // getMoisture();       // read sensor
-    // webMessage = "";
-    setHTML(2);
-    webString += "<div class=\"col-xs-10\">\n";
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/config\" "
-        "class=\"form-horizontal\" id=\"setting_form\" method=\"post\">\n";
-
-    webString += "<div class = \"col-pad\">\n<h3>Fix Location</h3>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Latitude "
-        "(deg)</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" "
-        "id=\"gpsLat\" name=\"gpsLat\" type=\"text\" value=\"" +
-        String(config.gps_lat, 5) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Longitude "
-        "(deg)</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" "
-        "id=\"gpsLon\" name=\"gpsLon\" type=\"text\" value=\"" +
-        String(config.gps_lon, 5) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Altitude "
-        "(m)</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-6\"><input class=\"form-control\" "
-        "id=\"gpsAlt\" name=\"gpsAlt\" type=\"text\" value=\"" +
-        String(config.gps_alt) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">GPS Mode</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-6\"><select name=\"gps_mode\" "
-        "id=\"gps_mode\">\n";
+    String gpsModeOpts = "";
     for (int i = 0; i < 3; i++) {
-        if (config.gps_mode == i)
-            webString += "<option value=\"" + String(i) + "\" selected>" +
-                         gpsMode[i] + "</option>\n";
-        else
-            webString += "<option value=\"" + String(i) + "\" >" +
-                         gpsMode[i] + "</option>\n";
+        gpsModeOpts += "<option value=\"" + String(i) + "\"";
+        if (config.gps_mode == i) gpsModeOpts += " selected";
+        gpsModeOpts += ">" + String(gpsMode[i]) + "</option>";
     }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Table</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-2\"><input class=\"form-control\" "
-        "id=\"iconTable\" name=\"iconTable\" type=\"text\" value=\"" +
-        String(config.aprs_table) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Symbol</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-2\"><input class=\"form-control\" "
-        "id=\"iconSymbol\" name=\"iconSymbol\" type=\"text\" value=\"" +
-        String(config.aprs_symbol) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">APRS Path</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" "
-        "id=\"aprsPath\" name=\"aprsPath\" type=\"text\" value=\"" +
-        String(config.aprs_path) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Beacon interval "
-        "(min)<br>0 - SmartBeaconing</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" "
-        "id=\"beaconIntv\" name=\"beaconIntv\" type=\"text\" value=\"" +
-        String(config.aprs_beacon) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Comment</label>\n";
-    webString += "<div class=\"col-sm-6 col-xs-10\"><input class=\"form-control\" id=\"comment\" name=\"comment\" type=\"text\" maxlength=\"" + String(sizeof(config.aprs_comment)) + "\" value=\"" + String(config.aprs_comment) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    String syncFlage = "";
-    if (config.synctime) syncFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Sync Time</label>\n";
-    webString += "<div class=\"col-sm-3 col-xs-6\"><input class=\"field_checkbox\" id=\"field_checkbox_1\" name=\"synctime\" type=\"checkbox\" value=\"OK\" " + syncFlage + "/></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Fast Speed (km/h)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbFastSpeed\" name=\"sbFastSpeed\" type=\"text\" value=\"" + String(config.sb_fast_speed) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Fast Rate (sec)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbFastRate\" name=\"sbFastRate\" type=\"text\" value=\"" + String(config.sb_fast_rate) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Slow Speed (km/h)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbSlowSpeed\" name=\"sbSlowSpeed\" type=\"text\" value=\"" + String(config.sb_slow_speed) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Slow Rate (sec)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbSlowRate\" name=\"sbSlowRate\" type=\"text\" value=\"" + String(config.sb_slow_rate) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Min Turn Time (sec)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbMinTurnTime\" name=\"sbMinTurnTime\" type=\"text\" value=\"" + String(config.sb_turn_time) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Min Turn Angle (deg)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbMinTurnAngle\" name=\"sbMinTurnAngle\" type=\"text\" value=\"" + String(config.sb_turn_min) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">SB Turn Slope (deg/km)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-3\"><input class=\"form-control\" id=\"sbTurnSlope\" name=\"sbTurnSlope\" type=\"text\" value=\"" + String(config.sb_turn_slope) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "</div>\n";  // div general
-
-    webString += "<div class=\"form-group\">\n";
-
-    //webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save Config\" maxlength=\"80\"/></div>\n";
-    webString += "</form><form action=\"/default\" class=\"button_to\" method=\"post\">\n";
-    webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-danger\" id=\"default_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Default Config - DON'T PRESS!\" maxlength=\"80\"/></div>\n";
-    webString += "</form>\n";
-
-    webString += "</div>\n";
-
-    webString += "</div>\n";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
-    delay(100);
-    webString.clear();
+    setHTML(2);
+    streamTemplate("/setting.html", {
+        {"gps_lat",          String(config.gps_lat, 5)},
+        {"gps_lon",          String(config.gps_lon, 5)},
+        {"gps_alt",          String(config.gps_alt)},
+        {"gps_mode_options", gpsModeOpts},
+        {"aprs_table",       String(config.aprs_table)},
+        {"aprs_symbol",      String(config.aprs_symbol)},
+        {"aprs_path",        String(config.aprs_path)},
+        {"aprs_beacon",      String(config.aprs_beacon)},
+        {"comment_maxlen",   String(sizeof(config.aprs_comment))},
+        {"aprs_comment",     String(config.aprs_comment)},
+        {"synctime_checked", config.synctime ? String("checked") : String("")},
+        {"sb_fast_speed",    String(config.sb_fast_speed)},
+        {"sb_fast_rate",     String(config.sb_fast_rate)},
+        {"sb_slow_speed",    String(config.sb_slow_speed)},
+        {"sb_slow_rate",     String(config.sb_slow_rate)},
+        {"sb_turn_time",     String(config.sb_turn_time)},
+        {"sb_turn_min",      String(config.sb_turn_min)},
+        {"sb_turn_slope",    String(config.sb_turn_slope)}
+    });
+    wsEnd();
 }
 
 void handle_service() {
@@ -1147,6 +527,9 @@ void handle_service() {
                 if (server.arg(i) != "") {
                     String str = server.arg(i);
                     str.trim();
+                    str.toUpperCase();
+                    int dash = str.indexOf('-');
+                    if (dash > 0) str = str.substring(0, dash);
                     strcpy(config.aprs_mycall, str.c_str());
                 }
             }
@@ -1257,211 +640,47 @@ void handle_service() {
 #endif
     }
 
-    // getMoisture();       // read sensor
-    // webMessage = "";
-    setHTML(3);
-    webString += "<div class=\"col-xs-10\">\n";
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/service\" "
-        "class=\"form-horizontal\" id=\"setting_form\" method=\"post\">\n";
-
-    webString += "<div class = \"col-pad\">\n<h3>APRS Setting</h3>\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">APRS-IS "
-        "Enable</label>\n";
-    String aprsFlage = "";
-    if (config.aprs) aprsFlage = "checked";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-4\"><input class=\"field_checkbox\" "
-        "id=\"aprs_enable\" name=\"aprsEnable\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        aprsFlage + "/></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">My "
-        "CallSign</label>\n";
-    webString +=
-        "<div class=\"col-sm-3 col-xs-4\"><input class=\"form-control\" "
-        "id=\"mycall\" name=\"myCall\" type=\"text\" value=\"" +
-        String(config.aprs_mycall) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">My SSID</label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-2\"><input
-    // class=\"form-control\" id=\"myssid\" name=\"mySSID\" type=\"text\"
-    // value=\"" + String(config.aprs_ssid) + "\" /></div>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"mySSID\" "
-        "id=\"mySSID\">\n";
+    String ssidOpts = "";
     for (uint8_t ssid = 0; ssid <= 15; ssid++) {
-        if (config.aprs_ssid == ssid) {
-            webString += "<option value=\"" + String(ssid) + "\" selected>" +
-                         String(ssid) + "</option>\n";
-        } else {
-            webString += "<option value=\"" + String(ssid) + "\">" +
-                         String(ssid) + "</option>\n";
-        }
+        ssidOpts += "<option value=\"" + String(ssid) + "\"";
+        if (config.aprs_ssid == ssid) ssidOpts += " selected";
+        ssidOpts += ">" + String(ssid) + "</option>";
     }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Pass Code</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" "
-        "id=\"myPasscode\" name=\"myPasscode\" type=\"text\" value=\"" +
-        String(config.aprs_passcode) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-	webString += "<label class=\"col-sm-4 col-xs-12 control-label\">APRS ITEM</label>\n";
-	webString += "<div class=\"col-sm-3 col-xs-4\"><input class=\"form-control\" id=\"myobject\" name=\"myobject\" type=\"text\" maxlength=\"9\" value=\"" + String(config.aprs_object) + "\" /></div>\n";
-	webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">APRS "
-        "Server</label>\n";
-    webString += "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsHost\" name=\"aprsHost\" type=\"text\" value=\"" + String(config.aprs_host) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">APRS Port</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"form-control\" "
-        "id=\"aprsPort\" name=\"aprsPort\" type=\"text\" value=\"" +
-        String(config.aprs_port) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">APRS "
-        "Filter</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" id=\"aprsFilter\" name=\"aprsFilter\" type=\"text\" value=\"" +
-        String(config.aprs_filter) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    String tncFlage = "";
-    if (config.tnc) tncFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Main TNC Functionality Enable (should be ON)</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"tncEnable\" name=\"tncEnable\" type=\"checkbox\" value=\"OK\" " + tncFlage + "/></div>\n";
-    webString += "</div>\n";
-
-    String tlmFlage = "";
-    if (config.tnc_telemetry) tlmFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">Telemetry Enable</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"tlmEnable\" name=\"tlmEnable\" type=\"checkbox\" value=\"OK\" " +
-        tlmFlage + "/></div>\n";
-    webString += "</div>\n";
-    String rf2inetFlage = "";
-    if (config.rf2inet) rf2inetFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\">RF->Inet Enable</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"rf2inetEnable\" name=\"rf2inetEnable\" type=\"checkbox\" value=\"OK\" " + rf2inetFlage + "/></div>\n";
-    webString += "</div>\n";
-    String inet2rfFlage = "";
-    if (config.inet2rf) inet2rfFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Inet->RF "
-        "Enable</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"inet2rfEnable\" name=\"inet2rfEnable\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        inet2rfFlage + "/></div>\n";
-    webString += "</div>\n";
-    String hpfFlage = "";
-    if (config.input_hpf) hpfFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">AF Input BPF</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" id=\"hpfEnable\" name=\"hpfEnable\" type=\"checkbox\" value=\"OK\" " +
-        hpfFlage + "/></div>\n";
-    webString += "</div>\n";
-    String digiFlage = "";
-    if (config.tnc_digi) digiFlage = "checked";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Digipeater</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-8\"><input class=\"field_checkbox\" "
-        "id=\"digiEnable\" name=\"digiEnable\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        digiFlage + "/></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">Digi Delay (mSec)</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"digiDelay\" id=\"digiDelay\">\n";
-    for (uint16_t delay = 0; delay <= 5000; delay += 500) {
-        if (config.digi_delay == delay) {
-            if (delay == 0)
-                webString += "<option value=\"" + String(delay) +
-                             "\" selected>Auto</option>\n";
-            else
-                webString += "<option value=\"" + String(delay) +
-                             "\" selected>" + String(delay) + "</option>\n";
-        } else {
-            if (delay == 0)
-                webString +=
-                    "<option value=\"" + String(delay) + "\">Auto</option>\n";
-            else
-                webString += "<option value=\"" + String(delay) + "\">" +
-                             String(delay) + "</option>\n";
-        }
+    String digiDelayOpts = "";
+    for (uint16_t d = 0; d <= 5000; d += 500) {
+        digiDelayOpts += "<option value=\"" + String(d) + "\"";
+        if (config.digi_delay == d) digiDelayOpts += " selected";
+        digiDelayOpts += ">" + (d == 0 ? String("Auto") : String(d)) + "</option>";
     }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
 
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">TX Time Slot (mSec)</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"timeSlot\" "
-        "id=\"timeSlot\">\n";
-    for (uint16_t delay = 0; delay <= 10000; delay += 1000) {
-        if (config.tx_timeslot == delay) {
-            webString += "<option value=\"" + String(delay) + "\" selected>" +
-                         String(delay) + "</option>\n";
-        } else {
-            webString += "<option value=\"" + String(delay) + "\">" +
-                         String(delay) + "</option>\n";
-        }
+    String timeslotOpts = "";
+    for (uint16_t d = 0; d <= 10000; d += 1000) {
+        timeslotOpts += "<option value=\"" + String(d) + "\"";
+        if (config.tx_timeslot == d) timeslotOpts += " selected";
+        timeslotOpts += ">" + String(d) + "</option>";
     }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
 
-    webString += "</div>\n<hr>\n";  // div aprs
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" "
-        "id=\"setting_form_sumbit\" name=\"commit\" type=\"submit\" "
-        "value=\"Save Config\" maxlength=\"80\"/></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
-    delay(100);
-    webString.clear();
+    setHTML(3);
+    streamTemplate("/service.html", {
+        {"aprs_enable_checked", config.aprs ? String("checked") : String("")},
+        {"aprs_mycall",         String(config.aprs_mycall)},
+        {"aprs_ssid_options",   ssidOpts},
+        {"aprs_passcode",       String(config.aprs_passcode)},
+        {"aprs_object",         String(config.aprs_object)},
+        {"aprs_host",           String(config.aprs_host)},
+        {"aprs_port",           String(config.aprs_port)},
+        {"aprs_filter",         String(config.aprs_filter)},
+        {"tnc_checked",         config.tnc ? String("checked") : String("")},
+        {"tlm_checked",         config.tnc_telemetry ? String("checked") : String("")},
+        {"rf2inet_checked",     config.rf2inet ? String("checked") : String("")},
+        {"inet2rf_checked",     config.inet2rf ? String("checked") : String("")},
+        {"hpf_checked",         config.input_hpf ? String("checked") : String("")},
+        {"digi_checked",        config.tnc_digi ? String("checked") : String("")},
+        {"digi_delay_options",  digiDelayOpts},
+        {"timeslot_options",    timeslotOpts}
+    });
+    wsEnd();
 }
 
 void handle_radio() {
@@ -1512,6 +731,44 @@ void handle_radio() {
                         else
                             config.rf_power = false;
                     }
+                }
+            }
+
+            if (server.argName(i) == "oled_brightness") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i))) {
+                        uint8_t idx = (uint8_t)constrain(server.arg(i).toInt(), 0, BRIGHTNESS_LEVEL_COUNT - 1);
+                        config.oled_brightness = BRIGHTNESS_LEVELS[idx];
+                        OledSetBrightness(config.oled_brightness);
+                    }
+                }
+            }
+
+            if (server.argName(i) == "locator_popup") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i)))
+                        config.locator_popup = (uint8_t)constrain(server.arg(i).toInt(), 0, 10);
+                }
+            }
+
+            if (server.argName(i) == "oled_autodim") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i)))
+                        config.oled_autodim = (uint8_t)constrain(server.arg(i).toInt(), 0, 60);
+                }
+            }
+
+            if (server.argName(i) == "oled_autodim_level") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i)))
+                        config.oled_autodim_level = (uint8_t)constrain(server.arg(i).toInt(), 0, 4);
+                }
+            }
+
+            if (server.argName(i) == "aprs_rx_popup") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i)))
+                        config.aprs_rx_popup = (uint8_t)constrain(server.arg(i).toInt(), 0, 10);
                 }
             }
 
@@ -1579,168 +836,81 @@ void handle_radio() {
         RF_Init(false);
     }
 
-    setHTML(7);
-    webString += "<div class=\"col-xs-10\">\n";
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/radio\" "
-        "class=\"form-horizontal\" id=\"radio_form\" method=\"post\">\n";
-
-    webString += "<div>\n<h3>RF Module SA818/SA868</h3>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Frequency</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
 #ifndef BAND_70CM
-        "id=\"tx_freq\" name=\"tx_freq\" min=\"144.0000\" max=\"148.0000\" "
+    const char *txFreqMin = "144.0000", *txFreqMax = "148.0000";
+    const char *rxFreqMin = "144.0000", *rxFreqMax = "148.0000";
 #else
-        "id=\"tx_freq\" name=\"tx_freq\" min=\"430.0000\" max=\"440.0000\" "
-#endif /* BAND_70CM */
-        "step=\"0.0125\" value=\"" + String(config.freq_tx, 4) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Frequency</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" "
-#ifndef BAND_70CM
-        "id=\"rx_freq\" name=\"rx_freq\" min=\"144.0000\" max=\"148.0000\" "
-#else
-        "id=\"rx_freq\" name=\"rx_freq\" min=\"432.0000\" max=\"433.0000\" "
-#endif /* BAND_70CM */
-        "step=\"0.0125\" value=\"" + String(config.freq_rx, 4) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX Offset</label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"tx_offset\" name=\"tx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_tx) + "\" /></div>\n";
-    // webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX Offset</label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-6\"><input type=\"number\" id=\"rx_offset\" name=\"rx_offset\" min=\"-5000\" max=\"5000\" step=\"100\" value=\"" + String(config.offset_rx) + "\" /></div>\n";
-    // webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">TX CTCSS</label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"tx_ctcss\" id=\"tx_ctcss\">\n";
-    // for (int i = 0; i < 39; i++) {
-    //     if (config.tone_tx == i)
-    //         webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
-    //     else
-    //         webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
-    // }
-    // webString += "</select></div>\n";
-    // webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX CTCSS</label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_ctcss\" id=\"rx_ctcss\">\n";
-    // for (int i = 0; i < 39; i++) {
-    //     if (config.tone_rx == i)
-    //         webString += "<option value=\"" + String(i) + "\" selected>" + String(ctcss[i], 1) + "</option>\n";
-    //     else
-    //         webString += "<option value=\"" + String(i) + "\" >" + String(ctcss[i], 1) + "</option>\n";
-    // }
-    // webString += "</select></div>\n";
-    // webString += "</div>\n";
-
-    String cmSelSqlT = "";
-    String cmSelSqlF = "";
-    if (config.band) {
-        cmSelSqlT = "selected";
-    } else {
-        cmSelSqlF = "selected";
-    }
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 "
-        "control-label\">Narrow/Wide</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"nw_band\" "
-        "id=\"nw_band\">\n<option value=\"1\" " +
-        cmSelSqlT + ">25.0KHz</option>\n<option value=\"0\" " + cmSelSqlF +
-        ">12.5KHz</option></select></div>\n";
-    webString += "</div>\n";
-
-    cmSelSqlF = "";
-    cmSelSqlT = "";
-    if (config.rf_power) {
-        cmSelSqlT = "selected";
-    } else {
-        cmSelSqlF = "selected";
-    }
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-3 col-xs-12 control-label\">RF Power</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rf_power\" "
-        "id=\"rf_power\">\n<option value=\"1\" " +
-        cmSelSqlT + ">HIGH</option>\n<option value=\"0\" " + cmSelSqlF +
-        ">LOW</option></select></div>\n";
-    webString += "</div>\n";
-
-#if defined(BOARD_TTWR_PLUS)
-    if (config.rx_att) {
-        cmSelSqlT = "selected";
-    } else {
-        cmSelSqlF = "selected";
-    }
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">RX ATT (default 11, T-TWR-PLUS 2.5)</label>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">\n<option value=\"1\" " +
-        cmSelSqlT + ">2.5dB</option>\n<option value=\"0\" " + cmSelSqlF + ">11dB</option></select></div>\n";
-    webString += "</div>\n";
+    const char *txFreqMin = "430.0000", *txFreqMax = "440.0000";
+    const char *rxFreqMin = "432.0000", *rxFreqMax = "433.0000";
 #endif
 
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">Volume (keep it at 4)</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"volume\" name=\"volume\" type=\"range\" min=\"1\" max=\"8\" value=\"" +
-        String(config.volume) + "\" onchange=\"showVoxValue(this.value)\" /><span id=\"voxShow\">" + String(config.volume) + "</span></div>\n";
-    webString += "</div>\n";
+    String rxAttSection = "";
+#if defined(BOARD_TTWR_PLUS)
+    String rxAttSelT = config.rx_att ? String("selected") : String("");
+    String rxAttSelF = config.rx_att ? String("") : String("selected");
+    rxAttSection =
+        "<div class=\"form-group\">\n"
+        "<label class=\"col-sm-3 col-xs-12 control-label\">RX ATT (default 11, T-TWR-PLUS 2.5)</label>\n"
+        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">"
+        "<option value=\"1\" " + rxAttSelT + ">2.5dB</option>"
+        "<option value=\"0\" " + rxAttSelF + ">11dB</option>"
+        "</select></div>\n</div>\n";
+#endif
 
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-3 col-xs-12 control-label\">SQL Level</label>\n";
-    webString += "<div class=\"col-sm-2 col-xs-6\"><input class=\"form-control\" id=\"sql_level\" name=\"sql_level\" type=\"range\" min=\"0\" max=\"8\" value=\"" +
-        String(config.sql_level) + "\" onchange=\"showSqlValue(this.value)\" /><span id=\"sqlShow\">" + String(config.sql_level) + "</span></div>\n";
-    webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12 control-label\">MIC
-    // Gain</label>\n"; webString += "<div class=\"col-sm-2 col-xs-6\"><input
-    // class=\"form-control\" id=\"mic_level\" name=\"mic_level\" type=\"range\"
-    // min=\"1\" max=\"20\" value=\"" + String(config.mic) + "\"
-    // onchange=\"showMicValue(this.value)\" /><span id=\"micShow\">" +
-    // String(config.mic) + "</span></div>\n"; webString += "</div>\n";
-
-    // webString += "<div class=\"form-group\">\n";
-    // webString += "<label class=\"col-sm-3 col-xs-12
-    // control-label\">AGC</label>\n"; String agcFlage = ""; if (config.agc)
-    // 	agcFlage = "checked";
-    // webString += "<div class=\"col-sm-2 col-xs-6\"><input
-    // class=\"field_checkbox\" id=\"field_checkbox_2\" name=\"agcCheck\"
-    // type=\"checkbox\" value=\"OK\" " + agcFlage + "/></div>\n"; webString +=
-    // "</div>\n";
-
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-4 col-xs-12 control-label\"></label>\n";
-    // webString += "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn
-    // btn-primary\" id=\"radio_set_sumbit\" name=\"commit\" type=\"submit\"
-    // value=\"SET\" maxlength=\"80\"/></div>\n";
-    webString +=
-        "<div class=\"col-sm-2 col-xs-4\"><input class=\"btn btn-primary\" "
-        "id=\"radio_form_sumbit\" name=\"commit\" type=\"submit\" value=\"Save "
-        "Config\" maxlength=\"80\"/></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html", webString);  // send to someones browser when asked
-    delay(100);
-    webString.clear();
+    setHTML(7);
+    streamTemplate("/radio.html", {
+        {"tx_freq_min",       String(txFreqMin)},
+        {"tx_freq_max",       String(txFreqMax)},
+        {"tx_freq",           String(config.freq_tx, 4)},
+        {"rx_freq_min",       String(rxFreqMin)},
+        {"rx_freq_max",       String(rxFreqMax)},
+        {"rx_freq",           String(config.freq_rx, 4)},
+        {"nw_wide_sel",       config.band ? String("selected") : String("")},
+        {"nw_narrow_sel",     config.band ? String("") : String("selected")},
+        {"rf_power_high_sel", config.rf_power ? String("selected") : String("")},
+        {"rf_power_low_sel",  config.rf_power ? String("") : String("selected")},
+        {"rx_att_section",    rxAttSection},
+        {"volume",            String(config.volume)},
+        {"sql_level",         String(config.sql_level)},
+        {"oled_brightness_idx",  String(brightnessIdx(config.oled_brightness))},
+        {"oled_brightness_name", String(BRIGHTNESS_NAMES[brightnessIdx(config.oled_brightness)])},
+        {"autodim_off",   config.oled_autodim == 0  ? String("selected") : String("")},
+        {"autodim_5",     config.oled_autodim == 5  ? String("selected") : String("")},
+        {"autodim_10",    config.oled_autodim == 10 ? String("selected") : String("")},
+        {"autodim_20",    config.oled_autodim == 20 ? String("selected") : String("")},
+        {"autodim_30",    config.oled_autodim == 30 ? String("selected") : String("")},
+        {"autodim_60",    config.oled_autodim == 60 ? String("selected") : String("")},
+        {"autodim_lvl_0", config.oled_autodim_level == 0 ? String("selected") : String("")},
+        {"autodim_lvl_1", config.oled_autodim_level == 1 ? String("selected") : String("")},
+        {"autodim_lvl_2", config.oled_autodim_level == 2 ? String("selected") : String("")},
+        {"autodim_lvl_3", config.oled_autodim_level == 3 ? String("selected") : String("")},
+        {"autodim_lvl_4", config.oled_autodim_level == 4 ? String("selected") : String("")},
+        {"rx_popup_off",  config.aprs_rx_popup == 0  ? String("selected") : String("")},
+        {"rx_popup_1",    config.aprs_rx_popup == 1  ? String("selected") : String("")},
+        {"rx_popup_2",    config.aprs_rx_popup == 2  ? String("selected") : String("")},
+        {"rx_popup_3",    config.aprs_rx_popup == 3  ? String("selected") : String("")},
+        {"rx_popup_4",    config.aprs_rx_popup == 4  ? String("selected") : String("")},
+        {"rx_popup_5",    config.aprs_rx_popup == 5  ? String("selected") : String("")},
+        {"rx_popup_6",    config.aprs_rx_popup == 6  ? String("selected") : String("")},
+        {"rx_popup_7",    config.aprs_rx_popup == 7  ? String("selected") : String("")},
+        {"rx_popup_8",    config.aprs_rx_popup == 8  ? String("selected") : String("")},
+        {"rx_popup_9",    config.aprs_rx_popup == 9  ? String("selected") : String("")},
+        {"rx_popup_10",   config.aprs_rx_popup == 10 ? String("selected") : String("")},
+        {"locator_popup_off", config.locator_popup == 0  ? String("selected") : String("")},
+        {"locator_popup_1",   config.locator_popup == 1  ? String("selected") : String("")},
+        {"locator_popup_2",   config.locator_popup == 2  ? String("selected") : String("")},
+        {"locator_popup_3",   config.locator_popup == 3  ? String("selected") : String("")},
+        {"locator_popup_4",   config.locator_popup == 4  ? String("selected") : String("")},
+        {"locator_popup_5",   config.locator_popup == 5  ? String("selected") : String("")},
+        {"locator_popup_6",   config.locator_popup == 6  ? String("selected") : String("")},
+        {"locator_popup_7",   config.locator_popup == 7  ? String("selected") : String("")},
+        {"locator_popup_8",   config.locator_popup == 8  ? String("selected") : String("")},
+        {"locator_popup_9",   config.locator_popup == 9  ? String("selected") : String("")},
+        {"locator_popup_10",  config.locator_popup == 10 ? String("selected") : String("")}
+    });
+    wsEnd();
 }
+
 
 void handle_system() {
     if (server.hasArg("updateTimeZone")) {
@@ -1748,7 +918,6 @@ void handle_system() {
             if (server.argName(i) == "SetTimeZone") {
                 if (server.arg(i) != "") {
                     config.timeZone = server.arg(i).toInt();
-                    // Serial.println("WEB Config Time Zone);
                     configTime(3600 * config.timeZone, 0, config.ntpServer);
                 }
                 break;
@@ -1757,10 +926,6 @@ void handle_system() {
         SaveConfig();
     } else if (server.hasArg("updateTimeNtp")) {
         for (uint8_t i = 0; i < server.args(); i++) {
-            // Serial.print("SERVER ARGS ");
-            // Serial.print(server.argName(i));
-            // Serial.print("=");
-            // Serial.println(server.arg(i));
             if (server.argName(i) == "SetTimeNtp") {
                 if (server.arg(i) != "") {
                     log_i("WEB Config NTP");
@@ -1773,22 +938,18 @@ void handle_system() {
         SaveConfig();
     } else if (server.hasArg("updateTime")) {
         for (uint8_t i = 0; i < server.args(); i++) {
-            // Serial.print("SERVER ARGS ");
-            // Serial.print(server.argName(i));
-            // Serial.print("=");
-            // Serial.println(server.arg(i));
             if (server.argName(i) == "SetTime") {
                 if (server.arg(i) != "") {
-                    // struct tm tmn;
-                    String date = getValue(server.arg(i), ' ', 0);
-                    String time = getValue(server.arg(i), ' ', 1);
+                    String raw = server.arg(i);
+                    raw.replace("T", " ");
+                    String date = getValue(raw, ' ', 0);
+                    String time = getValue(raw, ' ', 1);
                     int yyyy = getValue(date, '-', 0).toInt();
                     int mm = getValue(date, '-', 1).toInt();
                     int dd = getValue(date, '-', 2).toInt();
                     int hh = getValue(time, ':', 0).toInt();
                     int ii = getValue(time, ':', 1).toInt();
                     int ss = getValue(time, ':', 2).toInt();
-                    // int ss = 0;
 
                     tmElements_t timeinfo;
                     timeinfo.Year = yyyy - 1970;
@@ -1799,16 +960,11 @@ void handle_system() {
                     timeinfo.Second = ss;
                     time_t timeStamp = makeTime(timeinfo);
 
-                    // tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
-                    // tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min,
-                    // tmstruct.tm_sec
-
                     time_t rtc = timeStamp - (config.timeZone * 3600);
                     timeval tv = {rtc, 0};
                     timezone tz = {(0) + DST_MN, 0};
                     settimeofday(&tv, &tz);
 
-                    // Serial.println("Update TIME " + server.arg(i));
                     log_i("Set New Time at %d/%d/%d %d:%d:%d %d", dd, mm, yyyy, hh, ii, ss, timeStamp);
                 }
                 break;
@@ -1816,6 +972,7 @@ void handle_system() {
         }
         SaveConfig();
     } else if (server.hasArg("updateWifi")) {
+        uint8_t oldWifiMode = config.wifi_mode;
         bool wifiSTA = false;
         bool wifiAP = false;
         for (uint8_t i = 0; i < server.args(); i++) {
@@ -1849,12 +1006,6 @@ void handle_system() {
                     config.gps_alt = server.arg(i).toFloat();
                 }
             }
-
-            // if (server.argName(i) == "gpsMode") {
-            //     if (server.arg(i) != "") {
-            //         config.gps_mode = server.arg(i).toInt();
-            //     }
-            // }
 
             if (server.argName(i) == "wifi_ssidAP") {
                 if (server.arg(i) != "") {
@@ -1893,6 +1044,23 @@ void handle_system() {
             config.wifi_mode = WIFI_OFF_FIX;
         }
         SaveConfig();
+        if (config.wifi_mode != oldWifiMode) {
+            server.send(200, "text/html",
+                "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+                "<link rel='stylesheet' href='/style.css'>"
+                "<script>var t=5;setInterval(function(){"
+                "var e=document.getElementById('c');if(e)e.textContent=--t;"
+                "if(t<=0)location.replace('/system');"
+                "},1000);</script></head><body>"
+                "<div class='topnav'><span>APRS-ESP32</span></div>"
+                "<div class='page-content' style='padding:40px;text-align:center'>"
+                "<h3>WiFi settings saved</h3>"
+                "<p style='margin-top:16px'>Device is rebooting. "
+                "Page will reload in <b id='c'>5</b> seconds...</p>"
+                "</div></body></html>");
+            delay(1500);
+            esp_restart();
+        }
     } else if (server.hasArg("REBOOT")) {
         server.send(200, "text/html", "Rebooting...");
         delay(1000);
@@ -1900,294 +1068,51 @@ void handle_system() {
     }
 
     struct tm tmstruct;
-    char strTime[20];
+    char strTime[20], strTimeISO[20];
     tmstruct.tm_year = 0;
     getLocalTime(&tmstruct, 0);
-    sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d", (tmstruct.tm_year) + 1900,
-            (tmstruct.tm_mon) + 1, tmstruct.tm_mday, tmstruct.tm_hour,
-            tmstruct.tm_min, tmstruct.tm_sec);
+    sprintf(strTime,    "%d-%02d-%02d %02d:%02d:%02d",
+            (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday,
+            tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+    sprintf(strTimeISO, "%d-%02d-%02dT%02d:%02d:%02d",
+            (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1, tmstruct.tm_mday,
+            tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
 
-    // webMessage = "";
-    setHTML(4);
-    // webString += "<div class=\"col-xs-12\">\n";
-    webString +=
-        "<script type=\"text/javascript\" "
-        "src=\"//code.jquery.com/jquery-2.1.1.min.js\"></script>\n";
-    webString +=
-        "<script type=\"text/javascript\" "
-        "src=\"//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/"
-        "bootstrap.min.js\"></script>\n";
-    webString +=
-        "<script "
-        "src=\"//cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/"
-        "moment-with-locales.js\"></script>\n";
-    webString +=
-        "<script "
-        "src=\"//cdn.rawgit.com/Eonasdan/bootstrap-datetimepicker/"
-        "e8bddc60e73c1ec2475f827be36e1957af72e2ea/src/js/"
-        "bootstrap-datetimepicker.js\"></script>";
-
-    webString += "<div class=\"col-pad\">\n<h3>Time Setting</h3>\n<table border=\"0\"><tr>";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">Current</label></td>\n";
-    webString += "<td>" + String(strTime) + "</td>\n";
-    webString += "</div>\n</tr><tr>";
-
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/system\" "
-        "class=\"form-horizontal\" id=\"time_form\" method=\"post\">\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">DATE/TIME</label></td>\n";
-    webString +=
-        "<td><div class=\"input-group date\" id='datetimepicker1'><input "
-        "class=\"form-control\" name=\"SetTime\" type=\"text\" value=\"" +
-        String(strTime) + "\" />\n";
-    webString +=
-        "<span class=\"input-group-addon\">\n<span class=\"glyphicon "
-        "glyphicon-calendar\">\n</span></span></div></td>\n";
-    // webString += "<div class=\"col-sm-3 col-xs-6\"><button class=\"btn
-    // btn-primary\" data-args=\"[true]\" data-method=\"getDate\"
-    // type=\"button\" data-related-target=\"#SetTime\" />Get
-    // Date</button></div>\n";
-    webString +=
-        "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
-        "name=\"updateTime\" type=\"submit\" value=\"Time Update\" "
-        "maxlength=\"80\"/></td>\n";
-    webString += "</div>\n</form>\n</tr><tr>\n";
-
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/system\" "
-        "class=\"form-horizontal\" id=\"time_form_ntp\" method=\"post\">\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">NTP Host</label></td>\n";
-    webString +=
-        "<td><div class=\"input-group\" id='ntp_update'><input "
-        "class=\"form-control\" name=\"SetTimeNtp\" type=\"text\" "
-        "value=\"" + String(config.ntpServer) + "\" />\n";
-    webString += "</div></td>\n";
-    webString +=
-        "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
-        "name=\"updateTimeNtp\" type=\"submit\" value=\"NTP Update\" "
-        "maxlength=\"80\"/></td>\n";
-    webString += "</div>\n</form>\n</tr><tr>\n";
-
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/system\" "
-        "class=\"form-horizontal\" id=\"time_form_ntp\" method=\"post\">\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<td><label class=\"col-sm-2 col-xs-12 control-label\">Time "
-        "Zone</label></td>\n";
-    webString +=
-        "<td><div class=\"input-group\" id='timeZone'><input "
-        "class=\"form-control\" name=\"SetTimeZone\" type=\"text\" value=\"" +
-        String(config.timeZone) + "\" />\n";
-    webString += "</div></td>\n";
-    webString +=
-        "<td><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
-        "name=\"updateTimeZone\" type=\"submit\" value=\"TZ Update\" "
-        "maxlength=\"80\"/></td>\n";
-    webString += "</div>\n</form>\n</tr><tr>\n";
-
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/system\" "
-        "class=\"form-horizontal\" id=\"reboot_form\" method=\"post\">\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<td><label class=\"col-sm-2 col-xs-12 "
-        "control-label\">SYSTEM</label></td>\n";
-    webString +=
-        "<td><input type='submit' class=\"btn btn-danger\" name=\"REBOOT\" "
-        "value='REBOOT'></td>\n";
-    webString += "</div>\n</form>\n</tr></table>\n";
-    ;
-
-    webString += "</div><hr>\n";
-
-    webString +=
-        "<form accept-charset=\"UTF-8\" action=\"/system\" "
-        "class=\"form-horizontal\" id=\"time_form_wifi\" method=\"post\">\n";
-    webString += "<div class = \"col-pad\">\n<h3>WiFi Network</h3>\n";
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi AP "
-        "Enable</label>\n";
-    String wifiFlageAP = "";
-    if ((config.wifi_mode == WIFI_AP_STA_FIX) ||
-        (config.wifi_mode == WIFI_AP_FIX))
-        wifiFlageAP = "checked";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-6\"><input class=\"field_checkbox\" "
-        "id=\"field_checkbox_0\" name=\"wifiAP\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        wifiFlageAP + "/></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi AP "
-        "SSID</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" "
-        "id=\"wifi_ssidAP\" name=\"wifi_ssidAP\" type=\"text\" value=\"" +
-        String(config.wifi_ap_ssid) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi AP "
-        "PASSWORD</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-12\"><input class=\"form-control\" "
-        "id=\"wifi_passAP\" name=\"wifi_passAP\" type=\"password\" value=\"" +
-        String(config.wifi_ap_pass) + "\" /></div>\n";
-    webString += "</div><hr width=\"50%\">\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi Client "
-        "Enable</label>\n";
-    String wifiFlage = "";
-    if (config.wifi_client) wifiFlage = "checked";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-6\"><input class=\"field_checkbox\" "
-        "id=\"field_checkbox_0\" name=\"wificlient\" type=\"checkbox\" "
-        "value=\"OK\" " +
-        wifiFlage + "/></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi SSID</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-8\"><input class=\"form-control\" "
-        "id=\"wifi_ssid\" name=\"wifi_ssid\" type=\"text\" value=\"" +
-        String(config.wifi_ssid) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi "
-        "PASSWORD</label>\n";
-    webString +=
-        "<div class=\"col-sm-6 col-xs-12\"><input class=\"form-control\" "
-        "id=\"wifi_pass\" name=\"wifi_pass\" type=\"password\" value=\"" +
-        String(config.wifi_pass) + "\" /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString +=
-        "<label class=\"col-sm-4 col-xs-12 control-label\">WiFi "
-        "Power</label>\n";
-    webString +=
-        "<div class=\"col-sm-4 col-xs-6\"><select name=\"wifi_pwr\" "
-        "id=\"wifi_pwr\">\n";
+    String wifiPwrOpts = "";
     for (int i = 0; i < 12; i++) {
-        if (config.wifi_power == wifiPwr[i][0])
-            webString += "<option value=\"" + String(wifiPwr[i][0], 0) +
-                         "\" selected>" + String(wifiPwr[i][1], 1) +
-                         " dBm</option>\n";
-        else
-            webString += "<option value=\"" + String(wifiPwr[i][0], 0) +
-                         "\" >" + String(wifiPwr[i][1], 1) + " dBm</option>\n";
-    }
-    webString += "</select></div>\n";
-    webString += "</div>\n";
-
-    webString +=
-        "<div><input class=\"btn btn-primary\" id=\"setting_time_sumbit\" "
-        "name=\"updateWifi\" type=\"submit\" value=\"Update WiFi\" "
-        "maxlength=\"80\"/></div></form>\n";
-
-    webString += "<div class = \"col-pad\">\n<h3>WiFi Status</h3>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<table border=\"0\" >\n";
-    webString += "<tr><td align=\"right\"><b>Mode:</b></td>\n";
-    webString += "<td align=\"left\">";
-    if (config.wifi_mode == WIFI_AP_FIX) {
-        webString += "AP";
-    } else if (config.wifi_mode == WIFI_STA_FIX) {
-        webString += "STA";
-    } else if (config.wifi_mode == WIFI_AP_STA_FIX) {
-        webString += "AP+STA";
-    } else {
-        webString += "OFF";
+        wifiPwrOpts += "<option value=\"" + String(wifiPwr[i][0], 0) + "\"";
+        if (config.wifi_power == wifiPwr[i][0]) wifiPwrOpts += " selected";
+        wifiPwrOpts += ">" + String(wifiPwr[i][1], 1) + " dBm</option>";
     }
 
-    wifi_power_t wpr = WiFi.getTxPower();
-    String wifipower = "";
-    if (wpr < 8) {
-        wifipower = "-1 dBm";
-    } else if (wpr < 21) {
-        wifipower = "2 dBm";
-    } else if (wpr < 29) {
-        wifipower = "5 dBm";
-    } else if (wpr < 35) {
-        wifipower = "8.5 dBm";
-    } else if (wpr < 45) {
-        wifipower = "11 dBm";
-    } else if (wpr < 53) {
-        wifipower = "13 dBm";
-    } else if (wpr < 61) {
-        wifipower = "15 dBm";
-    } else if (wpr < 69) {
-        wifipower = "17 dBm";
-    } else if (wpr < 75) {
-        wifipower = "18.5 dBm";
-    } else if (wpr < 77) {
-        wifipower = "19 dBm";
-    } else if (wpr < 80) {
-        wifipower = "19.5 dBm";
-    } else {
-        wifipower = "20 dBm";
-    }
+    String wifiMode = "OFF";
+    if (config.wifi_mode == WIFI_AP_FIX)          wifiMode = "AP";
+    else if (config.wifi_mode == WIFI_STA_FIX)    wifiMode = "STA";
+    else if (config.wifi_mode == WIFI_AP_STA_FIX) wifiMode = "AP+STA";
 
-    webString += "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>MAC:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + String(WiFi.macAddress()) + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>Channel:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + String(WiFi.channel()) + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>TX Power:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + String(WiFi.getTxPower()) + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>SSID:</b></td>\n";
-    webString += "<td align=\"left\">" + String(WiFi.SSID()) + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>Local IP:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + WiFi.localIP().toString() + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>Gateway IP:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + WiFi.gatewayIP().toString() + "</td></tr>\n";
-    webString += "<tr><td align=\"right\"><b>DNS:</b></td>\n";
-    webString +=
-        "<td align=\"left\">" + WiFi.dnsIP().toString() + "</td></tr>\n";
-    webString += "</table></div>\n";
-
-    webString += "</div><hr>\n";
-
-    webString +=
-        "<script type=\"text/javascript\">\n"
-        "$(function(){\n"
-        "$('#datetimepicker1').datetimepicker({\n"
-        "locale: moment.locale('th'),\n"
-        "format: 'YYYY-MM-DD HH:mm:ss'\n"
-        "});\n"
-        "});\n</script>\n";
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
-    delay(100);
-    webString.clear();
+    setHTML(4);
+    streamTemplate("/system.html", {
+        {"current_time",        String(strTime)},
+        {"current_time_iso",    String(strTimeISO)},
+        {"ntp_server",          String(config.ntpServer)},
+        {"time_zone",           String(config.timeZone)},
+        {"wifi_ap_checked",     ((config.wifi_mode == WIFI_AP_STA_FIX) || (config.wifi_mode == WIFI_AP_FIX)) ? String("checked") : String("")},
+        {"wifi_ap_ssid",        String(config.wifi_ap_ssid)},
+        {"wifi_ap_pass",        String(config.wifi_ap_pass)},
+        {"wifi_client_checked", ((config.wifi_mode == WIFI_STA_FIX) || (config.wifi_mode == WIFI_AP_STA_FIX)) ? String("checked") : String("")},
+        {"wifi_ssid",           String(config.wifi_ssid)},
+        {"wifi_pass",           String(config.wifi_pass)},
+        {"wifi_power_options",  wifiPwrOpts},
+        {"wifi_mode",           wifiMode},
+        {"wifi_mac",            String(WiFi.macAddress())},
+        {"wifi_channel",        String(WiFi.channel())},
+        {"wifi_tx_power",       String(WiFi.getTxPower())},
+        {"wifi_ssid_current",   String(WiFi.SSID())},
+        {"wifi_local_ip",       WiFi.localIP().toString()},
+        {"wifi_gateway_ip",     WiFi.gatewayIP().toString()},
+        {"wifi_dns",            WiFi.dnsIP().toString()}
+    });
+    wsEnd();
 }
 
 extern bool afskSync;
@@ -2233,9 +1158,8 @@ void handle_realtime() {
                     timeStamp);
     }
     afskSync = false;
+    server.sendHeader("Connection", "close");
     server.send(200, "text/html", String(jsonMsg));
-
-    delay(100);
     free(jsonMsg);
 }
 
@@ -2263,126 +1187,24 @@ void handle_test() {
         }
     }
     setHTML(6);
-
-    webString += "<table>\n";
-    webString +=
-        "<tr><td><form accept-charset=\"UTF-8\" action=\"/test\" "
-        "class=\"form-horizontal\" id=\"test_form\" method=\"post\">\n";
-    webString +=
-        "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn "
-        "btn-danger\" name=\"sendBeacon\" value='SEND BEACON'></div><br />\n";
-    webString +=
-        "<div style=\"margin-left: 20px;\">TNC2 RAW: <input id=\"raw\" "
-        "name=\"raw\" type=\"text\" size=\"60\" value=\"" +
-        String(config.aprs_mycall) + "-" + String(config.aprs_ssid) +
-        ">APESP1,WIDE1-1:>Test Status\"/></div>\n";
-    webString +=
-        "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn "
-        "btn-primary\" name=\"sendRaw\" value='SEND RAW'></div> <br />\n";
-    webString +=
-        "<div style=\"margin-left: 20px;\"><input type='submit' class=\"btn "
-        "btn-danger\" name=\"REBOOT\" value='REBOOT'></div><br />\n";
-    webString += "</form></td></tr>\n";
-    webString += "<tr><td><hr width=\"80%\" /></td></tr>\n";
-    webString +=
-        "<tr><td><div id=\"vumeter\" style=\"width: 300px; height: 200px; "
-        "margin: 10px;\"></div></td>\n";
-    webString += "<tr><td><div style=\"margin: 15px;\">Terminal<br /><textarea id=\"raw_txt\" name=\"raw_txt\" rows=\"25\" cols=\"80\" /></textarea></div></td></tr>\n";
-    webString += "</table>\n";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html",
-                webString);  // send to someones browser when asked
-
-    delay(100);
-    webString.clear();
+    String defaultRaw = String(config.aprs_mycall) + "-" + String(config.aprs_ssid) + ">" + APRS_TOCALL + ",WIDE1-1:>Test Status";
+    streamTemplate("/test.html", {
+        {"default_raw", defaultRaw}
+    });
+    wsEnd();
 }
 
 void handle_firmware() {
     char strCID[50];
     uint64_t chipid = ESP.getEfuseMac();
     sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
-    // webMessage = "";
     setHTML(5);
-
-    webString += "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n";
-    webString += "Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-    webString += "<br />Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
-    webString += "<hr>";
-    webString += "Maintained by <b>LY3PH</b>\n<br /></b>";
-    webString += "Visit <a href=\"https://github.com/erstec/APRS-ESP\" target=\"_blank\">Project page at GitHub</a>\n<br />";
-    webString += "<hr>";
-    webString += "<b><a href=\"https://github.com/erstec/APRS-ESP/releases\" target=\"_blank\">Download</a> Latest Firmware\n<br />";
-    webString += "<hr>";
-
-    webString += "<div class = \"col-pad\">\n<h3>Firmware Update</h3>\n";
-    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">FW File</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" onchange='sub(this)' /></div>\n";
-    // webString += "<div class=\"col-sm-4 col-xs-12\"><label id='file-input'
-    // for='file'>   Choose file...</label></div>\n"; webString += "<div
-    // class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\"
-    // id=\"update_sumbit\" value='Firmware Update'></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"update_sumbit\" value='Update FW'></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div id='prg'></div>\n";
-    webString += "<br><div id='prgbar'><div id='bar'></div></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-
-    webString +=
-        "<script>"
-        "function sub(obj){"
-        "var fileName = obj.value.split('\\\\');"
-        "document.getElementById('file-input').innerHTML = '   '+ "
-        "fileName[fileName.length-1];"
-        "};"
-        "$('form').submit(function(e){"
-        "e.preventDefault();"
-        "var form = $('#upload_form')[0];"
-        "var data = new FormData(form);"
-        "$.ajax({"
-        "url: '/update',"
-        "type: 'POST',"
-        "data: data,"
-        "contentType: false,"
-        "processData:false,"
-        "xhr: function() {"
-        "var xhr = new window.XMLHttpRequest();"
-        "xhr.upload.addEventListener('progress', function(evt) {"
-        "if (evt.lengthComputable) {"
-        "var per = evt.loaded / evt.total;"
-        "$('#prg').html('Uploading FW: ' + Math.round(per*100) + '%');"
-        "$('#bar').css('width',Math.round(per*100) + '%');"
-        "}"
-        "}, false);"
-        "return xhr;"
-        "},"
-        "success:function(d, s) {"
-        "console.log('success!') "
-        "},"
-        "error: function (a, b, c) {"
-        "}"
-        "});"
-        "});"
-        "</script>";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html", webString);
-
-    delay(100);
-    webString.clear();
+    streamTemplate("/firmware.html", {
+        {"board_name", String(BOARD_NAME)},
+        {"version",    String(VERSION_FULL)},
+        {"chip_id",    String(strCID)}
+    });
+    wsEnd();
 }
 
 //holds the current upload
@@ -2409,8 +1231,8 @@ void handle_configuration() {
         // String pathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID) + ".bin";
         // String dataType = "text/plain";
 
-        // SPIFFS.begin(true);
-        // File myFile = SPIFFS.open("/" + path, "r");
+        // LittleFS.begin(true);
+        // File myFile = LittleFS.open("/" + path, "r");
         // if (myFile) {
         //     server.sendHeader("Content-Type", dataType);
         //     server.sendHeader("Content-Disposition", "attachment; filename=" + pathOfFileDownload);
@@ -2418,129 +1240,44 @@ void handle_configuration() {
         //     server.streamFile(myFile, "application/octet-stream");
         //     myFile.close();
         // }
-        // SPIFFS.end();
+        // LittleFS.end();
 
         // JSON
         String jsonPath = "config.json";
         String jsonPathOfFileDownload = "APRS-ESP-config_" + myStation + "_" + String(VERSION_FULL) + "_" + String(BOARD_NAME) + "_" + String(strCID) + ".json";
         String jsonDataType = "text/plain";
 
-        SPIFFS.begin(true);
-        File jsonFile = SPIFFS.open("/" + jsonPath, "r");
+        SaveConfig();
+        File jsonFile = LittleFS.open("/" + jsonPath, "r");
         if (jsonFile) {
-            server.sendHeader("Content-Type", jsonDataType);
-            server.sendHeader("Content-Disposition", "attachment; filename=" + jsonPathOfFileDownload);
-            server.sendHeader("Connection", "close");
-            server.streamFile(jsonFile, "application/octet-stream");
+            String content = jsonFile.readString();
             jsonFile.close();
+            server.sendHeader("Content-Disposition", "attachment; filename=\"" + jsonPathOfFileDownload + "\"");
+            server.sendHeader("Connection", "close");
+            server.send(200, "application/octet-stream", content);
+        } else {
+            server.send(500, "text/plain", "Failed to write config");
         }
-        SPIFFS.end();
-    } 
+        return;
+    }
 
     char strCID[50];
     uint64_t chipid = ESP.getEfuseMac();
     sprintf(strCID, "%04X%08X", (uint16_t)(chipid >> 32), (uint32_t)chipid);
-    // webMessage = "";
     setHTML(8);
-
-    webString +=
-        "<script "
-        "src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/"
-        "jquery.min.js'></script>\n";
-    webString += "Hardware Version: <b>" + String(BOARD_NAME) + "</b>";
-    webString +=
-        "<br />Firmware Version: V" + String(VERSION_FULL) + "\n<br/>";
-    webString += "Chip ID: <b>" + String(strCID) + "</b>\n";
-
-    webString += "<hr>";
-    webString += "Maintained by <b>LY3PH</b>\n</b><br />";
-    webString += "Visit <a href=\"https://github.com/erstec/APRS-ESP\" target=\"_blank\">Project page at GitHub</a>\n<br />";
-    webString += "<hr>";
-
-    webString += "<div class = \"col-pad\">\n<h3>Configuration Backup</h3>\n";
-    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='download_form' class=\"form-horizontal\">\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-primary\" id=\"backup_sumbit\" name=\"backupConfig\" value='Config Backup'></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-
-    webString += "<hr>";
-
-    webString += "<div class = \"col-pad\">\n<h3>Configuration Restore</h3>\n";
-    webString += "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form' class=\"form-horizontal\">\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-6 control-label\">CFG FILE</label>\n";
-    webString += "<div class=\"col-sm-4 col-xs-12\"><input id=\"file\" name=\"update\" type=\"file\" accept=\".json\" onchange='sub(this)' /></div>\n";
-    webString += "</div>\n";
-
-    webString += "<div class=\"form-group\">\n";
-    webString += "<label class=\"col-sm-2 col-xs-12 control-label\"></label>\n";
-    webString += "<div class=\"col-sm-3 col-xs-4\"><input type='submit' class=\"btn btn-danger\" id=\"restore_sumbit\" name=\"restoreConfig\" value='Config Restore'></div>\n";
-    webString += "</div>\n";
-
-    webString += "</form></div>\n";
-
-    webString +=
-        "<script>"
-        "function sub(obj){"
-        "var fileName = obj.value.split('\\\\');"
-        "document.getElementById('file-input').innerHTML = '   '+ "
-        "fileName[fileName.length-1];"
-        "};"
-
-        // "$('#download_form').submit(function(e){"
-        // "e.preventDefault();"
-        // "console.log('download_form');"
-        // "});"
-
-        "$('#upload_form').submit(function(e){"
-        "e.preventDefault();"
-        "console.log('upload_form');"
-        "var form = $('#upload_form')[0];"
-        "var data = new FormData(form);"
-        "$.ajax({"
-        "url: '/updateconfig',"
-        "type: 'POST',"
-        "data: data,"
-        "contentType: false,"
-        "processData:false,"
-        "xhr: function() {"
-        "var xhr = new window.XMLHttpRequest();"
-        "xhr.upload.addEventListener('progress', function(evt) {"
-        "if (evt.lengthComputable) {"
-        "var per = evt.loaded / evt.total;"
-        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-        "$('#bar').css('width',Math.round(per*100) + '%');"
-        "}"
-        "}, false);"
-        "return xhr;"
-        "},"
-        "success:function(d, s) {"
-        "console.log('success!') "
-        "},"
-        "error: function (a, b, c) {"
-        "}"
-        "});"
-        "});"
-        "</script>";
-
-    webString += "</body></html>\n";
-    server.send(200, "text/html", webString);
-
-    delay(100);
-    webString.clear();
+    streamTemplate("/configuration.html", {
+        {"board_name", String(BOARD_NAME)},
+        {"version",    String(VERSION_FULL)},
+        {"chip_id",    String(strCID)}
+    });
+    wsEnd();
 }
 
 void handle_default() {
-    defaultSetting = true;
     DefaultConfig();
-    // webMessage = "";
-    handle_setting();
-    defaultSetting = false;
+    SaveConfig();
+    server.sendHeader("Location", "/config", true);
+    server.send(302, "text/plain", "");
 }
 
 #ifdef SDCARD
@@ -2683,10 +1420,253 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
 
 static bool cfgUpdate = false;
 
+
+void handle_api_dashboard() {
+    char strTime[30];
+    char uptimeBuf[30];
+    struct tm tmstruct;
+    tmstruct.tm_year = 0;
+    getLocalTime(&tmstruct, 0);
+    sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
+            (tmstruct.tm_year) + 1900, (tmstruct.tm_mon) + 1,
+            tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+
+    uint64_t tn = esp_timer_get_time() / 1000000ULL;
+    sprintf(uptimeBuf, "%llu days %02d:%02d:%02d", tn / 86400,
+            (int)(tn % 86400) / 3600, (int)(tn % 3600) / 60, (int)(tn % 60));
+
+    bool gpsValid  = gps.location.isValid() && gps.altitude.isValid() &&
+                     gps.speed.isValid() && gps.course.isValid() &&
+                     gps.satellites.isValid() && gps.hdop.isValid();
+    bool gpsOnline = GpsPktCnt() > 0;
+
+    String gnssRows = "";
+    if (gpsOnline) {
+        gnssRows += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") +
+                    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
+        gnssRows += "<tr><td>Coords</td><td align=\"right\">" +
+                    (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") +
+                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? String(gps.altitude.meters(), 1) + " m" : "-") + "</td></tr>";
+        gnssRows += "<tr><td>Speed / Course</td><td align=\"right\">" +
+                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>Sats / HDOP</td><td align=\"right\">" +
+                    (gpsValid ? String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1) : "- / -") + "</td></tr>";
+        gnssRows += "<tr><td>GPS / BDS / GLO</td><td align=\"right\">" +
+                    String(gnssSatsGPS) + " / " + String(gnssSatsBDS) + " / " + String(gnssSatsGLO) + "</td></tr>";
+    } else {
+        gnssRows = "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
+    }
+
+    String lastStationsRows = "";
+    sort(pkgList, PKGLISTSIZE);
+    for (int i = 0; i < PKGLISTSIZE && i <= 20; i++) {
+        if (pkgList[i].time > 0) {
+            pkgList[i].calsign[10] = 0;
+            localtime_r(&pkgList[i].time, &tmstruct);
+            sprintf(strTime, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+            lastStationsRows += "<tr><td align=\"left\">" + String(strTime) +
+                "</td><td align=\"center\">" + String(pkgList[i].calsign) +
+                "</td><td align=\"center\">" + (pkgList[i].channel == 0 ? "RF" : "Net") +
+                "</td><td align=\"right\">" + pkgGetType(pkgList[i].type) + "</td></tr>";
+        }
+    }
+
+    String topSendRows = "";
+    sortPkgDesc(pkgList, PKGLISTSIZE);
+    for (int i = 0; i < PKGLISTSIZE && i <= 20; i++) {
+        if (pkgList[i].time > 0) {
+            pkgList[i].calsign[10] = 0;
+            topSendRows += "<tr><td align=\"left\">" + String(pkgList[i].calsign) +
+                           "</td><td align=\"right\">" + String(pkgList[i].pkg, DEC) + "</td></tr>";
+        }
+    }
+
+    JsonDocument doc;
+    doc["time"]               = strTime;
+    doc["cpu_temp"]           = String(temperatureRead(), 1);
+    doc["free_heap"]          = String(ESP.getFreeHeap());
+    doc["uptime"]             = uptimeBuf;
+    doc["wifi_rssi"]          = String(WiFi.RSSI());
+    doc["battery_rows"]       = buildBatteryRows();
+    doc["gnss_rows"]          = gnssRows;
+    doc["stats_all"]          = String(status.allCount) + " / " + String(status.dropCount);
+    doc["stats_rf"]           = String(status.rf2inet) + " / " + String(status.inet2rf);
+    doc["last_stations_rows"] = lastStationsRows;
+    doc["top_send_rows"]      = topSendRows;
+
+    String json;
+    serializeJson(doc, json);
+    server.sendHeader("Connection", "close");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.send(200, "application/json", json);
+}
+
+void handle_api_gps() {
+    bool valid = gps.location.isValid();
+    JsonDocument doc;
+    doc["valid"] = valid;
+    if (valid) {
+        doc["lat"] = gps.location.lat();
+        doc["lon"] = gps.location.lng();
+        doc["alt"] = gps.altitude.isValid() ? gps.altitude.meters() : 0.0;
+    }
+    String json;
+    serializeJson(doc, json);
+    server.sendHeader("Connection", "close");
+    server.sendHeader("Cache-Control", "no-cache");
+    server.send(200, "application/json", json);
+}
+
+// ── LittleFS file browser ─────────────────────────────────────────────────────
+
+static bool isTextFile(const String &path) {
+    return path.endsWith(".html") || path.endsWith(".js")   ||
+           path.endsWith(".css")  || path.endsWith(".json") ||
+           path.endsWith(".txt")  || path.endsWith(".md")   ||
+           path.endsWith(".conf") || path.endsWith(".ini")  ||
+           path.endsWith(".csv");
+}
+
+void handle_files() {
+    setHTML(9);
+    streamTemplate("/files.html", {});
+    wsEnd();
+}
+
+void handle_api_files() {
+    JsonDocument doc;
+    JsonArray arr = doc.to<JsonArray>();
+    File root = LittleFS.open("/");
+    File f    = root.openNextFile();
+    while (f) {
+        JsonObject obj = arr.add<JsonObject>();
+        String name    = String(f.name());
+        String path    = name.startsWith("/") ? name : "/" + name;
+        obj["name"]   = name.startsWith("/") ? name.substring(1) : name;
+        obj["path"]   = path;
+        obj["size"]   = (unsigned int)f.size();
+        obj["isDir"]  = f.isDirectory();
+        obj["isText"] = isTextFile(path);
+        f = root.openNextFile();
+    }
+    String json;
+    serializeJson(doc, json);
+    server.sendHeader("Connection", "close");
+    server.send(200, "application/json", json);
+}
+
+void handle_api_file_get() {
+    if (!server.hasArg("path")) { server.send(400, "text/plain", "missing path"); return; }
+    String path = server.arg("path");
+    if (!path.startsWith("/")) path = "/" + path;
+    if (!LittleFS.exists(path)) { server.send(404, "text/plain", "not found"); return; }
+
+    String mime = "application/octet-stream";
+    if (path.endsWith(".html"))                                       mime = "text/html";
+    else if (path.endsWith(".js"))                                    mime = "application/javascript";
+    else if (path.endsWith(".css"))                                   mime = "text/css";
+    else if (path.endsWith(".json"))                                  mime = "application/json";
+    else if (path.endsWith(".txt") || path.endsWith(".md")   ||
+             path.endsWith(".conf")|| path.endsWith(".ini")  ||
+             path.endsWith(".csv"))                                   mime = "text/plain";
+
+    File f = LittleFS.open(path, "r");
+    if (server.hasArg("dl")) {
+        mime = "application/octet-stream";
+        String fname = path.substring(path.lastIndexOf('/') + 1);
+        server.sendHeader("Content-Disposition", "attachment; filename=\"" + fname + "\"");
+    }
+    server.sendHeader("Connection", "close");
+    server.streamFile(f, mime);
+    f.close();
+}
+
+void handle_api_file_post() {
+    if (!server.hasArg("path") || !server.hasArg("content")) {
+        server.send(400, "text/plain", "missing path or content"); return;
+    }
+    String path = server.arg("path");
+    if (!path.startsWith("/")) path = "/" + path;
+    File f = LittleFS.open(path, "w");
+    if (!f) { server.send(500, "text/plain", "cannot open"); return; }
+    f.print(server.arg("content"));
+    f.close();
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", "OK");
+}
+
+void handle_api_delete() {
+    if (!server.hasArg("path")) { server.send(400, "text/plain", "missing path"); return; }
+    String path = server.arg("path");
+    if (!path.startsWith("/")) path = "/" + path;
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", LittleFS.remove(path) ? "OK" : "FAIL");
+}
+
+static void serveStatic(const char *path, const char *mime) {
+    File f = LittleFS.open(path, "r");
+    if (!f) {
+        server.send(404, "text/plain", "Not found");
+        return;
+    }
+    server.sendHeader("Connection", "close");
+    server.sendHeader("Cache-Control", "max-age=86400");
+    server.streamFile(f, mime);
+    f.close();
+}
+
 void webService() {
+    LittleFS.begin(false);
     server.close();
     // web client handlers
+    server.on("/favicon.ico",    []() { server.send(204); });
+    server.on("/style.css",        []() { serveStatic("/style.css",        "text/css"); });
+    server.on("/leaflet.min.js",   []() { serveStatic("/leaflet.min.js",   "application/javascript"); });
+    server.on("/leaflet.min.css",  []() { serveStatic("/leaflet.min.css",  "text/css"); });
+    server.on("/vu.js",            []() { serveStatic("/vu.js",            "application/javascript"); });
+    server.on("/radio.js",         []() { serveStatic("/radio.js",         "application/javascript"); });
+    server.on("/jquery.min.js",    []() { serveStatic("/jquery.min.js",    "application/javascript"); });
+    server.on("/highcharts.js",    []() { serveStatic("/highcharts.js",    "application/javascript"); });
+    server.on("/highcharts-more.js", []() { serveStatic("/highcharts-more.js", "application/javascript"); });
+    server.on("/firmware.js",        []() { serveStatic("/firmware.js",        "application/javascript"); });
+    server.on("/configuration.js",   []() { serveStatic("/configuration.js",   "application/javascript"); });
+    server.on("/dashboard.js",         []() { serveStatic("/dashboard.js",         "application/javascript"); });
+    server.on("/files.js",             []() { serveStatic("/files.js",             "application/javascript"); });
+    server.on("/codemirror.min.js",    []() { serveStatic("/codemirror.min.js",    "application/javascript"); });
+    server.on("/codemirror.min.css",   []() { serveStatic("/codemirror.min.css",   "text/css"); });
+    server.on("/cm-theme-dracula.min.css", []() { serveStatic("/cm-theme-dracula.min.css", "text/css"); });
+    server.on("/cm-mode-js.min.js",    []() { serveStatic("/cm-mode-js.min.js",    "application/javascript"); });
+    server.on("/cm-mode-css.min.js",   []() { serveStatic("/cm-mode-css.min.js",   "application/javascript"); });
+    server.on("/cm-mode-xml.min.js",   []() { serveStatic("/cm-mode-xml.min.js",   "application/javascript"); });
+    server.on("/cm-mode-html.min.js",  []() { serveStatic("/cm-mode-html.min.js",  "application/javascript"); });
     server.on("/", handle_root);
+    server.on("/api/dashboard", HTTP_GET,  handle_api_dashboard);
+    server.on("/api/gps",       HTTP_GET,  handle_api_gps);
+    server.on("/files",         HTTP_GET,  handle_files);
+    server.on("/api/files",     HTTP_GET,  handle_api_files);
+    server.on("/api/file",      HTTP_GET,  handle_api_file_get);
+    server.on("/api/file",      HTTP_POST, handle_api_file_post);
+    server.on("/api/delete",    HTTP_POST, handle_api_delete);
+    server.on("/api/upload", HTTP_POST,
+        []() {
+            server.sendHeader("Connection", "close");
+            server.send(200, "text/plain", fsUploadFile ? "OK" : "FAIL");
+        },
+        []() {
+            HTTPUpload &upload = server.upload();
+            if (upload.status == UPLOAD_FILE_START) {
+                String fn = upload.filename;
+                if (!fn.startsWith("/")) fn = "/" + fn;
+                LittleFS.remove(fn);
+                fsUploadFile = LittleFS.open(fn, "w");
+            } else if (upload.status == UPLOAD_FILE_WRITE) {
+                if (fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
+            } else if (upload.status == UPLOAD_FILE_END) {
+                if (fsUploadFile) fsUploadFile.close();
+            }
+        }
+    );
     server.on("/config", handle_setting);
 #ifdef SDCARD
     server.on("/data", handle_storage);
@@ -2721,9 +1701,8 @@ void webService() {
                 if (!filenameJson.startsWith("/")) 
                     filenameJson = "/" + filenameJson;
                 log_d("handleFileUpload Name: %s", filenameJson.c_str());
-                SPIFFS.begin(true);
-                // SPIFFS.remove(filename);
-                fsUploadCfgFile = SPIFFS.open(filenameJson, "w");
+                // LittleFS.remove(filename);
+                fsUploadCfgFile = LittleFS.open(filenameJson, "w");
                 filenameJson = String();
             } else if (upload.status == UPLOAD_FILE_WRITE) {
                 log_d("handleFileUpload Data: %d", upload.currentSize);
@@ -2732,7 +1711,7 @@ void webService() {
                 log_d("handleFileUpload Size: %d", upload.totalSize);
                 if (fsUploadCfgFile) {
                     fsUploadCfgFile.close();
-                    fsUploadCfgFile = SPIFFS.open("/tconfig.json", "r");
+                    fsUploadCfgFile = LittleFS.open("/tconfig.json", "r");
                     if (fsUploadCfgFile) {
                         size_t cfgSize = fsUploadCfgFile.size();
                         fsUploadCfgFile.close();
@@ -2740,8 +1719,8 @@ void webService() {
                         if (upload.totalSize > 0) {
                             if (upload.totalSize == cfgSize) {
                                 log_d("Update Success");
-                                if (SPIFFS.exists("/config.json")) SPIFFS.remove("/config.json");
-                                SPIFFS.rename("/tconfig.json", "/config.json");
+                                if (LittleFS.exists("/config.json")) LittleFS.remove("/config.json");
+                                LittleFS.rename("/tconfig.json", "/config.json");
                                 cfgUpdate = true;
                             } else {
                                 log_d("Update Fail");
@@ -2749,7 +1728,6 @@ void webService() {
                         }
                     }
                 }
-                SPIFFS.end();
             }
         }
     );
@@ -2765,19 +1743,18 @@ void webService() {
             HTTPUpload &upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
                 log_i("Firmware Update FILE: %s", upload.filename.c_str());
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  // start with max
-                                                           // available size
+                bool isFS = upload.filename.indexOf("littlefs") >= 0;
+                int updateType = isFS ? U_SPIFFS : U_FLASH;
+                log_i("Update type: %s", isFS ? "LittleFS" : "Firmware");
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN, updateType)) {
                     Update.printError(Serial);
                     delay(3);
                 } else {
-                    // wdtDisplayTimer = millis();
-                    // wdtSensorTimer = millis();
                     disableCore0WDT();
                     disableCore1WDT();
                     disableLoopWDT();
 
                     vTaskSuspend(taskAPRSHandle);
-                    // vTaskSuspend(taskNetworkHandle);
                     config.aprs = false;
                     config.tnc = false;
 
@@ -2806,5 +1783,50 @@ void webService() {
                 }
             }
         });
+    // Captive portal probe URLs — always redirect to the device UI.
+    // Never return Success: macOS treats a Success response as "internet
+    // detected" and immediately shows "Open in Safari?" over the loaded page.
+    server.on("/hotspot-detect.html",       []() {
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.sendHeader("Connection", "close");
+        server.send(302, "text/plain", "");
+    });
+    server.on("/library/test/success.html", []() {
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.sendHeader("Connection", "close");
+        server.send(302, "text/plain", "");
+    });
+    server.on("/connecttest.txt",           []() {
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.sendHeader("Connection", "close");
+        server.send(302, "text/plain", "");
+    });
+    server.on("/generate_204",              []() {
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.sendHeader("Connection", "close");
+        server.send(302, "text/plain", "");
+    });
+    server.on("/gen_204",                   []() {
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.sendHeader("Connection", "close");
+        server.send(302, "text/plain", "");
+    });
+    server.onNotFound([]() {
+        String path = server.uri();
+        if (path.startsWith("/static/") && path.endsWith(".png") && LittleFS.exists(path)) {
+            serveStatic(path.c_str(), "image/png");
+            return;
+        }
+        server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
+        server.send(302, "text/plain", "Redirect");
+    });
+
     server.begin();
+
+    if (config.wifi_mode & WIFI_AP_FIX) {
+        dnsServer.stop();  // stop before restart in case called twice
+        dnsServer.setTTL(300);
+        dnsServer.start(53, "*", WiFi.softAPIP());
+        log_i("Captive portal DNS started on %s", WiFi.softAPIP().toString().c_str());
+    }
 }

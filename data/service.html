@@ -1,0 +1,210 @@
+<form accept-charset="UTF-8" action="/service" method="post">
+
+<div class="form-section">
+  <h3>APRS Setting</h3>
+  <div class="form-row"><label>APRS-IS Enable</label><input type="checkbox" name="aprsEnable" value="OK" {aprs_enable_checked}></div>
+
+  <div class="form-row">
+    <label>My CallSign</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" name="myCall" id="myCall" value="{aprs_mycall}">
+      <button type="button" class="btn btn-secondary" id="calcBtn">Calc Passcode</button>
+    </div>
+  </div>
+  <div class="form-row"><label>My SSID</label><select name="mySSID">{aprs_ssid_options}</select></div>
+  <div class="form-row">
+    <label>Pass Code</label>
+    <input type="text" name="myPasscode" id="myPasscode" value="{aprs_passcode}" style="width:100px">
+  </div>
+
+  <div class="form-row"><label>APRS ITEM</label><input type="text" name="myobject" maxlength="9" value="{aprs_object}"></div>
+
+  <div class="form-row">
+    <label>APRS Server</label>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <select id="aprsHostPreset">
+        <option value="rotate.aprs2.net">rotate.aprs2.net — Global</option>
+        <option value="euro.aprs2.net">euro.aprs2.net — Europe</option>
+        <option value="noam.aprs2.net">noam.aprs2.net — North America</option>
+        <option value="soam.aprs2.net">soam.aprs2.net — South America</option>
+        <option value="asia.aprs2.net">asia.aprs2.net — Asia</option>
+        <option value="aunz.aprs2.net">aunz.aprs2.net — Australia / NZ</option>
+        <option value="">Manual</option>
+      </select>
+      <input type="text" id="aprsHostManual" value="{aprs_host}" placeholder="hostname or IP">
+      <input type="hidden" name="aprsHost" id="aprsHostVal" value="{aprs_host}">
+    </div>
+  </div>
+
+  <div class="form-row"><label>APRS Port</label><input type="text" name="aprsPort" value="{aprs_port}" style="width:80px"></div>
+
+  <div class="form-row">
+    <label>APRS Filter</label>
+    <input type="text" name="aprsFilter" id="aprsFilter" value="{aprs_filter}">
+  </div>
+
+  <div class="form-section" style="margin-top:4px;padding:10px 12px">
+    <div id="filterTokens" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;min-height:24px"></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="filterType" style="width:auto">
+        <option value="m">m/ My Range</option>
+        <option value="r">r/ Range</option>
+        <option value="p">p/ Prefix</option>
+        <option value="b">b/ Buddy</option>
+        <option value="t">t/ Type</option>
+      </select>
+      <span id="filterParams" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"></span>
+      <button type="button" class="btn btn-secondary" id="addTokenBtn">+ Add</button>
+    </div>
+    <div style="margin-top:8px">
+      <button type="button" class="btn btn-secondary" id="applyFilterBtn">Apply to Filter field</button>
+    </div>
+  </div>
+</div>
+
+<div class="form-section">
+  <h3>TNC / Modes</h3>
+  <div class="form-row"><label>Main TNC Enable</label><input type="checkbox" name="tncEnable" value="OK" {tnc_checked}></div>
+  <div class="form-row"><label>Telemetry Enable</label><input type="checkbox" name="tlmEnable" value="OK" {tlm_checked}></div>
+  <div class="form-row"><label>RF &rarr; Inet Enable</label><input type="checkbox" name="rf2inetEnable" value="OK" {rf2inet_checked}></div>
+  <div class="form-row"><label>Inet &rarr; RF Enable</label><input type="checkbox" name="inet2rfEnable" value="OK" {inet2rf_checked}></div>
+  <div class="form-row"><label>AF Input BPF</label><input type="checkbox" name="hpfEnable" value="OK" {hpf_checked}></div>
+  <div class="form-row"><label>Digipeater</label><input type="checkbox" name="digiEnable" value="OK" {digi_checked}></div>
+  <div class="form-row"><label>Digi Delay (ms)</label><select name="digiDelay">{digi_delay_options}</select></div>
+  <div class="form-row"><label>TX Time Slot (ms)</label><select name="timeSlot">{timeslot_options}</select></div>
+</div>
+
+<div class="btn-row">
+  <input class="btn btn-primary" name="commit" type="submit" value="Save Config">
+</div>
+</form>
+
+<script>
+(function() {
+  // ── Callsign SSID parsing ─────────────────────────────────────────────────
+  (function() {
+    var callEl = document.getElementById('myCall');
+    var ssidEl = document.querySelector('select[name="mySSID"]');
+    function parseCallSSID() {
+      var val = callEl.value.trim().toUpperCase();
+      var dash = val.indexOf('-');
+      if (dash < 0) return;
+      var base = val.substring(0, dash);
+      var ssid = parseInt(val.substring(dash + 1), 10);
+      if (!isNaN(ssid) && ssid >= 0 && ssid <= 15) {
+        callEl.value = base;
+        if (ssidEl) ssidEl.value = String(ssid);
+      }
+    }
+    callEl.addEventListener('blur', parseCallSSID);
+    callEl.form && callEl.form.addEventListener('submit', parseCallSSID, true);
+  })();
+
+  // ── Passcode ──────────────────────────────────────────────────────────────
+  document.getElementById('calcBtn').addEventListener('click', function() {
+    var call = document.getElementById('myCall').value.toUpperCase().replace(/-.*/, '');
+    if (!call) return;
+    var h = 0x73e2;
+    for (var i = 0; i < call.length; i += 2) {
+      h ^= call.charCodeAt(i) << 8;
+      if (i + 1 < call.length) h ^= call.charCodeAt(i + 1);
+    }
+    document.getElementById('myPasscode').value = h & 0x7FFF;
+  });
+
+  // ── Server presets ────────────────────────────────────────────────────────
+  var presets = ['rotate.aprs2.net','euro.aprs2.net','noam.aprs2.net',
+                 'soam.aprs2.net','asia.aprs2.net','aunz.aprs2.net'];
+  var selHost  = document.getElementById('aprsHostPreset');
+  var manHost  = document.getElementById('aprsHostManual');
+  var valHost  = document.getElementById('aprsHostVal');
+
+  function syncHost() {
+    var v = selHost.value;
+    if (v) { valHost.value = v; manHost.style.display = 'none'; }
+    else   { valHost.value = manHost.value; manHost.style.display = ''; }
+  }
+
+  selHost.addEventListener('change', syncHost);
+  manHost.addEventListener('input',  function() { valHost.value = manHost.value; });
+
+  var cur = valHost.value;
+  selHost.value = presets.indexOf(cur) >= 0 ? cur : '';
+  syncHost();
+
+  // ── Filter builder ────────────────────────────────────────────────────────
+  var tokens = [];
+
+  var defs = {
+    m: { fields: [{id:'dist', label:'km', ph:'150', w:'70px'}],
+         build: function(v){ return v.dist ? 'm/'+v.dist : null; } },
+    r: { fields: [{id:'lat',label:'Lat',ph:'54.68'},{id:'lon',label:'Lon',ph:'25.24'},{id:'dist',label:'km',ph:'50',w:'70px'}],
+         build: function(v){ return (v.lat&&v.lon&&v.dist) ? 'r/'+v.lat+'/'+v.lon+'/'+v.dist : null; } },
+    p: { fields: [{id:'pfx',label:'Prefix',ph:'LY'}],
+         build: function(v){ return v.pfx ? 'p/'+v.pfx.toUpperCase() : null; } },
+    b: { fields: [{id:'calls',label:'Callsigns',ph:'LY3PH LY3FF',w:'160px'}],
+         build: function(v){ return v.calls ? 'b/'+v.calls.toUpperCase().trim().replace(/\s+/g,'/') : null; } },
+    t: { fields: [],
+         build: function(){
+           var s='poimqstunw'.split('').filter(function(c){var e=document.getElementById('tc_'+c);return e&&e.checked;}).join('');
+           return s?'t/'+s:null;
+         } }
+  };
+  var typeNames = {p:'pos',o:'obj',i:'item',m:'msg',q:'query',s:'status',t:'tlm',u:'user',n:'nws',w:'wx'};
+
+  function renderParams() {
+    var type = document.getElementById('filterType').value;
+    var def  = defs[type];
+    var html = '';
+    if (type === 't') {
+      html = 'poimqstunw'.split('').map(function(c){
+        return '<label style="display:inline-flex;align-items:center;gap:2px;margin-right:4px">'
+          +'<input type="checkbox" id="tc_'+c+'"> '+typeNames[c]+'</label>';
+      }).join('');
+    } else {
+      def.fields.forEach(function(f){
+        html += '<label style="display:inline-flex;align-items:center;gap:4px">'+f.label
+          +' <input type="text" id="fp_'+f.id+'" placeholder="'+f.ph
+          +'" style="width:'+(f.w||'80px')+'"></label> ';
+      });
+    }
+    document.getElementById('filterParams').innerHTML = html;
+  }
+
+  function renderTokens() {
+    var el = document.getElementById('filterTokens');
+    if (!tokens.length) { el.innerHTML = '<span style="opacity:.5;font-size:.85em">no filter tokens</span>'; return; }
+    el.innerHTML = tokens.map(function(t,i){
+      return '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;'
+        +'padding:2px 8px;font-size:.85em;display:inline-flex;align-items:center;gap:6px">'
+        +t+' <button type="button" data-i="'+i+'" style="background:none;border:none;color:var(--danger);'
+        +'cursor:pointer;padding:0;font-size:1.1em;line-height:1">&times;</button></span>';
+    }).join('');
+    el.querySelectorAll('button[data-i]').forEach(function(btn){
+      btn.addEventListener('click', function(){ tokens.splice(+this.dataset.i,1); renderTokens(); });
+    });
+  }
+
+  document.getElementById('filterType').addEventListener('change', renderParams);
+
+  document.getElementById('addTokenBtn').addEventListener('click', function(){
+    var type = document.getElementById('filterType').value;
+    var def  = defs[type];
+    var vals = {};
+    def.fields.forEach(function(f){ var e=document.getElementById('fp_'+f.id); if(e) vals[f.id]=e.value.trim(); });
+    var tok = def.build(vals);
+    if (tok) { tokens.push(tok); renderTokens(); }
+  });
+
+  document.getElementById('applyFilterBtn').addEventListener('click', function(){
+    document.getElementById('aprsFilter').value = tokens.join(' ');
+  });
+
+  // init
+  renderParams();
+  var existing = (document.getElementById('aprsFilter').value || '').trim();
+  tokens = existing ? existing.split(/\s+/) : [];
+  renderTokens();
+})();
+</script>
+</div></body></html>
