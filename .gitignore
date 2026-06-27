@@ -11,3 +11,4 @@
 *.job
 /hardware/GERBER/CAMOutputs/*
 /bin/__pycache__/*
+*.log

@@ -82,11 +82,13 @@ typedef struct Config_Struct {
     uint8_t oled_autodim;       // 0=OFF, 1-60 = inactivity timeout in seconds before dimming
     uint8_t oled_autodim_level; // 0=display OFF, 1-4 = brightness index to dim to
     uint8_t aprs_rx_popup;      // 0=OFF, 1-10 = APRS RX popup duration in seconds
+    uint8_t aprs_sms_popup;     // 0=OFF, 15/30/60 = SMS message popup duration in seconds
     bool    aprs_sms_rx;        // receive APRS messages addressed to our callsign-SSID
 } Configuration;
 
 void DefaultConfig();
 void SaveConfig();
+void SaveConfigBackup();
 void LoadConfig();
 bool LoadReConfig();
 void autoUpdateComment();

@@ -13,7 +13,7 @@
 #include <Arduino.h>
 #include "main.h"
 
-#define MENU_ITEM_COUNT   20
+#define MENU_ITEM_COUNT   21
 
 #define MENU_VISIBLE      6   // items shown at once in main menu list
 #define QUICK_ITEM_COUNT  6   // 0=Beacon 1=WiFi 2=RF 3=SB 4=Reset 5=Cancel
@@ -42,6 +42,7 @@ enum MenuMode {
     MENU_AUTODIM,           // auto-dim: phase 0=timeout, phase 1=level (two-step)
     MENU_LOCATOR_POP,       // locator change popup duration 0-10s
     MENU_RX_POPUP,          // APRS RX popup duration 0=OFF, 1-10s
+    MENU_SMS_POPUP,         // SMS message popup duration 0=OFF, 15/30/60s
     MENU_GNSS,              // live GNSS data overview
     MENU_BATTERY,           // live battery / PMU status
     MENU_ABOUT,             // about / version screen

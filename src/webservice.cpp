@@ -172,20 +172,21 @@ void handle_root() {
 
     String gnssRows = "";
     if (gpsOnline) {
-        gnssRows += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") +
-                    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
+        const char *fixStatus = gpsValid ? "FIX OK" : "Waiting for FIX";
+        gnssRows += "<tr><td>Status</td><td align=\"right\">" + String(fixStatus) +
+                    (gpsValid ? ("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + String(gps.location.age() / 1000) + " s") : "") + "</td></tr>";
         gnssRows += "<tr><td>Coords</td><td align=\"right\">" +
                     (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") +
-                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
+                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "-") + "</td></tr>";
         gnssRows += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? String(gps.altitude.meters(), 1) + " m" : "-") + "</td></tr>";
         gnssRows += "<tr><td>Speed / Course</td><td align=\"right\">" +
-                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "- / -") + "</td></tr>";
+                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "-") + "</td></tr>";
         gnssRows += "<tr><td>Sats / HDOP</td><td align=\"right\">" +
-                    (gpsValid ? String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1) : "- / -") + "</td></tr>";
+                    String(gps.satellites.value()) + " / " + (gpsValid ? String(gps.hdop.hdop(), 1) : "-") + "</td></tr>";
         gnssRows += "<tr><td>GPS / BDS / GLO</td><td align=\"right\">" +
                     String(gnssSatsGPS) + " / " + String(gnssSatsBDS) + " / " + String(gnssSatsGLO) + "</td></tr>";
     } else {
-        gnssRows = "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
+        gnssRows = "<tr><td>Status</td><td align=\"right\">NO GNSS DATA</td></tr>";
     }
 
     String lastStationsRows = "";
@@ -772,6 +773,16 @@ void handle_radio() {
                 }
             }
 
+            if (server.argName(i) == "aprs_sms_popup") {
+                if (server.arg(i) != "") {
+                    if (isValidNumber(server.arg(i))) {
+                        int v = server.arg(i).toInt();
+                        if (v == 0 || v == 15 || v == 30 || v == 60)
+                            config.aprs_sms_popup = (uint8_t)v;
+                    }
+                }
+            }
+
             if (server.argName(i) == "sql_level") {
                 if (server.arg(i) != "") {
                     if (isValidNumber(server.arg(i)))
@@ -850,11 +861,18 @@ void handle_radio() {
     String rxAttSelF = config.rx_att ? String("") : String("selected");
     rxAttSection =
         "<div class=\"form-group\">\n"
-        "<label class=\"col-sm-3 col-xs-12 control-label\">RX ATT (default 11, T-TWR-PLUS 2.5)</label>\n"
-        "<div class=\"col-sm-2 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">"
-        "<option value=\"1\" " + rxAttSelT + ">2.5dB</option>"
-        "<option value=\"0\" " + rxAttSelF + ">11dB</option>"
-        "</select></div>\n</div>\n";
+        "<label class=\"col-sm-3 col-xs-12 control-label\">RX ADC Attenuation</label>\n"
+        "<div class=\"col-sm-9 col-xs-12\">"
+        "<div class=\"col-sm-3 col-xs-6\"><select name=\"rx_att\" id=\"rx_att\">"
+        "<option value=\"0\" " + rxAttSelF + ">11dB (stock)</option>"
+        "<option value=\"1\" " + rxAttSelT + ">2.5dB (R22 mod)</option>"
+        "</select></div>\n"
+        "<span class=\"help-block col-sm-9 col-xs-12\" style=\"margin-top:0\">"
+        "<b>11dB</b>: stock hardware, R22=4.7K&Omega;, DC bias ~2.2V. "
+        "<b>2.5dB</b>: requires R22 replaced 4.7K&rarr;39K&Omega;, DC bias ~0.68V &mdash; 2.4&times; better audio resolution. "
+        "Wrong choice for your hardware = no decodes."
+        "</span>"
+        "</div>\n</div>\n";
 #endif
 
     setHTML(7);
@@ -885,6 +903,10 @@ void handle_radio() {
         {"autodim_lvl_2", config.oled_autodim_level == 2 ? String("selected") : String("")},
         {"autodim_lvl_3", config.oled_autodim_level == 3 ? String("selected") : String("")},
         {"autodim_lvl_4", config.oled_autodim_level == 4 ? String("selected") : String("")},
+        {"sms_popup_off", config.aprs_sms_popup == 0  ? String("selected") : String("")},
+        {"sms_popup_15",  config.aprs_sms_popup == 15 ? String("selected") : String("")},
+        {"sms_popup_30",  config.aprs_sms_popup == 30 ? String("selected") : String("")},
+        {"sms_popup_60",  config.aprs_sms_popup == 60 ? String("selected") : String("")},
         {"rx_popup_off",  config.aprs_rx_popup == 0  ? String("selected") : String("")},
         {"rx_popup_1",    config.aprs_rx_popup == 1  ? String("selected") : String("")},
         {"rx_popup_2",    config.aprs_rx_popup == 2  ? String("selected") : String("")},
@@ -1442,20 +1464,21 @@ void handle_api_dashboard() {
 
     String gnssRows = "";
     if (gpsOnline) {
-        gnssRows += "<tr><td>Valid Fix</td><td align=\"right\">" + String(gpsValid ? "YES" : "NO") +
-                    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + (gpsValid ? String(gps.location.age() / 1000) + " s" : "-") + "</td></tr>";
+        const char *fixStatus = gpsValid ? "FIX OK" : "Waiting for FIX";
+        gnssRows += "<tr><td>Status</td><td align=\"right\">" + String(fixStatus) +
+                    (gpsValid ? ("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Age " + String(gps.location.age() / 1000) + " s") : "") + "</td></tr>";
         gnssRows += "<tr><td>Coords</td><td align=\"right\">" +
                     (gpsValid ? (String(gps.location.lat(), 6) + "&deg;" + (gps.location.rawLat().negative ? "S" : "N") +
-                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "- / -") + "</td></tr>";
+                                 " / " + String(gps.location.lng(), 6) + "&deg;" + (gps.location.rawLng().negative ? "W" : "E")) : "-") + "</td></tr>";
         gnssRows += "<tr><td>Altitude</td><td align=\"right\">" + (gpsValid ? String(gps.altitude.meters(), 1) + " m" : "-") + "</td></tr>";
         gnssRows += "<tr><td>Speed / Course</td><td align=\"right\">" +
-                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "- / -") + "</td></tr>";
+                    (gpsValid ? String(gps.speed.kmph(), 1) + " km/h / " + String(gps.course.deg(), 1) + "&deg;" : "-") + "</td></tr>";
         gnssRows += "<tr><td>Sats / HDOP</td><td align=\"right\">" +
-                    (gpsValid ? String(gps.satellites.value()) + " / " + String(gps.hdop.hdop(), 1) : "- / -") + "</td></tr>";
+                    String(gps.satellites.value()) + " / " + (gpsValid ? String(gps.hdop.hdop(), 1) : "-") + "</td></tr>";
         gnssRows += "<tr><td>GPS / BDS / GLO</td><td align=\"right\">" +
                     String(gnssSatsGPS) + " / " + String(gnssSatsBDS) + " / " + String(gnssSatsGLO) + "</td></tr>";
     } else {
-        gnssRows = "<tr><td>NO GPS DATA</td><td align=\"right\">&nbsp;</td></tr>";
+        gnssRows = "<tr><td>Status</td><td align=\"right\">NO GNSS DATA</td></tr>";
     }
 
     String lastStationsRows = "";
@@ -1516,6 +1539,103 @@ void handle_api_gps() {
     server.sendHeader("Connection", "close");
     server.sendHeader("Cache-Control", "no-cache");
     server.send(200, "application/json", json);
+}
+
+void SerialStatusLog() {
+    char strTime[30];
+    struct tm tmstruct;
+    getLocalTime(&tmstruct, 0);
+    sprintf(strTime, "%d-%02d-%02d %02d:%02d:%02d",
+            tmstruct.tm_year + 1900, tmstruct.tm_mon + 1,
+            tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+
+    uint64_t tn = esp_timer_get_time() / 1000000ULL;
+
+    bool gpsValid  = gps.location.isValid() && gps.altitude.isValid() &&
+                     gps.speed.isValid() && gps.course.isValid() &&
+                     gps.satellites.isValid() && gps.hdop.isValid();
+    bool gpsOnline = GpsPktCnt() > 0;
+
+    JsonDocument doc;
+    doc["t"]        = strTime;
+    doc["uptime"]   = (uint32_t)tn;
+    doc["heap"]     = ESP.getFreeHeap();
+    doc["cpu_temp"] = temperatureRead();
+    doc["rssi"]     = WiFi.RSSI();
+    {
+        String ip = WiFi.localIP().toString();
+        doc["ip"] = (ip != "0.0.0.0") ? ip : WiFi.softAPIP().toString();
+    }
+
+    JsonObject gpsObj = doc["gps"].to<JsonObject>();
+    gpsObj["online"] = gpsOnline ? 1 : 0;
+    gpsObj["fix"]    = gpsValid  ? 1 : 0;
+    if (gpsValid) {
+        gpsObj["lat"]  = gps.location.lat();
+        gpsObj["lon"]  = gps.location.lng();
+        gpsObj["alt"]  = gps.altitude.meters();
+        gpsObj["spd"]  = gps.speed.kmph();
+        gpsObj["hdg"]  = gps.course.deg();
+        gpsObj["age"]  = (uint32_t)(gps.location.age() / 1000);
+    }
+    gpsObj["sats"]  = (uint32_t)gps.satellites.value();
+    gpsObj["hdop"]  = gpsValid ? gps.hdop.hdop() : 0.0f;
+    gpsObj["gps_n"] = gnssSatsGPS;
+    gpsObj["bds_n"] = gnssSatsBDS;
+    gpsObj["glo_n"] = gnssSatsGLO;
+
+    JsonObject batObj = doc["bat"].to<JsonObject>();
+#ifdef USE_PMU
+    batObj["pct"]    = (int)PMU.getBatteryPercent();
+    batObj["mv"]     = (int)PMU.getBattVoltage();
+    batObj["vbus"]   = vbusIn ? (int)PMU.getVbusVoltage() : 0;
+    batObj["sys_mv"] = (int)PMU.getSystemVoltage();
+    batObj["temp"]   = PMU.getTemperature();
+    const char *chgState;
+    if (!PMU.isBatteryConnect())       chgState = "absent";
+    else switch (PMU.getChargerStatus()) {
+        case XPOWERS_AXP2101_CHG_TRI_STATE:  chgState = "trickle"; break;
+        case XPOWERS_AXP2101_CHG_PRE_STATE:  chgState = "pre";     break;
+        case XPOWERS_AXP2101_CHG_CC_STATE:   chgState = "CC";      break;
+        case XPOWERS_AXP2101_CHG_CV_STATE:   chgState = "CV";      break;
+        case XPOWERS_AXP2101_CHG_DONE_STATE: chgState = "full";    break;
+        default: chgState = vbusIn ? "standby" : "discharging";    break;
+    }
+    batObj["chg"] = chgState;
+#else
+    batObj["pct"] = batData >= 0 ? batData : -1;
+    batObj["usb"] = usbPlugged ? 1 : 0;
+#endif
+
+    JsonObject aprsObj = doc["aprs"].to<JsonObject>();
+    aprsObj["all"]    = status.allCount;
+    aprsObj["drop"]   = status.dropCount;
+    aprsObj["rf2in"]  = status.rf2inet;
+    aprsObj["in2rf"]  = status.inet2rf;
+
+    JsonObject cfgObj = doc["cfg"].to<JsonObject>();
+    cfgObj["call"] = config.aprs_mycall;
+    cfgObj["ssid"] = config.aprs_ssid;
+    cfgObj["tnc"]  = config.tnc      ? 1 : 0;
+    cfgObj["digi"] = config.tnc_digi ? 1 : 0;
+    cfgObj["aprs"] = config.aprs     ? 1 : 0;
+    cfgObj["wifi"] = config.wifi_mode;
+    cfgObj["sb"]       = (config.aprs_beacon == 0) ? 1 : 0;
+    cfgObj["bcn"]      = config.aprs_beacon;
+    cfgObj["gps_mode"] = config.gps_mode;
+    cfgObj["rf2inet"]  = config.rf2inet  ? 1 : 0;
+    cfgObj["inet2rf"]  = config.inet2rf  ? 1 : 0;
+    cfgObj["path"]     = config.aprs_path;
+    cfgObj["symbol"]   = String(config.aprs_table) + String(config.aprs_symbol);
+    cfgObj["freq_rx"]  = config.freq_rx;
+    cfgObj["freq_tx"]  = config.freq_tx;
+    cfgObj["pwr"]      = config.rf_power ? 1 : 0;
+    cfgObj["sql"]      = config.sql_level;
+    cfgObj["vol"]      = config.volume;
+
+    String json;
+    serializeJson(doc, json);
+    log_i("[STATUS] %s", json.c_str());
 }
 
 // ── LittleFS file browser ─────────────────────────────────────────────────────

@@ -168,6 +168,11 @@ typedef struct txQueue_struct {
 
 extern bool fwUpdateProcess;
 
+extern statusType status;
+extern char    lastRxCall[16];
+extern time_t  lastRxTime;
+extern bool    lastRxIsIS;
+
 extern bool callsignValid;
 
 const char PARM[] = {"PARM.RF->INET,INET->RF,DigiRpt,TX2RF,DropRx"};

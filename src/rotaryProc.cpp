@@ -135,6 +135,9 @@ static void onRotaryCW() {   // clockwise = scroll down / increment
         case MENU_RX_POPUP:
             menuSubVal = (menuSubVal + 1) % 11;
             break;
+        case MENU_SMS_POPUP:
+            menuSubVal = (menuSubVal + 1) % 4;
+            break;
         case MENU_BEACON:
             if (menuSubVal < BEACON_INTERVAL_COUNT - 1) menuSubVal++;
             break;
@@ -193,6 +196,9 @@ static void onRotaryCCW() {  // counter-clockwise = scroll up / decrement
         case MENU_RX_POPUP:
             menuSubVal = (menuSubVal - 1 + 11) % 11;
             break;
+        case MENU_SMS_POPUP:
+            menuSubVal = (menuSubVal - 1 + 4) % 4;
+            break;
         case MENU_BEACON:
             if (menuSubVal > 0) menuSubVal--;
             break;
@@ -210,7 +216,7 @@ static void onRotaryCCW() {  // counter-clockwise = scroll up / decrement
 }
 
 static void onBtnReleased() {
-    log_i("BTN SW2/ROT SHORT");
+    log_i("[BTN] {\"btn\":\"SW2\",\"type\":\"short\"}");
     if (OledIsPopupActive()) { OledDismissPopup(); return; }
     OledResetActivity();
     switch (menuMode) {
@@ -236,8 +242,8 @@ static void onBtnReleased() {
                     } else {
                         menuMode = MENU_HIDDEN;  // must precede flag: OledPushMsg I2C takes ~25ms during which taskAPRS reads the flag
                         send_aprs_update = true;
-                        char msg[] = "Beacon Sent";
-                        OledPushMsg("", msg, empty, 3);
+                        char msg[] = "Beacon TX";
+                        OledPushMsg("", msg, empty, 1);
                     }
                     menuMode = MENU_HIDDEN;
                     break;
@@ -312,24 +318,33 @@ static void onBtnReleased() {
                     menuSubVal = config.aprs_rx_popup;
                     menuMode = MENU_RX_POPUP;
                     break;
-                case 14:  // RX Packet List
+                case 14: {  // SMS Popup
+                    static const uint8_t SMS_POPUP_VALS[] = {0, 15, 30, 60};
+                    menuSubVal = 0;
+                    for (int i = 0; i < 4; i++) {
+                        if (SMS_POPUP_VALS[i] == config.aprs_sms_popup) { menuSubVal = i; break; }
+                    }
+                    menuMode = MENU_SMS_POPUP;
+                    break;
+                }
+                case 15:  // RX Packet List
                     menuSubVal = 0;
                     menuMode = MENU_RX_LIST;
                     break;
-                case 15:  // MSG Inbox
+                case 16:  // MSG Inbox
                     menuSubVal = 0;
                     menuMode = MENU_MSG_INBOX;
                     break;
-                case 16:  // GNSS Status
+                case 17:  // GNSS Status
                     menuMode = MENU_GNSS;
                     break;
-                case 17:  // Battery Status
+                case 18:  // Battery Status
                     menuMode = MENU_BATTERY;
                     break;
-                case 18:  // About
+                case 19:  // About
                     menuMode = MENU_ABOUT;
                     break;
-                case 19:  // Factory Reset
+                case 20:  // Factory Reset
                     menuSubVal = 0;  // default: NO
                     menuMode = MENU_CONFIRM_RESET;
                     break;
@@ -396,6 +411,14 @@ static void onBtnReleased() {
             SaveConfig();
             menuMode = MENU_MAIN;
             break;
+
+        case MENU_SMS_POPUP: {
+            static const uint8_t SMS_POPUP_VALS[] = {0, 15, 30, 60};
+            config.aprs_sms_popup = SMS_POPUP_VALS[menuSubVal % 4];
+            SaveConfig();
+            menuMode = MENU_MAIN;
+            break;
+        }
 
         case MENU_GPS_MODE:
             config.gps_mode = (uint8_t)menuSubVal;
@@ -480,7 +503,7 @@ static void onBtnReleased() {
 }
 
 static void onBtnPressedLong() {
-    log_i("BTN SW2/ROT LONG");
+    log_i("[BTN] {\"btn\":\"SW2\",\"type\":\"long\"}");
     if (OledIsPopupActive()) { OledDismissPopup(); return; }
     switch (menuMode) {
         case MENU_HIDDEN:
@@ -517,13 +540,14 @@ static void onBtnReleasedLong() {
                 OledPushMsg("", msg, empty, 3);
             } else if (lastTxMs > 0 && millis() - lastTxMs < 30000UL) {
                 char waitMsg[16];
+                char tooFast[] = "Too fast!";
                 snprintf(waitMsg, sizeof(waitMsg), "Wait %ds!", (int)((30000UL - (millis() - lastTxMs) + 999) / 1000));
-                OledPushMsg("", waitMsg, empty, 3);
+                OledPushMsg("", tooFast, waitMsg, 3);
             } else {
                 menuMode = MENU_HIDDEN;  // must precede flag: OledPushMsg I2C takes ~25ms during which taskAPRS reads the flag
                 send_aprs_update = true;
-                char msg[] = "Beacon Sent";
-                OledPushMsg("", msg, empty, 3);
+                char msg[] = "Beacon TX";
+                OledPushMsg("", msg, empty, 1);
             }
             break;
         }
@@ -578,7 +602,9 @@ static void onBtnReleasedLong() {
 bool RotaryProcess() {
     bool update_screen = false;
 #ifdef USE_ROTARY
+#ifndef I2S_INTERNAL
     MenuMode prevMode = menuMode;
+#endif
     unsigned char rotary_state     = rotary.consumePending();
     unsigned char rotary_btn_state = rotary.process_button();
 

@@ -54,4 +54,5 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels);
 #endif
 void webService();
 void handle_radio();
+void SerialStatusLog();
 extern bool RF_Init(bool boot, bool showOled = false);

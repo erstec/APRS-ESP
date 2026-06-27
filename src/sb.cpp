@@ -9,7 +9,7 @@
     Aknowlegments:  SmartBeaconing™ is a beaconing algorithm invented by Tony Arnerich KD7TA and Steve Bragg KA9MVA.
 */
 
-#include "smartBeaconing.h"
+#include "sb.h"
 #include "TinyGPS++.h"
 #include "config.h"
 #include "main.h"
@@ -56,7 +56,7 @@ float getBearingAngle(float alpha, float beta) {
         return (360 - delta);
 }
 
-bool smartBeaconCornerPeg(Location location) {
+bool sbCorner(Location location) {
     int SB_TURN_TIME = config.sb_turn_time;
     int SB_TURN_MIN = config.sb_turn_min;
     float SB_TURN_SLOPE = config.sb_turn_slope * 1.0;
@@ -66,27 +66,28 @@ bool smartBeaconCornerPeg(Location location) {
     if (t_diff < 0) t_diff += 86400;
     float turn = getBearingAngle(location.course.deg(), lastLoc.course.deg());
 
-    // no bearing / stillstand -> no corner pegging
-    if (!location.course.isValid() || speed == 0)
+    if (!location.course.isValid() || speed == 0) {
+        log_i("[SB] {\"fn\":\"corner\",\"result\":\"skip\",\"reason\":\"no_course_or_speed\",\"elapsed_s\":%ld}", t_diff);
         return false;
+    }
 
-    // if last bearing unknown, deploy turn_time
-    if (!lastLoc.course.isValid())
-        return (t_diff >= SB_TURN_TIME);
+    if (!lastLoc.course.isValid()) {
+        bool peg = (t_diff >= SB_TURN_TIME);
+        log_i("[SB] {\"fn\":\"corner\",\"result\":\"%s\",\"reason\":\"no_last_course\",\"elapsed_s\":%ld,\"turn_time_s\":%d}", peg ? "peg" : "wait", t_diff, SB_TURN_TIME);
+        return peg;
+    }
 
-    // threshold depends on slope/speed [mph]
     float threshold = SB_TURN_MIN + SB_TURN_SLOPE / (speed * 2.23693629);
-
-    log_i("%1.0f < %1.0f %ld/%d", turn, threshold, t_diff, SB_TURN_TIME);
-    // need to corner peg if turn time reached and turn > threshold
-    return (t_diff >= SB_TURN_TIME && turn > threshold);
+    bool peg = (t_diff >= SB_TURN_TIME && turn > threshold);
+    log_i("[SB] {\"fn\":\"corner\",\"result\":\"%s\",\"turn_deg\":%d,\"thr_deg\":%d,\"elapsed_s\":%ld,\"turn_time_s\":%d}", peg ? "peg" : "wait", (int)turn, (int)threshold, t_diff, SB_TURN_TIME);
+    return peg;
 }
 
 // return true if current position is "new enough" vs. lastLoc
-bool smartBeaconCheck(Location location) {
+bool sbCheck(Location location) {
     if (!lastLoc.valid)
         return true;
-    if (smartBeaconCornerPeg(location))
+    if (sbCorner(location))
         return true;
     float dist = gps.distanceBetween(location.location.lat(), location.location.lng(), lastLoc.location.lat(), lastLoc.location.lng());
     int32_t t_diff = timeToSecs(location.time.value()) - timeToSecs(lastLoc.time.value());
@@ -94,7 +95,7 @@ bool smartBeaconCheck(Location location) {
     float speed = location.speed.mps();
     //if (location.speed.isValid() && location.course.isValid())
     int speed_rate = smartBeaconSpeedRate(speed);
-    log_i("%1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
+    log_i("[SB] {\"fn\":\"check\",\"dist_m\":%d,\"spd_kmh\":%d,\"elapsed_s\":%ld,\"rate_s\":%d,\"will_tx\":%d}", (int)dist, (int)(speed*3.6f), t_diff, speed_rate, (t_diff >= speed_rate) ? 1 : 0);
     if (t_diff >= speed_rate) {
         // log_i("%1.0fm, %1.2fm/s -> %ld/%ds - %s", dist, speed, t_diff, speed_rate, (t_diff >= speed_rate) ? "true" : "false");
         return true;
@@ -103,7 +104,7 @@ bool smartBeaconCheck(Location location) {
     }
 }
 
-bool SmartBeaconingProc() {
+bool sbProc() {
     Location location = {
         .valid = true,
         .location = gps.location,
@@ -116,7 +117,7 @@ bool SmartBeaconingProc() {
         return false;
     }
 
-    if (smartBeaconCheck(location)) {
+    if (sbCheck(location)) {
         lastLoc = location;
         return true;
     }

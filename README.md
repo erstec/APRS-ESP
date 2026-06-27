@@ -1,4 +1,4 @@
-# APRS-ESP32 Project — v2.0
+# APRS-ESP32 Project — v2.1
 
 APRS-ESP32 is an APRS AFSK1200 Tracker + Digipeater + Internet Gateway for Espressif ESP32/ESP32-S3 MCUs.
 
@@ -65,8 +65,8 @@ AA00aa    12:34:56           0m       <- locator / time / altitude
 | Callsign | right | **APRS-IS status** | `A+` connected, `A-` disconnected (only when APRS-IS enabled) |
 | Callsign | right | **WiFi icon** | Rising signal bars = connected to AP; X + bar = disconnected (only when WiFi enabled) |
 | Callsign | right | **Battery icon** | Outline + proportional fill; lightning bolt when charging |
-| Speed/Heading | left | **Speed** | Ground speed in km/h (large font) |
-| Speed/Heading | right | **Heading** | Course in degrees + ° (large font); `---` when no fix |
+| Speed/Heading | left | **Speed** | Ground speed in km/h (large font); `Waiting for FIX` / `NO GNSS` when no satellites |
+| Speed/Heading | right | **Heading** | Course in degrees + ° (large font); hidden when no satellites |
 | Coordinates | full | **Lat + Lon** | NMEA format `NDDMM.MM WDDDMM.MM`; zeroed when no fix |
 | Locator row | left | **QTH locator** | Maidenhead grid square (6-char); `------` when no GPS fix |
 | Locator row | center | **Time** | `HH:MM:SS` local time; `NO TIME` if not yet synced |
@@ -77,6 +77,41 @@ AA00aa    12:34:56           0m       <- locator / time / altitude
 | Bottom | left | **[clock icon] GPS age** | Seconds since last valid fix; `--s` when no fix |
 | Bottom | center | **Send mode** | `AUTO` (GPS→Fixed fallback), `GPS` (GPS-only), `FIX` (fixed position) |
 | Bottom | right | **[arrow icon] Distance** | Distance travelled since last beacon; `0` when no fix |
+
+### Non-tracker screen (IGate / Digipeater / fixed-position mode)
+
+When operating as an IGate, Digipeater, or fixed-position beacon (GPS mode = Fixed), the tracker speed/heading zone is replaced with a station monitor view.
+
+![OLED non-tracker screen](doc/img/oled-nontracker-screen.png)
+
+```text
+N0CALL-9              A+ [wifi][bat]  <- callsign / APRS-IS / WiFi / battery
+                                      | large font zone
+           N0CALL-1                   <- last-heard station callsign (centered)
+                                      |
+           RF 42s ago                 <- source (RF/IS) + age since last heard
+RX:1234              DG:56            <- total packets received / digipeated
+RI:78                IR:9             <- RF→IGate / IGate→RF counts
+[sat]8++NTP                12:34:56  <- satellites / sync source / time
+                    SB TN IS RI IR   <- beacon mode + active service flags
+```
+
+| Zone | Position | Content | Values / meaning |
+| ---- | -------- | ------- | ---------------- |
+| Callsign | left | **Callsign + SSID** | `{MYCALL}-{SSID}` |
+| Callsign | right | **APRS-IS status** | `A+` connected, `A-` disconnected (only when APRS-IS enabled) |
+| Callsign | right | **WiFi icon** | Rising bars = connected; X + bar = disconnected (only when WiFi enabled) |
+| Callsign | right | **Battery icon** | Outline + proportional fill; lightning bolt when charging |
+| Large zone | center | **Last-heard callsign** | Most recently decoded station (RF or APRS-IS); blank until first packet |
+| Large zone | center | **Source + age** | `RF` or `IS` + time since last packet (`Xs ago`, `Xm ago`, `Xh ago`); `---` if none yet |
+| Stats | left | **RX count** | Total packets received |
+| Stats | right | **DG count** | Total packets digipeated |
+| Stats | left | **RI count** | Packets gated RF → APRS-IS |
+| Stats | right | **IR count** | Packets injected APRS-IS → RF |
+| Satellites | left | **[sat icon] Satellite info** | `{count}{fix}{pkt}` — count; `+`/`-` for valid fix; `+`/`-` for GPS packets received |
+| Satellites | left | **Time sync source** | `GPS`, `NTP`, `APR` = source; `NO` = not synced |
+| Satellites | right | **Time** | `HH:MM:SS` local time |
+| Flags | right | **Beacon mode + flags** | `SB` SmartBeaconing, `T{n}` = fixed interval (min); `TN` RF, `TM` telemetry, `DG` digi, `IS` APRS-IS, `RI` RF→IGate, `IR` IGate→RF |
 
 ---
 
@@ -102,16 +137,17 @@ Scroll with the encoder knob. Press to select / toggle each item:
 | 11 | Auto-Dim | Set auto-dim timeout and level |
 | 12 | Locator Popup | Duration of grid locator popup (OFF or 1–10 s) |
 | 13 | APRS RX Popup | Duration of received packet popup (OFF or 1–10 s) |
-| 14 | RX Packet List | Scrollable list of received APRS packets; press to view full raw packet |
-| 15 | MSG Inbox | Received APRS messages; shows unread count |
-| 16 | GNSS Status | Live GNSS data screen (see below) |
-| 17 | Battery Status | Live battery / PMU status (charger state, voltage, %, VBUS, sys voltage, PMU temp) |
-| 18 | About | Firmware version, callsign and IP address |
-| 19 | Factory Reset | Erase all settings (YES/NO confirmation) |
+| 14 | SMS Popup | Duration of incoming APRS message popup (OFF / 15 / 30 / 60 s); OFF falls back to transient RX popup |
+| 15 | RX Packet List | Scrollable list of received APRS packets; press to view full raw packet |
+| 16 | MSG Inbox | Received APRS messages; shows unread count |
+| 17 | GNSS Status | Live GNSS data screen (see below) |
+| 18 | Battery Status | Live battery / PMU status (charger state, voltage, %, VBUS, sys voltage, PMU temp) |
+| 19 | About | Firmware version, callsign and IP address |
+| 20 | Factory Reset | Erase all settings (YES/NO confirmation) |
 
 Long press from inside the menu → exit without saving.
 
-### GNSS Status screen (item 16)
+### GNSS Status screen (item 17)
 
 Live GNSS data, updated every second. Press to return to menu.
 
@@ -191,22 +227,20 @@ The T-TWR Plus has three physical buttons in addition to the rotary encoder:
 
 Works in **Chrome, Edge or Firefox** on any OS via the Web Serial API.
 
-1. [Download](https://github.com/erstec/APRS-ESP/releases) the factory binary for your hardware, e.g. `firmware-lilygo-t-twr-plus-2.0.factory.bin`
+1. [Download](https://github.com/erstec/APRS-ESP/releases) the factory binary for your hardware, e.g. `firmware-lilygo-t-twr-plus-2.1.factory.bin`
 2. Open **<https://espressif.github.io/esptool-js/>** in Chrome, Edge or Firefox
 3. Click **Connect** — select the **ESP32-S3 native USB** port (listed as `USB JTAG/serial debug unit`, VID `303a`), not the CH340 UART port
 4. Add one row: offset **`0x0`**, select the downloaded `.factory.bin` file
 5. Click **Program** — erases flash and writes everything in one pass
 
-Done. No Python, no drivers, no command line.
-
 #### Via USB script (Python + esptool)
 
 ```sh
 # Linux / macOS
-bin/device-install.sh -f firmware-lilygo-t-twr-plus-2.0.factory.bin
+bin/device-install.sh -f firmware-lilygo-t-twr-plus-2.1.factory.bin
 
 # Windows
-bin\device-install.bat -f firmware-lilygo-t-twr-plus-2.0.factory.bin
+bin\device-install.bat -f firmware-lilygo-t-twr-plus-2.1.factory.bin
 ```
 
 Requires Python 3 and `pip install esptool`. The `-p PORT` flag is optional (esptool auto-detects).
@@ -228,8 +262,8 @@ pio run -e lilygo-t-twr-plus -t uploadfs
 
 Go to the **Firmware** tab in the web UI:
 
-- Upload `firmware-lilygo-t-twr-plus-2.0-update.bin` → flashes app only, config is preserved
-- Upload `littlefs-lilygo-t-twr-plus-2.0.bin` → updates web assets (upload after firmware if web UI changed)
+- Upload `firmware-lilygo-t-twr-plus-2.1-update.bin` → flashes app only, config is preserved
+- Upload `littlefs-lilygo-t-twr-plus-2.1.bin` → updates web assets (upload after firmware if web UI changed)
 
 The page auto-detects which file type you selected by filename.
 
@@ -240,7 +274,7 @@ Same steps as first-time flash above — use the `.factory.bin` at offset `0x0`.
 ### Via USB script
 
 ```sh
-bin/device-update.sh -f firmware-lilygo-t-twr-plus-2.0-update.bin
+bin/device-update.sh -f firmware-lilygo-t-twr-plus-2.1-update.bin
 ```
 
 > After any major update: export a configuration backup first — config format changes between versions are not guaranteed.
@@ -271,6 +305,39 @@ On first boot the device creates a WiFi AP:
 
 ---
 
+## Serial Monitor (Development Tool)
+
+`tools/monitor.py` is a live desktop monitor for development and field debugging. It reads the device serial port, parses structured JSON log lines, and displays them in real-time cards.
+
+### Requirements
+
+```sh
+pip install -r tools/requirements.txt   # dearpygui, pyserial
+```
+
+### Usage
+
+```sh
+python3 tools/monitor.py
+```
+
+The best available ESP32 port is pre-selected on startup. Connect, disconnect, and optionally log to file via the toolbar.
+
+### Cards
+
+| Card | Content |
+| ---- | ------- |
+| **System** | Time, uptime, free heap, CPU temp, WiFi RSSI, IP address |
+| **Config** | Callsign, path, beacon, send mode, RX/TX freq, mode flags, WiFi mode, routing, APRS-IS |
+| **Battery** | Charge %, voltage, VBUS, system voltage, charger state, PMU temp |
+| **GPS** | Fix, lat/lon, altitude, speed, heading, HDOP, sats (GPS/BDS/GLO), data age |
+| **APRS** | Packet counters (all/drop/RF→IS/IS→RF) |
+| **SmartBeaconing** | Distance, speed, elapsed, rate, turn angle, will-TX flag |
+| **RF** | PTT state, last TX packet, last RX packet, last SMS addressed to this station |
+| **Log** | Colour-coded raw serial log (STATUS / DEBUG / SB / TX / BTN / MSG / PKT); toggleable file logging |
+
+---
+
 ## Building from Source
 
 Requirements: PlatformIO + VS Code
@@ -296,14 +363,6 @@ Configuration is stored in **ESP32 NVS** (Non-Volatile Storage), a dedicated fla
 - Config backup/restore via the web UI uses JSON (download/upload on the Storage tab)
 
 To reset to factory defaults: hold the BOOT button during power-on, or use Menu / Quick Menu.
-
----
-
-## Known Issues
-
-### T-TWR Plus — OLED data corruption
-
-The SH1106 OLED may show corrupted data (requires power cycle to recover). This does not affect device operation. There is no known fix at this time. The issue seems to be related to power supply stability or RF interference, but the exact cause is unknown.
 
 ---
 
