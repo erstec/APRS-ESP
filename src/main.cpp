@@ -132,6 +132,9 @@ int mVrms = 0;
 cppQueue PacketBuffer(sizeof(AX25Msg), 10, IMPLEMENTATION);
 
 statusType status;
+char     lastRxCall[16] = "---";
+time_t   lastRxTime     = 0;
+bool     lastRxIsIS     = false;
 RTC_DATA_ATTR igateTLMType igateTLM;
 
 txQueueType *txQueue;
@@ -239,15 +242,17 @@ bool pkgTxSend() {
                 String _empty = "";
                 String _msg = "TX";
                 OledPushMsg("", (char *)_msg.c_str(), (char *)_empty.c_str(), 1);
-                OledUpdate(0, false, AFSKInitAct); // force update otherwise it will be shown only after TX
+                vTaskDelay(60 / portTICK_PERIOD_MS); // let Core 1 render popup before locking I2C
 #if defined(BOARD_TTWR_PLUS) || defined(BOARD_TTWR_V1)
                 adcActive(false);
 #endif
                 TX_LED_ON();
                 oledTxBusy = true;  // block taskOLEDDisplay from touching I2C during TX
                 APRS_setPreamble(APRS_PREAMBLE);
-                APRS_sendTNC2Pkt(String(info)); // Send packet to RF
-                log_d("TX->RF: %s\n", info);
+                String _txPkt = String(info);
+                _txPkt.trim();
+                APRS_sendTNC2Pkt(_txPkt); // Send packet to RF
+                log_i("[TX] {\"dir\":\"RF\",\"pkt\":\"%s\"}", _txPkt.c_str());
 
                 for (int i = 0; i < 100; i++) {
 #if defined(INVERT_PTT)
@@ -255,7 +260,7 @@ bool pkgTxSend() {
 #else
                     if (digitalRead(PTT_PIN) == 0) {
 #endif
-                        log_i("PTT RELEASE DETECTED");
+                        log_i("[TX] {\"event\":\"ptt_release\"}");
                         break;
                     }
                     delay(50); // TOT 5sec
@@ -457,12 +462,13 @@ static bool aprsCheckMsg(const char *from, const char *info) {
     }
 
     aprsMsgAdd(from, msgText, msgId);
-    log_i("MSG from %s: %s", from, msgText);
+    log_i("[MSG] {\"event\":\"rx\",\"from\":\"%s\",\"text\":\"%s\"}", from, msgText);
 
     char fromBuf[12], textBuf[70];
     strlcpy(fromBuf, from,    sizeof(fromBuf));
     strlcpy(textBuf, msgText, sizeof(textBuf));
-    OledEnqueueMsg("MSG FROM", fromBuf, textBuf, 60);
+    if (config.aprs_sms_popup > 0)
+        OledEnqueueMsg("MSG FROM", fromBuf, textBuf, config.aprs_sms_popup);
 
     if (msgId[0]) {
         char ackInfo[25];
@@ -471,7 +477,7 @@ static bool aprsCheckMsg(const char *from, const char *info) {
         if (aprsClient.connected()) {
             String ackPkt = String(ourCall) + ">APRS:" + String(ackInfo);
             aprsClient.println(ackPkt);
-            log_i("MSG ACK IS: %s", ackPkt.c_str());
+            log_i("[MSG] {\"event\":\"ack_is\",\"pkt\":\"%s\"}", ackPkt.c_str());
         }
 
         if (callsignValid && config.tnc) {
@@ -485,21 +491,21 @@ static bool aprsCheckMsg(const char *from, const char *info) {
             else
                 snprintf(rfAck, sizeof(rfAck), "%s>%s:%s", config.aprs_mycall, APRS_TOCALL, ackInfo);
             pkgTxPush(rfAck, strlen(rfAck), 0);
-            log_i("MSG ACK RF: %s", rfAck);
+            log_i("[MSG] {\"event\":\"ack_rf\",\"pkt\":\"%s\"}", rfAck);
         }
     }
     return true;
 }
 
 boolean APRSConnect() {
-    log_i("Connect APRS-IS Server");
+    log_i("[APRS] {\"event\":\"connecting\"}");
     String login = "";
     uint8_t con = aprsClient.connected();
     if (con <= 0) {
         if (!callsignValid) return false;
 
         if (!aprsClient.connect(config.aprs_host, config.aprs_port)) {
-            log_w("APRS-IS connect failed");
+            log_w("[APRS] {\"event\":\"connect_failed\"}");
             return false;
         }
 
@@ -515,7 +521,7 @@ boolean APRSConnect() {
         }
         aprsClient.println(login);
         // Serial.println(login);
-        log_i("Success");
+        log_i("[APRS] {\"event\":\"connected\"}");
         delay(500);
     }
 
@@ -918,7 +924,7 @@ void setup()
     // Task 1
     xTaskCreatePinnedToCore(taskAPRS,   /* Function to implement the task */
                             "taskAPRS", /* Name of the task */
-                            8192,       /* Stack size in words */
+                            16384,      /* Stack size in words */
                             NULL,       /* Task input parameter */
 #if defined(BOARD_ESP32DR)
                             1,          /* Priority of the task */
@@ -963,7 +969,7 @@ void setup()
     // Task 5
     xTaskCreatePinnedToCore(taskTNC,                /* Function to implement the task */
                             "taskTNC",              /* Name of the task */
-                            8192,                   /* Stack size in words */
+                            16384,                  /* Stack size in words */
                             NULL,                   /* Task input parameter */
                             1,                      /* Priority of the task */
                             &taskTNCHandle,         /* Task handle. */
@@ -1149,19 +1155,13 @@ uint8_t getBatteryPercentage() {
 }
 #endif
 
-void printPeriodicDebug() {
-    char strtmp[256];
-    int stridx = 0;
+void dbgTick() {
 #if defined(ADC_BATTERY)
     if (config.wifi_mode == WIFI_OFF) {
-        // batteryVoltage = (analogRead(ADC_BATTERY) * 2);
-        // batteryVoltage += (batteryVoltage > 0 ? BATT_OFFSET : 0);
-
         batteryPercentage = getBatteryPercentage();
     } else {
         batteryPercentage = digitalRead(ADC_BATTERY);
     }
-
 #endif
 #if defined(USE_PMU)
     batteryPercentage = getBatteryPercentage();
@@ -1190,25 +1190,34 @@ void printPeriodicDebug() {
         if (batteryPercentage > 50) lastBatThreshold = 100;
     }
 #endif
-    printTime(strtmp);  // date/time is 10+1 symbols
-    stridx = 11;
-    strtmp[10] = ' ';
-#if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, "Bat:");
-#endif
-#if defined(ADC_BATTERY)
-    stridx += sprintf(strtmp + stridx, " %d mV", batteryVoltage);
-#endif
-#if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, " %d%%", batteryPercentage);
-#endif
-#if defined(ADC_BATTERY) || defined(USE_PMU)
-    stridx += sprintf(strtmp + stridx, ", lat: ");
-#else
-    stridx += sprintf(strtmp + stridx, "Lat: ");
-#endif
-    stridx += sprintf(strtmp + stridx, "%d lon: %d age: %d, %s, %s, gps %s, dist: %d", lat, lon, age, gps.location.isValid() ? "valid" : "invalid", gps.location.isUpdated() ? "updated" : "not updated", GpsPktCnt() > 0 ? "on" : "off", distance);
 
+    struct tm tmstruct;
+    getLocalTime(&tmstruct, 0);
+    bool fix = gps.location.isValid();
+    int32_t latI = fix ? (int32_t)(gps.location.lat() * 1e6) : 0;
+    int32_t lonI = fix ? (int32_t)(gps.location.lng() * 1e6) : 0;
+    uint32_t ageS = fix ? (uint32_t)(gps.location.age() / 1000) : 0;
+
+    char strtmp[200];
+#if defined(ADC_BATTERY)
+    snprintf(strtmp, sizeof(strtmp),
+        "[DEBUG] {\"t\":\"%02d:%02d:%02d\",\"fix\":%d,\"gps\":%d,\"lat\":%ld,\"lon\":%ld,\"age\":%u,\"dist\":%d,\"bat\":%d,\"bat_mv\":%d}",
+        tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec,
+        fix ? 1 : 0, GpsPktCnt() > 0 ? 1 : 0,
+        (long)latI, (long)lonI, ageS, distance, batteryPercentage, batteryVoltage);
+#elif defined(USE_PMU)
+    snprintf(strtmp, sizeof(strtmp),
+        "[DEBUG] {\"t\":\"%02d:%02d:%02d\",\"fix\":%d,\"gps\":%d,\"lat\":%ld,\"lon\":%ld,\"age\":%u,\"dist\":%d,\"bat\":%d}",
+        tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec,
+        fix ? 1 : 0, GpsPktCnt() > 0 ? 1 : 0,
+        (long)latI, (long)lonI, ageS, distance, batteryPercentage);
+#else
+    snprintf(strtmp, sizeof(strtmp),
+        "[DEBUG] {\"t\":\"%02d:%02d:%02d\",\"fix\":%d,\"gps\":%d,\"lat\":%ld,\"lon\":%ld,\"age\":%u,\"dist\":%d}",
+        tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec,
+        fix ? 1 : 0, GpsPktCnt() > 0 ? 1 : 0,
+        (long)latI, (long)lonI, ageS, distance);
+#endif
     log_i("%s", strtmp);
 }
 
@@ -1515,10 +1524,8 @@ void loop()
                     if (tnc2Raw.length() > 0) {
                         pkgTxPush(tnc2Raw.c_str(), tnc2Raw.length(), 0);
                         // APRS_sendTNC2Pkt(tnc2Raw); // Send packet to RF
-#ifdef DEBUG_TNC
                         log_i("Manual TX: %s", tnc2Raw.c_str());
                     }
-#endif
                 }
             }
             btn_count = 0;
@@ -1535,7 +1542,7 @@ void loop()
 
         if (sw4 == LOW && sw4Prev == HIGH) sw4Ms = millis();
         if (sw4 == LOW && sw4Ms && (millis() - sw4Ms >= 2000)) {
-            log_i("BTN SW4/IO3 LONG -> RF toggle");
+            log_i("[BTN] {\"btn\":\"SW4\",\"type\":\"long\",\"action\":\"rf_toggle\"}");
             sw4Ms = 0;
             config.tnc = !config.tnc;
             SaveConfig();
@@ -1545,7 +1552,7 @@ void loop()
         if (sw4 == HIGH && sw4Prev == LOW && sw4Ms) {
             uint32_t held = millis() - sw4Ms;  sw4Ms = 0;
             if (held >= 50) {
-                log_i("BTN SW4/IO3 SHORT (%ums) -> beacon", held);
+                log_i("[BTN] {\"btn\":\"SW4\",\"type\":\"short\",\"held_ms\":%u,\"action\":\"beacon\"}", held);
                 if (OledIsPopupActive()) {
                     OledDismissPopup();
                 } else {
@@ -1570,7 +1577,7 @@ void loop()
 
         if (sw1 == LOW && sw1Prev == HIGH) sw1Ms = millis();
         if (sw1 == LOW && sw1Ms && (millis() - sw1Ms >= 2000)) {
-            log_i("BTN SW1/IO0 LONG -> RF power toggle");
+            log_i("[BTN] {\"btn\":\"SW1\",\"type\":\"long\",\"action\":\"rf_power_toggle\"}");
             sw1Ms = 0;
             config.rf_power = !config.rf_power;
             SaveConfig();
@@ -1583,7 +1590,7 @@ void loop()
         if (sw1 == HIGH && sw1Prev == LOW && sw1Ms) {
             uint32_t held = millis() - sw1Ms;  sw1Ms = 0;
             if (held >= 50) {
-                log_i("BTN SW1/IO0 SHORT (%ums) -> display toggle", held);
+                log_i("[BTN] {\"btn\":\"SW1\",\"type\":\"short\",\"held_ms\":%u,\"action\":\"display_toggle\"}", held);
                 if (OledIsPopupActive()) {
                     OledDismissPopup();
                 } else {
@@ -1701,8 +1708,8 @@ void taskAPRS(void *pvParameters) {
             sendTimer = now;
             lastTxMs  = now;
 
-            if (sendByTime) log_i("Send by Time");
-            if (sendByFlag) log_i("Send by Flag");
+            if (sendByTime) log_i("[TX] {\"event\":\"send\",\"trigger\":\"time\"}");
+            if (sendByFlag) log_i("[TX] {\"event\":\"send\",\"trigger\":\"flag\"}");
 
             if (digiCount > 0) digiCount--;
 
@@ -1776,9 +1783,8 @@ void taskAPRS(void *pvParameters) {
                 PacketBuffer.pop(&incomingPacket);
                 // igateProcess(incomingPacket);
                 packet2Raw(tnc2, incomingPacket);
-#ifdef DEBUG_TNC                
-                log_i("RX->RF: %s", tnc2.c_str());
-#endif
+                tnc2.trim();
+                log_i("[PKT] {\"dir\":\"rf_rx\",\"pkt\":\"%s\"}", tnc2.c_str());
 
                 // store to log
                 char call[11];
@@ -1797,9 +1803,13 @@ void taskAPRS(void *pvParameters) {
                 // pkgListUpdate(call, rawP, type, 0);
                 // free(rawP);
                 pkgListUpdate(call, (char *)tnc2.c_str(), type, 0);
+                strlcpy(lastRxCall, call, sizeof(lastRxCall));
+                lastRxTime  = time(nullptr);
+                lastRxIsIS  = false;
 
-                bool msgForUs = (type & FILTER_MESSAGE) && config.aprs_sms_rx
-                                && aprsCheckMsg(call, (const char *)incomingPacket.info);
+                bool isSmsForUs = (type & FILTER_MESSAGE) && config.aprs_sms_rx
+                                  && aprsCheckMsg(call, (const char *)incomingPacket.info);
+                bool msgForUs = isSmsForUs && config.aprs_sms_popup > 0;
 
                 if (!msgForUs && config.aprs_rx_popup > 0) {
                     String msgType = "Type: " + pkgGetType(type);
@@ -2022,9 +2032,13 @@ void taskNetwork(void *pvParameters) {
                                 uint16_t type = pkgType(&raw[0]);
                                 log_d("Type: %d", type);
                                 pkgListUpdate((char *)src_call.c_str(), (char *)line.c_str(), type, 1);
+                                strlcpy(lastRxCall, src_call.c_str(), sizeof(lastRxCall));
+                                lastRxTime = time(nullptr);
+                                lastRxIsIS = true;
 
-                                bool msgForUs2 = (type & FILTER_MESSAGE) && config.aprs_sms_rx
-                                                 && aprsCheckMsg(src_call.c_str(), &raw[0]);
+                                bool isSmsForUs2 = (type & FILTER_MESSAGE) && config.aprs_sms_rx
+                                                   && aprsCheckMsg(src_call.c_str(), &raw[0]);
+                                bool msgForUs2 = isSmsForUs2 && config.aprs_sms_popup > 0;
 
                                 if (!msgForUs2 && config.aprs_rx_popup > 0) {
                                     String msgType = "Type: " + pkgGetType(type);
@@ -2050,7 +2064,7 @@ void taskNetwork(void *pvParameters) {
                                         pkgTxPush(line.c_str(), line.length(), 0);
                                         status.inet2rf++;
                                         igateTLM.INET2RF++;
-                                        log_i("INET->RF %s", line.c_str());
+                                        log_i("[PKT] {\"dir\":\"inet2rf\",\"pkt\":\"%s\"}", line.c_str());
                                     } else {
                                         bool msgForwarded = false;
                                         // Is it a message for last heard stations?
@@ -2058,11 +2072,11 @@ void taskNetwork(void *pvParameters) {
                                             if (pkgList[i].time > 0) {
                                                 if (strcmp(pkgList[i].calsign, msg_call.c_str()) == 0) {
                                                     if (pkgList[i].channel == 0) {  // was heard on RF
-                                                        log_i("MSG to last heard");
+                                                        log_i("[PKT] {\"dir\":\"inet2rf\",\"reason\":\"last_heard\"}");
                                                         pkgTxPush(line.c_str(), line.length(), 0);
                                                         status.inet2rf++;
                                                         igateTLM.INET2RF++;
-                                                        log_i("INET->RF %s", line.c_str());
+                                                        log_i("[PKT] {\"dir\":\"inet2rf\",\"pkt\":\"%s\"}", line.c_str());
                                                         msgForwarded = true;
                                                         break;
                                                     }
@@ -2073,19 +2087,19 @@ void taskNetwork(void *pvParameters) {
                                         if (!msgForwarded) {
                                             // Not found in last heard list
                                             status.dropCount++;
-                                            log_i("MSG not to last heard nor owner group, dropped");
+                                            log_i("[PKT] {\"dir\":\"drop\",\"reason\":\"not_last_heard\"}");
                                         }
                                     }
                                 } else {
                                     // No INET2RF configured or MSG_CALL not present
                                     status.dropCount++;
-                                    log_i("INET Packet dropped from %s", src_call.c_str());
+                                    log_i("[PKT] {\"dir\":\"drop\",\"reason\":\"no_inet2rf\",\"from\":\"%s\"}", src_call.c_str());
                                 }
                             } else {
                                 // Telemetry found
                                 igateTLM.DROP++;
                                 status.dropCount++;
-                                log_i("INET Packet TELEMETRY dropped from %s", src_call.c_str());
+                                log_i("[PKT] {\"dir\":\"drop\",\"reason\":\"telemetry\",\"from\":\"%s\"}", src_call.c_str());
                             }
                         }
                     }
@@ -2111,17 +2125,27 @@ void taskOLEDDisplay(void *pvParameters) {
         vTaskDelay(50 / portTICK_PERIOD_MS);
 
         if (fwUpdateProcess) {
-            printPeriodicDebug();
+            dbgTick();
             OledUpdateFWU();
             continue;
         }
 
-        bool fullCycle = (millis() - lastFullUpdate >= 1000);
-        bool doOled    = menuUpdateNeeded || fullCycle;
+        bool fullCycle   = (millis() - lastFullUpdate >= 1000);
+        bool doOled      = menuUpdateNeeded || fullCycle;
+        static uint32_t lastStatusLog  = 0;
+        static bool     cfgBackupDone  = false;
 
         if (fullCycle) {
             lastFullUpdate = millis();
-            printPeriodicDebug();
+            dbgTick();
+            if (millis() - lastStatusLog >= 10000) {
+                lastStatusLog = millis();
+                SerialStatusLog();
+            }
+            if (!cfgBackupDone && millis() >= 5UL * 60UL * 1000UL) {
+                SaveConfigBackup();
+                cfgBackupDone = true;
+            }
         }
 
 
@@ -2145,9 +2169,9 @@ void taskOLEDDisplay(void *pvParameters) {
         }
 
         if (fullCycle) {
-            OledCheckAutoDim();
+            if (!oledTxBusy) OledCheckAutoDim();
 #if defined(USE_PMU)
-            loopPMU();
+            if (!oledTxBusy) loopPMU();
 #endif
 #if defined(USE_NEOPIXEL)
             strip.show();

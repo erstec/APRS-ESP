@@ -55,6 +55,7 @@ void ax25_init(AX25Ctx *ctx, ax25_callback_t hook)
 static void ax25_decode(AX25Ctx *ctx)
 {
     AX25Msg msg;
+    memset(&msg, 0, sizeof(msg));
     ctxbufflen = ctx->frame_len - 2;
     ctxbuffer = ctx->buf;
     uint8_t *buf = ctx->buf;

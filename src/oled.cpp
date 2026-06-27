@@ -38,6 +38,11 @@ Adafruit_SH1106 display(OLED_SDA_PIN, OLED_SCL_PIN);
 extern TinyGPSPlus gps;
 extern Configuration config;
 extern WiFiClient aprsClient;
+extern statusType status;
+extern char   lastRxCall[16];
+extern time_t lastRxTime;
+extern bool   lastRxIsIS;
+extern volatile bool oledTxBusy;
 #ifdef USE_PMU
 #include <XPowersLib.h>
 extern XPowersPMU PMU;
@@ -57,9 +62,10 @@ static PopupEntry popupQueue[POPUP_QUEUE_SIZE];
 static int popupHead  = 0;
 static int popupCount = 0;
 
-static unsigned long oledActivityMs = 0;
-static bool          oledDimmed     = false;
-static bool          oledOn         = true;   // false = user-toggled off; skip display() to prevent lib re-enable
+static unsigned long oledActivityMs  = 0;
+static bool          oledDimmed      = false;
+static bool          oledOn          = true;   // false = user-toggled off; skip display() to prevent lib re-enable
+static volatile bool oledNeedsUndim  = false;  // set by Core 0; Core 1 sends the actual I2C display-on+brightness
 
 static PopupEntry *popupCurrent() { return &popupQueue[popupHead % POPUP_QUEUE_SIZE]; }
 
@@ -265,7 +271,16 @@ static void drawBatIcon(int16_t x, int16_t y, int pct, bool chg = false) {
 
 void OledUpdate(int batData, bool usbPlugged, bool afskInit, bool charging) {
 #ifdef USE_SCREEN
-    if (!oledOn) return;
+    if (!oledOn || oledTxBusy) return;
+    if (oledNeedsUndim) {
+        oledNeedsUndim = false;
+#if defined(USE_SCREEN_SSD1306)
+        display.ssd1306_command(SSD1306_DISPLAYON);
+#elif defined(USE_SCREEN_SH1106)
+        display.sh1106_command(SH1106_DISPLAYON);
+#endif
+        OledSetBrightness(config.oled_brightness);
+    }
     if (menuMode != MENU_HIDDEN) {
         OledDrawMenu();
         return;
@@ -277,7 +292,8 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit, bool charging) {
 
     char buf[22];
 
-    bool isValid = gps.location.isValid();
+    bool isValid  = gps.location.isValid();
+    bool gpsOnline = GpsPktCnt() > 0;
     uint32_t satCnt = gps.satellites.value();
 
     display.clearDisplay();
@@ -289,7 +305,8 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit, bool charging) {
     else
         display.print(config.aprs_mycall);
 
-    const int16_t kBatW  = 13;  // 10 body + 2 terminal + 1 gap
+    const bool    hasBat  = (batData >= 0);
+    const int16_t kBatW  = hasBat ? 13 : 0;  // 10 body + 2 terminal + 1 gap; 0 if no measurement
     const int16_t kWifiW = 9;   // 8px icon + 1px gap
     int16_t batX  = display.width() - kBatW;
     int16_t wifiX = (config.wifi_mode != WIFI_OFF) ? batX - kWifiW : batX;
@@ -302,119 +319,208 @@ void OledUpdate(int batData, bool usbPlugged, bool afskInit, bool charging) {
         display.print(aprsClient.connected() ? "A+" : "A-");
     }
 
-    // Battery icon
-    int batPct = 0;
+    if (hasBat) {
+        int batPct = 0;
 #if defined(ADC_BATTERY)
-    if (config.wifi_mode == WIFI_OFF) {
-        batPct = (batData >= 0) ? batData : 0;
-    } else {
-        batPct = usbPlugged ? 100 : 0;
-    }
+        if (config.wifi_mode == WIFI_OFF) {
+            batPct = batData;
+        } else {
+            batPct = usbPlugged ? 100 : 0;
+        }
 #else
-    batPct = (batData >= 0) ? batData : 0;
+        batPct = batData;
 #endif
-    drawBatIcon(batX, 1, batPct, charging);
-
-    // ── Large zone: Speed (left) + Heading (right), FreeSans9pt7b ─────────
-    display.setFont(&FreeSans9pt7b);
-
-    snprintf(buf, sizeof(buf), "%d km/h", (int)(satCnt > 0 ? gps.speed.kmph() : 0));
-    display.setCursor(0, 25);
-    display.print(buf);
-
-    char hdgNum[5];
-    if (isValid)
-        snprintf(hdgNum, sizeof(hdgNum), "%d", (int)gps.course.deg());
-    else
-        strlcpy(hdgNum, "---", sizeof(hdgNum));
-    int16_t hx1, hy1; uint16_t hw, hh;
-    display.getTextBounds(hdgNum, 0, 0, &hx1, &hy1, &hw, &hh);
-    // flush right: digits + 3px gap + ° (CHAR_WIDTH) = right edge
-    int16_t hdgX = display.width() - (int16_t)hw - CHAR_WIDTH - 3;
-    display.setCursor(hdgX, 25);
-    display.print(hdgNum);
-    display.setFont();
-
-    if (isValid) {
-        display.setCursor(hdgX + (int16_t)hw + 3, 12);
-        display.print('\xF8');
+        drawBatIcon(batX, 1, batPct, charging);
     }
 
-    // ── Row y=32: Latitude + Longitude ───────────────────────────────────
-    display.setCursor(0, 32);
-    display.print(deg_to_nmea(lat, true));
-    display.print(" ");
-    display.print(deg_to_nmea(lon, false));
+    bool isTracker = config.tnc && (config.gps_mode != GPS_MODE_FIXED);
 
-    // ── Row y=40: QTH locator + Time + Altitude ──────────────────────────
-    display.setCursor(0, 40);
-    display.print(isValid ? deg_to_qth(lat, lon) : "------");
+    if (isTracker) {
+        // ── Large zone: Speed (left) + Heading (right), FreeSans9pt7b ─────────
+        display.setFont(&FreeSans9pt7b);
 
-    struct tm tmstruct;
-    getLocalTime(&tmstruct, 0);
-    bool timeBad = (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59);
-    if (timeBad) {
-        strlcpy(buf, "NO TIME ", sizeof(buf));
+        if (isValid && satCnt > 0) {
+            snprintf(buf, sizeof(buf), "%d km/h", (int)gps.speed.kmph());
+            display.setCursor(0, 25);
+            display.print(buf);
+
+            char hdgNum[5];
+            snprintf(hdgNum, sizeof(hdgNum), "%d", (int)gps.course.deg());
+            int16_t hx1, hy1; uint16_t hw, hh;
+            display.getTextBounds(hdgNum, 0, 0, &hx1, &hy1, &hw, &hh);
+            int16_t hdgX = display.width() - (int16_t)hw - CHAR_WIDTH - 3;
+            display.setCursor(hdgX, 25);
+            display.print(hdgNum);
+            display.setFont();
+            display.setCursor(hdgX + (int16_t)hw + 3, 12);
+            display.print('\xF8');
+        } else {
+            const char *noFixLabel = gpsOnline ? "Waiting for FIX" : "NO GNSS";
+            int16_t x1, y1; uint16_t w, h;
+            display.getTextBounds(noFixLabel, 0, 25, &x1, &y1, &w, &h);
+            display.setCursor((display.width() - (int16_t)w) / 2, 25);
+            display.print(noFixLabel);
+        }
+        display.setFont();
+
+        // ── Row y=32: Latitude + Longitude ───────────────────────────────────
+        display.setCursor(0, 32);
+        if (isValid) {
+            display.print(deg_to_nmea(lat, true));
+            display.print(" ");
+            display.print(deg_to_nmea(lon, false));
+        }
+
+        // ── Row y=40: QTH locator + Time + Altitude ──────────────────────────
+        display.setCursor(0, 40);
+        display.print(isValid ? deg_to_qth(lat, lon) : "------");
+
+        struct tm tmstruct;
+        getLocalTime(&tmstruct, 0);
+        bool timeBad = (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59);
+        if (timeBad) {
+            strlcpy(buf, "NO TIME ", sizeof(buf));
+        } else {
+            snprintf(buf, 9, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+            buf[8] = 0;
+        }
+        display.setCursor(43, 40);
+        display.print(buf);
+
+        if (isValid) {
+            snprintf(buf, sizeof(buf), "%.0fm", gps.altitude.meters());
+            display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 40);
+            display.print(buf);
+        }
+
+        // ── Row y=48: sat icon + sats + timesync (left)  TX interval + flags (right)
+        display.drawBitmap(0, 48, icon_sat, 8, 7, WHITE);
+        display.setCursor(10, 48);
+        display.printf("%lu%s%s", (unsigned long)satCnt,
+                       isValid ? "+" : "-", GpsPktCnt() > 0 ? "+" : "-");
+        switch (timeSyncFlag) {
+            case T_SYNC_NTP:  display.print("NTP"); break;
+            case T_SYNC_GPS:  display.print("GPS"); break;
+            case T_SYNC_APRS: display.print("APR"); break;
+            default:          display.print("NO");  break;
+        }
+
+        if (config.aprs_beacon > 0)
+            snprintf(buf, sizeof(buf), " T%d", config.aprs_beacon);
+        else
+            strlcpy(buf, " SB", sizeof(buf));
+        if (config.tnc)          strlcat(buf, " TN", sizeof(buf));
+        if (config.tnc_telemetry)strlcat(buf, " TM", sizeof(buf));
+        if (config.tnc_digi)     strlcat(buf, " DG", sizeof(buf));
+        if (config.aprs)         strlcat(buf, " IS", sizeof(buf));
+        if (config.rf2inet)      strlcat(buf, " RI", sizeof(buf));
+        if (config.inet2rf)      strlcat(buf, " IR", sizeof(buf));
+        display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 48);
+        display.print(buf);
+
+        // ── Row y=56: [stopwatch] age (left) + [|->] distance (right) ──────
+        display.drawBitmap(0, 56, icon_clock, 8, 7, WHITE);
+        display.setCursor(10, 56);
+        if (isValid) {
+            display.print(age / 1000);
+            display.print("s");
+        } else {
+            display.print("--s");
+        }
+
+        static const char *gpsNames[] = {"AUTO", "GPS", "FIX"};
+        const char *modeName = gpsNames[config.gps_mode];
+        int16_t modeW = (int16_t)(strlen(modeName) * CHAR_WIDTH);
+        display.setCursor(display.width() / 2 - modeW / 2, 56);
+        display.print(modeName);
+
+        snprintf(buf, sizeof(buf), "%d", distance);
+        int16_t distNumW = (int16_t)(strlen(buf) * CHAR_WIDTH);
+        int16_t distIconX = display.width() - distNumW - 10;  // 8px icon + 2px gap
+        display.drawBitmap(distIconX, 56, icon_dist, 8, 7, WHITE);
+        display.setCursor(distIconX + 10, 56);
+        display.print(buf);
+
     } else {
-        snprintf(buf, 9, "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
-        buf[8] = 0;
-    }
-    display.setCursor(43, 40);
-    display.print(buf);
+        // ── Non-tracker screen ────────────────────────────────────────────────
 
-    if (isValid) {
-        snprintf(buf, sizeof(buf), "%.0fm", gps.altitude.meters());
-        display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 40);
+        // ── Row y=21: last-heard callsign (FreeSans9pt7b, centered) ──────────
+        display.setFont(&FreeSans9pt7b);
+        {
+            int16_t x1, y1; uint16_t w, h;
+            display.getTextBounds(lastRxCall, 0, 21, &x1, &y1, &w, &h);
+            display.setCursor((display.width() - (int16_t)w) / 2, 21);
+            display.print(lastRxCall);
+        }
+        display.setFont();
+
+        // ── Row y=24: source + age (centered, small font) ────────────────────
+        {
+            char ageBuf[16] = "---";
+            if (lastRxTime > 0) {
+                long secs = (long)(time(nullptr) - lastRxTime);
+                if (secs < 0) secs = 0;
+                if      (secs < 60)    snprintf(ageBuf, sizeof(ageBuf), "%s %lds ago", lastRxIsIS ? "IS" : "RF", secs);
+                else if (secs < 3600)  snprintf(ageBuf, sizeof(ageBuf), "%s %ldm ago", lastRxIsIS ? "IS" : "RF", secs / 60);
+                else                   snprintf(ageBuf, sizeof(ageBuf), "%s %ldh ago", lastRxIsIS ? "IS" : "RF", secs / 3600);
+            }
+            int16_t aw = (int16_t)(strlen(ageBuf) * CHAR_WIDTH);
+            display.setCursor((display.width() - aw) / 2, 24);
+            display.print(ageBuf);
+        }
+
+        // ── Row y=32: RX count (left) + DG count (right at x=64) ─────────────
+        snprintf(buf, sizeof(buf), "RX:%lu", (unsigned long)status.allCount);
+        display.setCursor(0, 32);
+        display.print(buf);
+        snprintf(buf, sizeof(buf), "DG:%lu", (unsigned long)status.digiCount);
+        display.setCursor(64, 32);
+        display.print(buf);
+
+        // ── Row y=40: RI count (left) + IR count (right at x=64) ─────────────
+        snprintf(buf, sizeof(buf), "RI:%lu", (unsigned long)status.rf2inet);
+        display.setCursor(0, 40);
+        display.print(buf);
+        snprintf(buf, sizeof(buf), "IR:%lu", (unsigned long)status.inet2rf);
+        display.setCursor(64, 40);
+        display.print(buf);
+
+        // ── Row y=48: sat icon + sats + timesync (left) + time (right) ───────
+        display.drawBitmap(0, 48, icon_sat, 8, 7, WHITE);
+        display.setCursor(10, 48);
+        display.printf("%lu%s%s", (unsigned long)satCnt,
+                       isValid ? "+" : "-", GpsPktCnt() > 0 ? "+" : "-");
+        switch (timeSyncFlag) {
+            case T_SYNC_NTP:  display.print("NTP"); break;
+            case T_SYNC_GPS:  display.print("GPS"); break;
+            case T_SYNC_APRS: display.print("APR"); break;
+            default:          display.print("NO");  break;
+        }
+        {
+            struct tm tmstruct;
+            getLocalTime(&tmstruct, 0);
+            bool timeBad = (tmstruct.tm_hour > 24 || tmstruct.tm_min > 59 || tmstruct.tm_sec > 59);
+            if (!timeBad) {
+                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec);
+                display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 48);
+                display.print(buf);
+            }
+        }
+
+        // ── Row y=56: flags (right-aligned) ──────────────────────────────────
+        if (config.aprs_beacon > 0)
+            snprintf(buf, sizeof(buf), "T%d", config.aprs_beacon);
+        else
+            strlcpy(buf, "SB", sizeof(buf));
+        if (config.tnc)          strlcat(buf, " TN", sizeof(buf));
+        if (config.tnc_telemetry)strlcat(buf, " TM", sizeof(buf));
+        if (config.tnc_digi)     strlcat(buf, " DG", sizeof(buf));
+        if (config.aprs)         strlcat(buf, " IS", sizeof(buf));
+        if (config.rf2inet)      strlcat(buf, " RI", sizeof(buf));
+        if (config.inet2rf)      strlcat(buf, " IR", sizeof(buf));
+        display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 56);
         display.print(buf);
     }
-
-    // ── Row y=48: sat icon + sats + timesync (left)  TX interval + flags (right)
-    display.drawBitmap(0, 48, icon_sat, 8, 7, WHITE);
-    display.setCursor(10, 48);
-    display.printf("%lu%s%s", (unsigned long)satCnt,
-                   isValid ? "+" : "-", GpsPktCnt() > 0 ? "+" : "-");
-    switch (timeSyncFlag) {
-        case T_SYNC_NTP:  display.print("NTP"); break;
-        case T_SYNC_GPS:  display.print("GPS"); break;
-        case T_SYNC_APRS: display.print("APR"); break;
-        default:          display.print("NO");  break;
-    }
-
-    if (config.aprs_beacon > 0)
-        snprintf(buf, sizeof(buf), " T%d", config.aprs_beacon);
-    else
-        strlcpy(buf, " SB", sizeof(buf));
-    if (config.tnc)          strlcat(buf, " TN", sizeof(buf));
-    if (config.tnc_telemetry)strlcat(buf, " TM", sizeof(buf));
-    if (config.tnc_digi)     strlcat(buf, " DG", sizeof(buf));
-    if (config.aprs)         strlcat(buf, " IS", sizeof(buf));
-    if (config.rf2inet)      strlcat(buf, " RI", sizeof(buf));
-    if (config.inet2rf)      strlcat(buf, " IR", sizeof(buf));
-    display.setCursor(display.width() - (int16_t)(strlen(buf) * CHAR_WIDTH), 48);
-    display.print(buf);
-
-    // ── Row y=56: [stopwatch] age (left) + [|->] distance (right) ──────
-    display.drawBitmap(0, 56, icon_clock, 8, 7, WHITE);
-    display.setCursor(10, 56);
-    if (isValid) {
-        display.print(age / 1000);
-        display.print("s");
-    } else {
-        display.print("--s");
-    }
-
-    static const char *gpsNames[] = {"AUTO", "GPS", "FIX"};
-    const char *modeName = gpsNames[config.gps_mode];
-    int16_t modeW = (int16_t)(strlen(modeName) * CHAR_WIDTH);
-    display.setCursor(display.width() / 2 - modeW / 2, 56);
-    display.print(modeName);
-
-    snprintf(buf, sizeof(buf), "%d", distance);
-    int16_t distNumW = (int16_t)(strlen(buf) * CHAR_WIDTH);
-    int16_t distIconX = display.width() - distNumW - 10;  // 8px icon + 2px gap
-    display.drawBitmap(distIconX, 56, icon_dist, 8, 7, WHITE);
-    display.setCursor(distIconX + 10, 56);
-    display.print(buf);
 
     OledDrawMsg();
 
@@ -511,17 +617,23 @@ static void menuBuildItemLabel(int idx, char *buf, size_t len) {
             else
                 snprintf(buf, len, "APRS RX Popup: %ds", config.aprs_rx_popup);
             break;
-        case 14: snprintf(buf, len, "RX Packet List");                                   break;
-        case 15: {
+        case 14:
+            if (config.aprs_sms_popup == 0)
+                snprintf(buf, len, "SMS Popup: OFF");
+            else
+                snprintf(buf, len, "SMS Popup: %ds", config.aprs_sms_popup);
+            break;
+        case 15: snprintf(buf, len, "RX Packet List");                                   break;
+        case 16: {
             int cnt = aprsMsgCount();
             if (cnt > 0) snprintf(buf, len, "MSG Inbox (%d)", cnt);
             else         snprintf(buf, len, "MSG Inbox");
             break;
         }
-        case 16: snprintf(buf, len, "GNSS Status");                                      break;
-        case 17: snprintf(buf, len, "Battery Status");                                   break;
-        case 18: snprintf(buf, len, "About");                                            break;
-        case 19: snprintf(buf, len, "Factory Reset!");                                   break;
+        case 17: snprintf(buf, len, "GNSS Status");                                      break;
+        case 18: snprintf(buf, len, "Battery Status");                                   break;
+        case 19: snprintf(buf, len, "About");                                            break;
+        case 20: snprintf(buf, len, "Factory Reset!");                                   break;
         default: buf[0] = 0; break;
     }
 }
@@ -779,6 +891,22 @@ void OledDrawMenu() {
             display.setTextSize(2);
             display.setCursor((display.width() - rw) / 2, 24);
             display.print(valBuf);
+            display.setTextSize(1);
+            display.setCursor(0, 56); display.print("rot:change  OK:save");
+            break;
+        }
+
+        case MENU_SMS_POPUP: {
+            menuDrawHeader("SMS Popup");
+            char smsBuf[8];
+            static const uint8_t SMS_POPUP_VALS[] = {0, 15, 30, 60};
+            uint8_t sv = SMS_POPUP_VALS[menuSubVal];
+            if (sv == 0) snprintf(smsBuf, sizeof(smsBuf), "OFF");
+            else         snprintf(smsBuf, sizeof(smsBuf), "%d s", sv);
+            int srw = strlen(smsBuf) * CHAR_WIDTH * 2;
+            display.setTextSize(2);
+            display.setCursor((display.width() - srw) / 2, 24);
+            display.print(smsBuf);
             display.setTextSize(1);
             display.setCursor(0, 56); display.print("rot:change  OK:save");
             break;
@@ -1182,13 +1310,8 @@ void OledResetActivity() {
 #ifdef USE_SCREEN
     if (oledDimmed) {
         oledDimmed = false;
-        oledOn = true;  // re-sync toggle state when undimming
-#if defined(USE_SCREEN_SSD1306)
-        display.ssd1306_command(SSD1306_DISPLAYON);
-#elif defined(USE_SCREEN_SH1106)
-        display.sh1106_command(SH1106_DISPLAYON);
-#endif
-        OledSetBrightness(config.oled_brightness);
+        oledOn = true;
+        oledNeedsUndim = true;  // Core 1 will send display-on + brightness via OledUpdate
         menuUpdateNeeded = true;
     }
 #endif
@@ -1215,7 +1338,7 @@ void OledCheckAutoDim() {
 // add message to show in rectangle box for timeout ticks; queued
 void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout) {
 #ifdef USE_SCREEN
-    if (!oledOn) return;  // screen off — drop transient notification
+    if (!oledOn) return;
 #endif
     OledResetActivity();
     PopupEntry e = {};
@@ -1226,15 +1349,12 @@ void OledPushMsg(String caption, char *msg, char *msg2, uint8_t timeout) {
     e.bar      = -1;
     e.dualFont = false;
     popupPush(e);
-#ifdef USE_SCREEN
-    OledDrawMsg(false);
-    display.display();
-#endif
+    menuUpdateNeeded = true;
 }
 
 void OledPushMsgDual(const char *line1, const char *line2, uint8_t timeout) {
 #ifdef USE_SCREEN
-    if (!oledOn) return;  // screen off — drop transient notification
+    if (!oledOn) return;
 #endif
     OledResetActivity();
     PopupEntry e = {};
@@ -1244,15 +1364,12 @@ void OledPushMsgDual(const char *line1, const char *line2, uint8_t timeout) {
     e.bar      = -1;
     e.dualFont = true;
     popupPush(e);
-#ifdef USE_SCREEN
-    OledDrawMsg(false);
-    display.display();
-#endif
+    menuUpdateNeeded = true;
 }
 
 void OledPushMsgBar(const char *caption, char *msg, char *msg2, int8_t bar, uint8_t timeout) {
 #ifdef USE_SCREEN
-    if (!oledOn) return;  // screen off — drop transient notification
+    if (!oledOn) return;
 #endif
     OledResetActivity();
     PopupEntry e = {};
@@ -1263,10 +1380,7 @@ void OledPushMsgBar(const char *caption, char *msg, char *msg2, int8_t bar, uint
     e.bar      = bar;
     e.dualFont = false;
     popupPush(e);
-#ifdef USE_SCREEN
-    OledDrawMsg(false);
-    display.display();
-#endif
+    menuUpdateNeeded = true;
 }
 
 // Enqueue a popup behind any existing ones — used for APRS messages that must not be lost
@@ -1280,10 +1394,5 @@ void OledEnqueueMsg(String caption, char *msg, char *msg2, uint8_t timeout) {
     e.bar      = -1;
     e.dualFont = false;
     popupPush(e, true);  // enqueue=true: never drops, always queued
-#ifdef USE_SCREEN
-    if (oledOn) {  // skip draw/flush when screen is off; popup shows on next OledUpdate
-        OledDrawMsg(false);
-        display.display();
-    }
-#endif
+    menuUpdateNeeded = true;
 }

@@ -172,8 +172,6 @@ jobs:
               echo "$BODY" | sed 's/^/- /'
               echo ""
             fi
-            echo "**Known issues:**"
-            echo "- SH1106 OLED may show corrupted display after RF TX when WiFi STA is configured but not connected (hardware I2C noise, no software fix)"
           } > changelog.md
 
       - name: Create release

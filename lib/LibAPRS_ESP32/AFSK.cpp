@@ -895,8 +895,8 @@ void AFSK_Poll(bool isRF)
   // uint8_t sintable[8] = {127, 217, 254, 217, 127, 36, 0, 36};
 #ifdef I2S_INTERNAL
   size_t bytesRead;
-  uint16_t pcm_in[ADC_SAMPLES_COUNT];
-  uint16_t pcm_out[ADC_SAMPLES_COUNT];
+  static uint16_t pcm_in[ADC_SAMPLES_COUNT];
+  static uint16_t pcm_out[ADC_SAMPLES_COUNT];
 #else
   int8_t adc;
 #endif

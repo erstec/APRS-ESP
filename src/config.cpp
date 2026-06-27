@@ -37,7 +37,8 @@ static void checkCallsignValid(void) {
 void autoUpdateComment() {
     char modes[24] = "";
     bool first = true;
-    if (config.tnc)      { strlcat(modes, first ? "Tracker" : "+Tracker", sizeof(modes)); first = false; }
+    bool isTracker = config.tnc && (config.gps_mode != GPS_MODE_FIXED);
+    if (isTracker)       { strlcat(modes, first ? "Tracker" : "+Tracker", sizeof(modes)); first = false; }
     if (config.tnc_digi) { strlcat(modes, first ? "Digi"    : "+Digi",    sizeof(modes)); first = false; }
     if (config.aprs)     { strlcat(modes, first ? "iGate"   : "+iGate",   sizeof(modes)); first = false; }
 
@@ -51,11 +52,9 @@ void autoUpdateComment() {
         strlcpy(config.aprs_comment, generated, sizeof(config.aprs_comment));
 }
 
-void SaveConfig() {
-    log_i("Saving config to NVS...");
-    autoUpdateComment();
+static void nvsWrite(const char *ns) {
     Preferences prefs;
-    prefs.begin("config", false);
+    prefs.begin(ns, false);
 
     prefs.putBool  ("synctime",      config.synctime);
     prefs.putBool  ("aprs",          config.aprs);
@@ -122,10 +121,99 @@ void SaveConfig() {
     prefs.putUChar ("locator_popup", config.locator_popup);
     prefs.putUChar ("oled_autodim",  config.oled_autodim);
     prefs.putUChar ("autodim_level", config.oled_autodim_level);  // key shortened: 15-char NVS limit
-    prefs.putUChar ("aprs_rx_popup", config.aprs_rx_popup);
-    prefs.putBool  ("aprs_sms_rx",  config.aprs_sms_rx);
+    prefs.putUChar ("aprs_rx_popup",  config.aprs_rx_popup);
+    prefs.putUChar ("aprs_sms_popup", config.aprs_sms_popup);
+    prefs.putBool  ("aprs_sms_rx",    config.aprs_sms_rx);
 
     prefs.end();
+}
+
+static bool nvsRead(const char *ns) {
+    Preferences prefs;
+    prefs.begin(ns, true);
+    bool found = prefs.isKey("aprs_mycall");
+    if (!found) {
+        prefs.end();
+        return false;
+    }
+
+    config.synctime        = prefs.getBool  ("synctime",      true);
+    config.aprs            = prefs.getBool  ("aprs",          false);
+    config.wifi_client     = prefs.getBool  ("wifi_client",   true);
+    config.wifi            = prefs.getBool  ("wifi",          true);
+    config.wifi_mode       = prefs.getUChar ("wifi_mode",     WIFI_AP_FIX);
+    config.gps_lat         = prefs.getFloat ("gps_lat",       54.6842f);
+    config.gps_lon         = prefs.getFloat ("gps_lon",       25.2398f);
+    config.gps_alt         = prefs.getFloat ("gps_alt",       10.0f);
+    config.aprs_ssid       = prefs.getUChar ("aprs_ssid",     15);
+    config.aprs_port       = prefs.getUShort("aprs_port",     14580);
+    config.aprs_moniSSID   = prefs.getUChar ("aprs_moniSSID", 0);
+    config.api_id          = prefs.getUInt  ("api_id",        0);
+    config.tnc             = prefs.getBool  ("tnc",           false);
+    config.rf2inet         = prefs.getBool  ("rf2inet",       false);
+    config.inet2rf         = prefs.getBool  ("inet2rf",       false);
+    config.tnc_digi        = prefs.getBool  ("tnc_digi",      false);
+    config.tnc_telemetry   = prefs.getBool  ("tnc_telemetry", false);
+    config.tnc_beacon      = prefs.getInt   ("tnc_beacon",    0);
+    config.aprs_beacon     = prefs.getInt   ("aprs_beacon",   10);
+    config.aprs_table      = (char)prefs.getUChar("aprs_table",  '/');
+    config.aprs_symbol     = (char)prefs.getUChar("aprs_symbol", '&');
+    strlcpy(config.aprs_mycall,   prefs.getString("aprs_mycall",   "MYCALL").c_str(),           sizeof(config.aprs_mycall));
+    strlcpy(config.aprs_host,     prefs.getString("aprs_host",     "rotate.aprs2.net").c_str(), sizeof(config.aprs_host));
+    strlcpy(config.aprs_passcode, prefs.getString("aprs_passcode", "00000").c_str(),            sizeof(config.aprs_passcode));
+    strlcpy(config.aprs_moniCall, prefs.getString("aprs_moniCall", "").c_str(),                 sizeof(config.aprs_moniCall));
+    strlcpy(config.aprs_filter,   prefs.getString("aprs_filter",   "m/50").c_str(),             sizeof(config.aprs_filter));
+    strlcpy(config.aprs_comment,  prefs.getString("aprs_comment",  "").c_str(),                 sizeof(config.aprs_comment));
+    strlcpy(config.aprs_path,     prefs.getString("aprs_path",     "WIDE1-1").c_str(),          sizeof(config.aprs_path));
+    strlcpy(config.wifi_ssid,     prefs.getString("wifi_ssid",     "APRS-ESP32").c_str(),       sizeof(config.wifi_ssid));
+    strlcpy(config.wifi_pass,     prefs.getString("wifi_pass",     "aprs-esp32").c_str(),       sizeof(config.wifi_pass));
+    strlcpy(config.wifi_ap_ssid,  prefs.getString("wifi_ap_ssid",  "APRS-ESP32").c_str(),       sizeof(config.wifi_ap_ssid));
+    strlcpy(config.wifi_ap_pass,  prefs.getString("wifi_ap_pass",  "aprs-esp32").c_str(),       sizeof(config.wifi_ap_pass));
+    strlcpy(config.tnc_path,      prefs.getString("tnc_path",      "WIDE1-1").c_str(),          sizeof(config.tnc_path));
+    strlcpy(config.tnc_btext,     prefs.getString("tnc_btext",     "").c_str(),                 sizeof(config.tnc_btext));
+    strlcpy(config.tnc_comment,   prefs.getString("tnc_comment",   "").c_str(),                 sizeof(config.tnc_comment));
+    strlcpy(config.aprs_object,   prefs.getString("aprs_object",   "").c_str(),                 sizeof(config.aprs_object));
+    config.wifi_power      = prefs.getUChar ("wifi_power",    44);
+    config.tx_timeslot     = prefs.getUShort("tx_timeslot",   5000);
+    config.digi_delay      = prefs.getUShort("digi_delay",    2000);
+    config.input_hpf       = prefs.getBool  ("input_hpf",     false);
+    config.freq_rx         = prefs.getFloat ("freq_rx",       144.8000f);
+    config.freq_tx         = prefs.getFloat ("freq_tx",       144.8000f);
+    config.offset_rx       = prefs.getInt   ("offset_rx",     0);
+    config.offset_tx       = prefs.getInt   ("offset_tx",     0);
+    config.tone_rx         = prefs.getInt   ("tone_rx",       0);
+    config.tone_tx         = prefs.getInt   ("tone_tx",       0);
+    config.band            = prefs.getUChar ("band",          1);
+    config.sql_level       = prefs.getUChar ("sql_level",     1);
+    config.rf_power        = prefs.getBool  ("rf_power",      false);
+    config.volume          = prefs.getUChar ("volume",        4);
+    config.rx_att          = prefs.getBool  ("rx_att",        false);
+    config.timeZone        = prefs.getChar  ("timeZone",      0);
+    strlcpy(config.ntpServer, prefs.getString("ntpServer", "pool.ntp.org").c_str(), sizeof(config.ntpServer));
+    config.gps_mode        = prefs.getUChar ("gps_mode",      GPS_MODE_FIXED);
+    config.sb_fast_speed   = prefs.getUShort("sb_fast_speed", APRS_SB_FAST_SPEED);
+    config.sb_fast_rate    = prefs.getUShort("sb_fast_rate",  APRS_SB_FAST_RATE);
+    config.sb_slow_speed   = prefs.getUShort("sb_slow_speed", APRS_SB_SLOW_SPEED);
+    config.sb_slow_rate    = prefs.getUShort("sb_slow_rate",  APRS_SB_SLOW_RATE);
+    config.sb_turn_min     = prefs.getUShort("sb_turn_min",   APRS_SB_MIN_TURN_ANGLE);
+    config.sb_turn_slope   = prefs.getUShort("sb_turn_slope", APRS_SB_TURN_SLOPE);
+    config.sb_turn_time    = prefs.getUShort("sb_turn_time",  APRS_SB_MIN_TURN_TIME);
+    config.oled_brightness    = prefs.getUChar ("oled_brightness", 255);
+    config.locator_popup      = prefs.getUChar ("locator_popup", 0);
+    config.oled_autodim       = prefs.getUChar ("oled_autodim",  0);
+    config.oled_autodim_level = prefs.getUChar ("autodim_level", 1);
+    config.aprs_rx_popup      = prefs.getUChar ("aprs_rx_popup",  3);
+    config.aprs_sms_popup     = prefs.getUChar ("aprs_sms_popup", 60);
+    config.aprs_sms_rx        = prefs.getBool  ("aprs_sms_rx",    true);
+
+    prefs.end();
+    return true;
+}
+
+void SaveConfig() {
+    log_i("Saving config to NVS...");
+    autoUpdateComment();
+    nvsWrite("config");
 
     // Write JSON to LittleFS for web export/import
     File f_json = LittleFS.open("/config.json", "w");
@@ -202,12 +290,18 @@ void SaveConfig() {
     doc["oled_autodim"]      = config.oled_autodim;
     doc["oled_autodim_level"]= config.oled_autodim_level;
     doc["aprs_rx_popup"]     = config.aprs_rx_popup;
+    doc["aprs_sms_popup"]    = config.aprs_sms_popup;
     doc["aprs_sms_rx"]       = config.aprs_sms_rx;
 
     serializeJsonPretty(doc, f_json);
     f_json.close();
 
     checkCallsignValid();
+}
+
+void SaveConfigBackup() {
+    log_i("Saving config backup to NVS cfgbak...");
+    nvsWrite("cfgbak");
 }
 
 void DefaultConfig() {
@@ -283,8 +377,9 @@ void DefaultConfig() {
     config.locator_popup = 0;
     config.oled_autodim = 0;
     config.oled_autodim_level = 1;
-    config.aprs_rx_popup = 3;
-    config.aprs_sms_rx   = true;
+    config.aprs_rx_popup  = 3;
+    config.aprs_sms_popup = 60;
+    config.aprs_sms_rx    = true;
 
     SaveConfig();
 }
@@ -308,91 +403,23 @@ void LoadConfig() {
         return;
     }
 
-    // Load from NVS if config has been saved before
-    Preferences prefs;
-    prefs.begin("config", true);
-    bool hasConfig = prefs.isKey("aprs_mycall");
-    prefs.end();
-
-    if (hasConfig) {
-        log_i("Loading config from NVS...");
-        prefs.begin("config", true);
-
-        config.synctime        = prefs.getBool  ("synctime",      true);
-        config.aprs            = prefs.getBool  ("aprs",          false);
-        config.wifi_client     = prefs.getBool  ("wifi_client",   true);
-        config.wifi            = prefs.getBool  ("wifi",          true);
-        config.wifi_mode       = prefs.getUChar ("wifi_mode",     WIFI_AP_FIX);
-        config.gps_lat         = prefs.getFloat ("gps_lat",       54.6842f);
-        config.gps_lon         = prefs.getFloat ("gps_lon",       25.2398f);
-        config.gps_alt         = prefs.getFloat ("gps_alt",       10.0f);
-        config.aprs_ssid       = prefs.getUChar ("aprs_ssid",     15);
-        config.aprs_port       = prefs.getUShort("aprs_port",     14580);
-        config.aprs_moniSSID   = prefs.getUChar ("aprs_moniSSID", 0);
-        config.api_id          = prefs.getUInt  ("api_id",        0);
-        config.tnc             = prefs.getBool  ("tnc",           false);
-        config.rf2inet         = prefs.getBool  ("rf2inet",       false);
-        config.inet2rf         = prefs.getBool  ("inet2rf",       false);
-        config.tnc_digi        = prefs.getBool  ("tnc_digi",      false);
-        config.tnc_telemetry   = prefs.getBool  ("tnc_telemetry", false);
-        config.tnc_beacon      = prefs.getInt   ("tnc_beacon",    0);
-        config.aprs_beacon     = prefs.getInt   ("aprs_beacon",   10);
-        config.aprs_table      = (char)prefs.getUChar("aprs_table",  '/');
-        config.aprs_symbol     = (char)prefs.getUChar("aprs_symbol", '&');
-        strlcpy(config.aprs_mycall,   prefs.getString("aprs_mycall",   "MYCALL").c_str(),           sizeof(config.aprs_mycall));
-        strlcpy(config.aprs_host,     prefs.getString("aprs_host",     "rotate.aprs2.net").c_str(), sizeof(config.aprs_host));
-        strlcpy(config.aprs_passcode, prefs.getString("aprs_passcode", "00000").c_str(),            sizeof(config.aprs_passcode));
-        strlcpy(config.aprs_moniCall, prefs.getString("aprs_moniCall", "").c_str(),                 sizeof(config.aprs_moniCall));
-        strlcpy(config.aprs_filter,   prefs.getString("aprs_filter",   "m/50").c_str(),             sizeof(config.aprs_filter));
-        strlcpy(config.aprs_comment,  prefs.getString("aprs_comment",  "").c_str(),                 sizeof(config.aprs_comment));
-        strlcpy(config.aprs_path,     prefs.getString("aprs_path",     "WIDE1-1").c_str(),          sizeof(config.aprs_path));
-        strlcpy(config.wifi_ssid,     prefs.getString("wifi_ssid",     "APRS-ESP32").c_str(),       sizeof(config.wifi_ssid));
-        strlcpy(config.wifi_pass,     prefs.getString("wifi_pass",     "aprs-esp32").c_str(),       sizeof(config.wifi_pass));
-        strlcpy(config.wifi_ap_ssid,  prefs.getString("wifi_ap_ssid",  "APRS-ESP32").c_str(),       sizeof(config.wifi_ap_ssid));
-        strlcpy(config.wifi_ap_pass,  prefs.getString("wifi_ap_pass",  "aprs-esp32").c_str(),       sizeof(config.wifi_ap_pass));
-        strlcpy(config.tnc_path,      prefs.getString("tnc_path",      "WIDE1-1").c_str(),          sizeof(config.tnc_path));
-        strlcpy(config.tnc_btext,     prefs.getString("tnc_btext",     "").c_str(),                 sizeof(config.tnc_btext));
-        strlcpy(config.tnc_comment,   prefs.getString("tnc_comment",   "").c_str(),                 sizeof(config.tnc_comment));
-        strlcpy(config.aprs_object,   prefs.getString("aprs_object",   "").c_str(),                 sizeof(config.aprs_object));
-        config.wifi_power      = prefs.getUChar ("wifi_power",    44);
-        config.tx_timeslot     = prefs.getUShort("tx_timeslot",   5000);
-        config.digi_delay      = prefs.getUShort("digi_delay",    2000);
-        config.input_hpf       = prefs.getBool  ("input_hpf",     false);
-        config.freq_rx         = prefs.getFloat ("freq_rx",       144.8000f);
-        config.freq_tx         = prefs.getFloat ("freq_tx",       144.8000f);
-        config.offset_rx       = prefs.getInt   ("offset_rx",     0);
-        config.offset_tx       = prefs.getInt   ("offset_tx",     0);
-        config.tone_rx         = prefs.getInt   ("tone_rx",       0);
-        config.tone_tx         = prefs.getInt   ("tone_tx",       0);
-        config.band            = prefs.getUChar ("band",          1);
-        config.sql_level       = prefs.getUChar ("sql_level",     1);
-        config.rf_power        = prefs.getBool  ("rf_power",      false);
-        config.volume          = prefs.getUChar ("volume",        4);
-        config.rx_att          = prefs.getBool  ("rx_att",        false);
-        config.timeZone        = prefs.getChar  ("timeZone",      0);
-        strlcpy(config.ntpServer, prefs.getString("ntpServer", "pool.ntp.org").c_str(), sizeof(config.ntpServer));
-        config.gps_mode        = prefs.getUChar ("gps_mode",      GPS_MODE_FIXED);
-        config.sb_fast_speed   = prefs.getUShort("sb_fast_speed", APRS_SB_FAST_SPEED);
-        config.sb_fast_rate    = prefs.getUShort("sb_fast_rate",  APRS_SB_FAST_RATE);
-        config.sb_slow_speed   = prefs.getUShort("sb_slow_speed", APRS_SB_SLOW_SPEED);
-        config.sb_slow_rate    = prefs.getUShort("sb_slow_rate",  APRS_SB_SLOW_RATE);
-        config.sb_turn_min     = prefs.getUShort("sb_turn_min",   APRS_SB_MIN_TURN_ANGLE);
-        config.sb_turn_slope   = prefs.getUShort("sb_turn_slope", APRS_SB_TURN_SLOPE);
-        config.sb_turn_time    = prefs.getUShort("sb_turn_time",  APRS_SB_MIN_TURN_TIME);
-        config.oled_brightness = prefs.getUChar ("oled_brightness", 255);
-        config.locator_popup   = prefs.getUChar ("locator_popup", 0);
-        config.oled_autodim    = prefs.getUChar ("oled_autodim",  0);
-        config.oled_autodim_level = prefs.getUChar("autodim_level", 1);
-        config.aprs_rx_popup   = prefs.getUChar ("aprs_rx_popup", 3);
-        config.aprs_sms_rx     = prefs.getBool  ("aprs_sms_rx",  true);
-
-        prefs.end();
+    if (nvsRead("config")) {
+        log_i("Config loaded from NVS");
         input_HPF = config.input_hpf;
         checkCallsignValid();
         return;
     }
 
-    // NVS empty — try JSON, otherwise factory defaults
+    log_w("Primary NVS empty — trying backup NVS (cfgbak)...");
+    if (nvsRead("cfgbak")) {
+        log_w("Config restored from NVS backup — re-saving to primary");
+        nvsWrite("config");
+        input_HPF = config.input_hpf;
+        checkCallsignValid();
+        return;
+    }
+
+    // Both NVS namespaces empty — try JSON, otherwise factory defaults
     if (!LoadReConfig()) {
         log_e("No config found. Applying factory defaults.");
         DefaultConfig();
@@ -490,6 +517,7 @@ Configuration jsonToBinConfig(JsonObject obj) {
     tmpConfig.oled_autodim        = obj["oled_autodim"]        | (uint8_t)0;
     tmpConfig.oled_autodim_level  = obj["oled_autodim_level"]  | (uint8_t)1;
     tmpConfig.aprs_rx_popup       = obj["aprs_rx_popup"]       | (uint8_t)3;
+    tmpConfig.aprs_sms_popup      = obj["aprs_sms_popup"]      | (uint8_t)60;
     tmpConfig.aprs_sms_rx         = obj["aprs_sms_rx"]         | true;
 
     return tmpConfig;

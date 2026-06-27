@@ -10,7 +10,7 @@
 #include <WiFi.h>
 #include "gps.h"
 #include "oled.h"
-#include "smartBeaconing.h"
+#include "sb.h"
 #include "TinyGPS++.h"
 #include "config.h"
 #include "TimeLib.h"
@@ -99,7 +99,7 @@ static void parseGSA(const char *nmea) {
 }
 
 void distanceChanged() {
-    if (SmartBeaconingProc()) {
+    if (sbProc()) {
         send_aprs_update = true;
 #ifndef USE_PRECISE_DISTANCE
         lon_prev = lon;
@@ -288,14 +288,17 @@ char *deg_to_nmea(long deg, boolean is_lat) {
 */
 char *deg_to_qth(long lat, long lon) {
     // https://en.wikipedia.org/wiki/Maidenhead_Locator_System
+    // Separate buffer from conv_buf — deg_to_nmea and deg_to_qth are called from
+    // different FreeRTOS cores; sharing conv_buf caused occasional garbled locator output.
+    static char qth_buf[7];
     float lat_ = ((float)lat) / 1000000.0 + 90.0;
     float lon_ = ((float)lon) / 1000000.0 + 180.0;
-    conv_buf[0] = 'A' + int(lon_ / 20.0);
-    conv_buf[1] = 'A' + int(lat_ / 10.0);
-    conv_buf[2] = '0' + int(fmod(lon_, 20) / 2.0);
-    conv_buf[3] = '0' + int(fmod(lat_, 10) / 1.0);
-    conv_buf[4] = 'A' + int((lon_ - (int(lon_ / 2.0) * 2)) / (5.0 / 60.0));
-    conv_buf[5] = 'A' + int((lat_ - (int(lat_ / 1.0) * 1)) / (2.5 / 60.0));
-    conv_buf[6] = '\0';
-    return conv_buf;
+    qth_buf[0] = 'A' + int(lon_ / 20.0);
+    qth_buf[1] = 'A' + int(lat_ / 10.0);
+    qth_buf[2] = '0' + int(fmod(lon_, 20) / 2.0);
+    qth_buf[3] = '0' + int(fmod(lat_, 10) / 1.0);
+    qth_buf[4] = 'A' + int((lon_ - (int(lon_ / 2.0) * 2)) / (5.0 / 60.0));
+    qth_buf[5] = 'A' + int((lat_ - (int(lat_ / 1.0) * 1)) / (2.5 / 60.0));
+    qth_buf[6] = '\0';
+    return qth_buf;
 }
